@@ -1,0 +1,32 @@
+creature_fanciful
+
+[OBJECT:CREATURE]
+
+[CREATURE:CHIMERA]
+	[NAME:chimera:chimeras:chimeric]
+	[TILE:'C'][COLOR:2:0:1]
+	[MODVALUE:50]
+	[FANCIFUL]
+	[GENPOWER:5]
+	[PREFSTRING:terrifying features]
+	[ALL_ACTIVE]
+	[NO_GENDER]
+
+[CREATURE:CENTAUR]
+	[NAME:centaur:centaurs:centaur]
+	[TILE:'C'][COLOR:6:0:0]
+	[MODVALUE:50]
+	[FANCIFUL][GOOD]
+	[GENPOWER:5]
+	[CANOPENDOORS]
+	[PREFSTRING:strength]
+	[ALL_ACTIVE]
+
+[CREATURE:GRIFFON]
+	[NAME:griffon:griffons:griffon]
+	[TILE:'G'][COLOR:7:0:1]
+	[MODVALUE:50]
+	[FANCIFUL]
+	[GENPOWER:5]
+	[PREFSTRING:strength]
+	[ALL_ACTIVE]
