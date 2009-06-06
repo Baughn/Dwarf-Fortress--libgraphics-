@@ -1,0 +1,4 @@
+*.os
+/.sconsign.dblite
+/gamelog.txt
+/libs/libgraphics.so
