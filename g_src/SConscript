@@ -1,0 +1,48 @@
+from sys import platform
+import os
+
+src_dll = ["basics.cpp","command_line.cpp","enabler_sdl.cpp","files.cpp",
+           "find_files_posix.cpp","graphics.cpp","init.cpp","interface.cpp",
+           "music_and_sound_fmodex.cpp","textlines.cpp", "glew.c",
+           "random.cpp"]
+
+dll  = '#libs/libgraphics.so'
+
+optimize = True
+debug = False
+profile = False
+   
+# Propagate PATH. We'll just take our chances with non-repeatable builds.
+env = Environment(ENV = {'PATH' : os.environ['PATH']})
+
+# Init variables, and make sure they're around for appending to
+# These variables are the ones used by the actual compilation. We construct
+# them from ccflags/libs in varying ways depending on which compiler is used,
+# below.
+env['CPPPATH']=["#g_src/fmodexinclude"]
+env['CCFLAGS']=["-Dunix"]
+env['LIBS']=[]
+# If there's a library in the libs folder it will get linked over a system one.
+env['LIBPATH']=["#libs"]
+env['LINKFLAGS']=[]
+
+# GLEW
+env["CPPPATH"].append('#g_src/glext')
+env["CCFLAGS"].append('-DGLEW_STATIC') # Should only be needed on windows, but can't hurt.
+
+# Generic unix, including Linux
+env["LIBS"] += ['SDL', 'SDL_image', 'GL', 'GLU', 'fmodex', 'z',]
+env['ASFLAGS']="--32"
+env['LINKFLAGS'].append("-m32")
+env["CCFLAGS"].append("-m32")
+env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
+
+
+if profile:
+   env["CCFLAGS"].append("-pg")
+   env['LINKFLAGS'].append("-pg")
+
+   
+# Finally, do the build
+env.SharedLibrary(dll, src_dll)
+
