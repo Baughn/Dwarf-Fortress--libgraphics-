@@ -42,6 +42,11 @@ if profile:
    env["CCFLAGS"].append("-pg")
    env['LINKFLAGS'].append("-pg")
 
+if optimize:
+   env["CCFLAGS"].append("-O2")
+
+if debug:
+   env["CCFLAGS"].append("-ggdb")
    
 # Finally, do the build
 env.SharedLibrary(dll, src_dll)
