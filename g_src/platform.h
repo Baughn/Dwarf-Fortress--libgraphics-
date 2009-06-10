@@ -95,7 +95,7 @@ enum {
 	VK_RCONTROL,
 	VK_LMENU,
 	VK_RMENU,
-	
+
 	VK_WHEELBASE = 0xb0,
 	VK_BUTTON3 = 0xb3,
 	VK_WHEELUP = 0xb4,

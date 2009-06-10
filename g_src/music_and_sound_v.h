@@ -1,5 +1,4 @@
-//Copyright (c) 2008, Tarn Adams
-//All rights reserved.  See game.cpp or license.txt for more information.
+//copyright (c) 2006 by tarn adams
 
 #ifndef NO_FMOD
 
@@ -8,4 +7,3 @@ extern initst init;
 musicsoundst musicsound;
 
 #endif
-
