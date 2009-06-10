@@ -1,6 +1,6 @@
 Change this to turn sound off.
 
-[SOUND:ON]
+[SOUND:OFF]
 
 The sound volume runs from 0 (off) to 255 (full).  You can set the volume from the ESC options menu as well.
 
@@ -8,11 +8,11 @@ The sound volume runs from 0 (off) to 255 (full).  You can set the volume from t
 
 Change this to skip the wonderful intro movies.
 
-[INTRO:ON]
+[INTRO:OFF]
 
 This lets you set the starting windowed/fullscreen setting.  Can be YES, NO or PROMPT.
 
-[WINDOWED:PROMPT]
+[WINDOWED:NO]
 
 This is the size and font for windowed mode.  Changing to 800x600 and the 800x600 font might make you happier.
 
