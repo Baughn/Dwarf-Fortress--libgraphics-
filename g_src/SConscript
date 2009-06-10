@@ -47,6 +47,7 @@ if optimize:
 
 if debug:
    env["CCFLAGS"].append("-ggdb")
+   env["CCFLAGS"].append("-DDEBUG")
    
 # Finally, do the build
 env.SharedLibrary(dll, src_dll)
