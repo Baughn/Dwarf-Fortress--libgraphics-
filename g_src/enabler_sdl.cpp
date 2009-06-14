@@ -380,7 +380,18 @@ static void eventLoop(GL_Window window)
             }
           break;
         }
-        
+      case SDL_VIDEORESIZE:
+        {
+          int w=init.font.small_font_dispx; // Is that right?
+          int h=init.font.small_font_dispy;
+          int new_grid_x = MAX(event.resize.w / w, 80);
+          int new_grid_y = MAX(event.resize.h / h, 25);
+          init.display.small_grid_x = new_grid_x;
+          init.display.small_grid_y = new_grid_y;
+          enabler.desired_windowed_width = new_grid_x * w;
+          enabler.desired_windowed_height = new_grid_y * h;
+          enabler.reset_gl();
+        }
       } // switch (event.type)
     }
 
@@ -568,7 +579,13 @@ void enablerst::terminate_application(GL_Window* window)
 void enablerst::toggle_fullscreen(GL_Window* window)
 {
   enabler.create_full_screen = !enabler.create_full_screen;
-	
+
+  reset_gl(window);
+   
+  render(*window);
+}
+
+void enablerst::reset_gl(GL_Window* window) {
   textures.remove_uploaded_textures();
 
   
@@ -582,10 +599,7 @@ void enablerst::toggle_fullscreen(GL_Window* window)
     }
    
   textures.upload_textures();
-  
   ne_toggle_fullscreen();
-   
-  render(*window);
 }
 
 void enablerst::reshape_GL(int width,int height)				// Reshape The Window When It's Moved Or Resized
@@ -645,6 +659,7 @@ char enablerst::create_window_GL(GL_Window* window)
     window->init.width = desired_fullscreen_width;
     window->init.height = desired_fullscreen_height;
   } else {
+    flags |= SDL_RESIZABLE;
     window->init.width = desired_windowed_width;
     window->init.height = desired_windowed_height;
   }

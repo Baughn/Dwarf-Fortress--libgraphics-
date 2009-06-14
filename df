@@ -1,6 +1,6 @@
 #!/bin/sh
 export SDL_DISABLE_LOCK_KEYS=1 # Work around for bug in Debian/Ubuntu SDL patch.
-export SDL_VIDEO_CENTERED=1 # Centre the screen.
+#export SDL_VIDEO_CENTERED=1 # Centre the screen. Messes up resizing.
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"./libs" # Update library search path.
 ./dwarfort.exe $* # Go, go, go! :)
 

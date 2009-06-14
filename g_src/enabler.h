@@ -955,6 +955,12 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
 /* 	texture[t]->remove_texture(); */
 /*       } */
 /*   } */
+ public:
+  void reset_gl(GL_Window* window);
+  void reset_gl()
+  {
+    reset_gl(&window);
+  }
 };
 
 void convert_to_rgb(float &r,float &g,float &b,char col,char bright);
