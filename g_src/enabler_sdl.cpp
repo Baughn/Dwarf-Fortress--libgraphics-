@@ -12,6 +12,7 @@
 
 extern "C" {
 #include <zlib.h>
+#include <assert.h>
 #ifndef WIN32
 # include <sys/types.h>
 # include <sys/stat.h>
@@ -245,12 +246,55 @@ char is_modkey(SDLKey key) {
  return 0;
 }
 
+static void resize_window(int width, int height, double zoom) {
+  // We must have at least 80x25 tiles in the window. We ensure
+  // this by enlarging the window if it's too small.
+  // Also, this function should never get called in fullscreen mode.
+  assert(!enabler.create_full_screen);
+
+  const int font_w=init.font.small_font_dispx; // Is that right?
+  const int font_h=init.font.small_font_dispy;
+
+  const int new_grid_x = MIN(MAX(width / font_w / zoom, 80), 200);
+  const int new_grid_y = MIN(MAX(height / font_h / zoom, 25), 200);
+  init.display.small_grid_x = new_grid_x;
+  init.display.small_grid_y = new_grid_y;
+  enabler.desired_windowed_width = new_grid_x * font_w * zoom;
+  enabler.desired_windowed_height = new_grid_y * font_h * zoom;
+  enabler.reset_gl();
+}
+
+static bool zoom_display(double zoom) {
+  // We must have at least 80x25 tiles in the display.
+  // We ensure this by clamping the zoom if it's too large.
+  const int font_w=init.font.small_font_dispx; // Is that right?
+  const int font_h=init.font.small_font_dispy;
+
+  const int new_grid_x = enabler.window_width / font_w / zoom;
+  const int new_grid_y = enabler.window_height / font_h / zoom;
+  // printf("Setting to %dx%d, zoom %f\n", new_grid_x,new_grid_y,zoom);
+  if (new_grid_x < 80 || new_grid_y < 25)
+    return false; // Just ignore the request.
+  if (new_grid_x > 200 || new_grid_y > 200)
+    return false; // FIXME: This should not be required. Please?
+  if (enabler.create_full_screen) {
+    init.display.large_grid_x = new_grid_x;
+    init.display.large_grid_y = new_grid_y;
+  } else {
+    init.display.small_grid_x = new_grid_x;
+    init.display.small_grid_y = new_grid_y;
+  }  
+  enabler.reset_gl();
+  return true;
+}
+
 static void eventLoop(GL_Window window)
 {
   SDL_Event event;
   SDL_Surface *screen = NULL;
   Uint32 mouse_lastused = 0;
   SDL_ShowCursor(SDL_DISABLE);
+  double zoom = 1.0;
 	
   enabler_inputst newi;
   memset(&newi,0,sizeof(enabler_inputst));
@@ -280,12 +324,22 @@ static void eventLoop(GL_Window window)
 	default: // Any other button should be bindable
 	  {
 	    SDLMod modstate = SDL_GetModState();
+            if (event.button.button == SDL_BUTTON_WHEELUP) {
+              zoom *= 1.02;
+              if (zoom > 1) zoom = 1; // No point in going above full-size (?)
+              if (!zoom_display(zoom)) zoom /= 1.02;
+              break;
+            } else if (event.button.button == SDL_BUTTON_WHEELDOWN) {
+              zoom /= 1.02;
+              if (!zoom_display(zoom)) zoom *= 1.02;
+              break;
+            }
 	    newi.mouse_click = event.button.button;
 	    newi.shift = newi.upper = (modstate & KMOD_SHIFT) ? 1 : 0;
 	    newi.upper ^= (modstate & KMOD_CAPS) ? 1 : 0;
 	    newi.ctrl = !!(modstate & KMOD_CTRL);
 	    newi.alt = !!(modstate & KMOD_ALT);
-        newi.has_data=1;
+            newi.has_data=1;
 	  }
 	}
 	break;
@@ -382,15 +436,7 @@ static void eventLoop(GL_Window window)
         }
       case SDL_VIDEORESIZE:
         {
-          int w=init.font.small_font_dispx; // Is that right?
-          int h=init.font.small_font_dispy;
-          int new_grid_x = MAX(event.resize.w / w, 80);
-          int new_grid_y = MAX(event.resize.h / h, 25);
-          init.display.small_grid_x = new_grid_x;
-          init.display.small_grid_y = new_grid_y;
-          enabler.desired_windowed_width = new_grid_x * w;
-          enabler.desired_windowed_height = new_grid_y * h;
-          enabler.reset_gl();
+          resize_window(event.resize.w, event.resize.h, zoom);
         }
       } // switch (event.type)
     }
@@ -425,6 +471,7 @@ static void eventLoop(GL_Window window)
   }
 	
 }
+
 
 #ifdef unix
 // sig_atomi_c is guaranteed to be atomic.
