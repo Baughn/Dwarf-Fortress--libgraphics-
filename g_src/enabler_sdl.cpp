@@ -249,8 +249,11 @@ char is_modkey(SDLKey key) {
 static void resize_window(int width, int height, double zoom) {
   // We must have at least 80x25 tiles in the window. We ensure
   // this by enlarging the window if it's too small.
-  // Also, this function should never get called in fullscreen mode.
-  assert(!enabler.create_full_screen);
+
+  // Also, this function should never get called in fullscreen mode,
+  // but sometimes it seems to happen anyway. We just ignore it
+  // in this case, and hope for the best
+  if (!enabler.create_full_screen) return;
 
   const int font_w=init.font.small_font_dispx; // Is that right?
   const int font_h=init.font.small_font_dispy;

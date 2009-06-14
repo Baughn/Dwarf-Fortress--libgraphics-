@@ -22,8 +22,8 @@ This is the size and font for windowed mode.  Changing to 800x600 and the 800x60
 
 Full screen info.
 
-[FULLSCREENX:800]
-[FULLSCREENY:600]
+[FULLSCREENX:1440]
+[FULLSCREENY:900]
 [FULLFONT:curses_800x600.png]
 
 If this is set to YES, the tiles will not be stretched, but rather the game view will be centralized, surrounded by black space.  Tiles that are too large will always be compressed rather than running off the screen.
