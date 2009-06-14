@@ -328,14 +328,21 @@ static void eventLoop(GL_Window window)
 	default: // Any other button should be bindable
 	  {
 	    SDLMod modstate = SDL_GetModState();
-            if (event.button.button == SDL_BUTTON_WHEELUP) {
-              zoom *= 1.02;
-              if (zoom > 1) zoom = 1; // No point in going above full-size (?)
-              if (!zoom_display(zoom)) zoom /= 1.02;
-              break;
-            } else if (event.button.button == SDL_BUTTON_WHEELDOWN) {
-              zoom /= 1.02;
-              if (!zoom_display(zoom)) zoom *= 1.02;
+            if (event.button.button == SDL_BUTTON_WHEELUP ||
+                event.button.button == SDL_BUTTON_WHEELDOWN) {
+              const double oldzoom = zoom;
+              if (event.button.button == SDL_BUTTON_WHEELUP) {
+                zoom *= 1.02;
+              } else if (event.button.button == SDL_BUTTON_WHEELDOWN) {
+                zoom /= 1.02;
+              }
+              if (zoom > 0.95 && zoom < 1.05) {
+                zoom_display(1);
+              } else if (zoom <= 0.95) {
+                if (!zoom_display(zoom+0.05)) zoom = oldzoom;
+              } else if (zoom >= 1.05) {
+                if (!zoom_display(zoom-0.05)) zoom = oldzoom;
+              }
               break;
             }
 	    newi.mouse_click = event.button.button;
