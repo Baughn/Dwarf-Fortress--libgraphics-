@@ -341,46 +341,46 @@ static void eventLoop(GL_Window window)
       case SDL_VIDEOEXPOSE:
 	exposed = 1;
 		break;
-		case SDL_MOUSEMOTION:
-			{
-    //Certain things (e.g. switching to fullscreen tears down the original
-     //OpenGL context and initializes a new one) change the screen surface, 
-     //so we ask SDL for the surface everytime, instead of storing it.
-     //
-    screen = SDL_GetVideoSurface();
-    if (screen == NULL) {
-      return;
-    }
-
-			// Is the mouse over the screen surface?
-			if (event.motion.x >= 0 && event.motion.x < screen->w && 
-				event.motion.y >= 0 && event.motion.y < screen->h)
-				{
-				enabler.oldmouse_x = enabler.mouse_x;
-				enabler.oldmouse_y = enabler.mouse_y;
-				enabler.mouse_x = event.motion.x;
-				enabler.mouse_y = event.motion.y;
-				enabler.tracking_on = 1;
-				Uint32 now = SDL_GetTicks();
-				mouse_lastused = enabler.now;
-				SDL_ShowCursor(SDL_ENABLE);
-				}
-			else
-				{
-				std::cout << "Mouse reset; this should not happen\n";
-				enabler.oldmouse_x = -1;
-				enabler.oldmouse_y = -1;
-				enabler.mouse_x = -1;
-				enabler.mouse_y = -1;
-				enabler.mouse_lbut = 0;
-				enabler.mouse_rbut = 0;
-				enabler.mouse_lbut_lift = 0;
-				enabler.mouse_rbut_lift = 0;
-				enabler.tracking_on = 0;
-				}
-			break;
-			}
-
+      case SDL_MOUSEMOTION:
+        {
+          //Certain things (e.g. switching to fullscreen tears down the original
+          //OpenGL context and initializes a new one) change the screen surface, 
+          //so we ask SDL for the surface everytime, instead of storing it.
+          //
+          screen = SDL_GetVideoSurface();
+          if (screen == NULL) {
+            return;
+          }
+          
+          // Is the mouse over the screen surface?
+          if (event.motion.x >= 0 && event.motion.x < screen->w && 
+              event.motion.y >= 0 && event.motion.y < screen->h)
+            {
+              enabler.oldmouse_x = enabler.mouse_x;
+              enabler.oldmouse_y = enabler.mouse_y;
+              enabler.mouse_x = event.motion.x;
+              enabler.mouse_y = event.motion.y;
+              enabler.tracking_on = 1;
+              Uint32 now = SDL_GetTicks();
+              mouse_lastused = enabler.now;
+              SDL_ShowCursor(SDL_ENABLE);
+            }
+          else
+            {
+              std::cout << "Mouse reset; this should not happen\n";
+              enabler.oldmouse_x = -1;
+              enabler.oldmouse_y = -1;
+              enabler.mouse_x = -1;
+              enabler.mouse_y = -1;
+              enabler.mouse_lbut = 0;
+              enabler.mouse_rbut = 0;
+              enabler.mouse_lbut_lift = 0;
+              enabler.mouse_rbut_lift = 0;
+              enabler.tracking_on = 0;
+            }
+          break;
+        }
+        
       } // switch (event.type)
     }
 
