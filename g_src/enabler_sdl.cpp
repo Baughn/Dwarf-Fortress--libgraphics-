@@ -253,7 +253,7 @@ static void resize_window(int width, int height, double zoom) {
   // Also, this function should never get called in fullscreen mode,
   // but sometimes it seems to happen anyway. We just ignore it
   // in this case, and hope for the best
-  if (!enabler.create_full_screen) return;
+  if (enabler.create_full_screen) return;
 
   const int font_w=init.font.small_font_dispx; // Is that right?
   const int font_h=init.font.small_font_dispy;
@@ -264,14 +264,15 @@ static void resize_window(int width, int height, double zoom) {
   init.display.small_grid_y = new_grid_y;
   enabler.desired_windowed_width = new_grid_x * font_w * zoom;
   enabler.desired_windowed_height = new_grid_y * font_h * zoom;
+  // printf("Setting to %dx%d, zoom %f\n", new_grid_x,new_grid_y,zoom);
   enabler.reset_gl();
 }
 
 static bool zoom_display(double zoom) {
   // We must have at least 80x25 tiles in the display.
   // We ensure this by clamping the zoom if it's too large.
-  const int font_w=init.font.small_font_dispx; // Is that right?
-  const int font_h=init.font.small_font_dispy;
+  const int font_w = enabler.create_full_screen ? init.font.large_font_dispx : init.font.small_font_dispx;
+  const int font_h = enabler.create_full_screen ? init.font.large_font_dispy : init.font.small_font_dispy;
 
   const int new_grid_x = enabler.window_width / font_w / zoom;
   const int new_grid_y = enabler.window_height / font_h / zoom;
