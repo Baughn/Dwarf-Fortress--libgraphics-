@@ -1842,6 +1842,8 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
   gtk_window_set_title((GtkWindow*)dialog, caption);
   gint dialog_ret = gtk_dialog_run(GTK_DIALOG(dialog));
   gtk_widget_destroy(dialog);
+  while (gtk_events_pending())
+    gtk_main_iteration();
 				       
   if (type & MB_YESNO) {
     switch (dialog_ret) {
