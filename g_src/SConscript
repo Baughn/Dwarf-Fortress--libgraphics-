@@ -3,8 +3,8 @@ import os
 
 src_dll = ["basics.cpp","command_line.cpp","enabler_sdl.cpp","files.cpp",
            "find_files_posix.cpp","graphics.cpp","init.cpp","interface.cpp",
-           "music_and_sound_fmodex.cpp","textlines.cpp", "glew.c",
-           "random.cpp"]
+           "keybindings.cpp","music_and_sound_fmodex.cpp","random.cpp",
+           "textlines.cpp","glew.c","ViewBase.cpp"]
 
 dll  = '#libs/libgraphics.so'
 

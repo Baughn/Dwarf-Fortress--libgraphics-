@@ -16,8 +16,6 @@
 #include "svector.h"
 using std::string;
 
-#include "tlist.h"
-
 #include "random.h"
 
 #include "endian.h"
