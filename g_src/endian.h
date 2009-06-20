@@ -1,3 +1,6 @@
+#ifndef ENDIAN_H
+#define ENDIAN_H
+
 inline unsigned short byteswap(unsigned short x)
 {
 #if defined(__ppc__) || defined(__ppc64__)
@@ -36,3 +39,4 @@ inline unsigned int byteswap(unsigned int x)
 inline short byteswap(short x) { return byteswap( (unsigned short) x ); }
 inline long byteswap(long x) { return byteswap( (unsigned long) x ); }
 inline int byteswap(int x) { return byteswap( (unsigned int) x ); }
+#endif

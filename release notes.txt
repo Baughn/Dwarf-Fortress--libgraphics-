@@ -39,6 +39,18 @@ If you can get to the ESC keybindings menu (from the start screen, press ESC and
 
 ******************************************************
 
+Release notes for 0.28.181.40d12 (June 20, 2009):
+
+updated/streamlined all sound files (bhelyer)
+made icon use png (Baughn, I think)
+new keybindings screen w/ macros (Veroule)
+multiple bindings per key (Veroule)
+resizeable window (Baughn)
+zoom with mouse-wheel, any non L/R button to reset zoom to default (Baughn)
+fixed mandate counting problem from finished items on multiple mandates
+
+******************************************************
+
 Release notes for 0.28.181.40d11 (March 23, 2009):
 
 The key-doubling problem should be fixed.

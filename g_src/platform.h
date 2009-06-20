@@ -3,6 +3,7 @@
 
 #ifdef WIN32
 # include <windows.h>
+/*
 enum {
 	VK_WHEELBASE = 0xb0,
 	VK_BUTTON3 = 0xb3,
@@ -11,8 +12,10 @@ enum {
 	VK_WHEELLEFT,
 	VK_WHEELRIGHT,
 };
+*/
 #else
 
+/*
 enum {
 	VK_CANCEL     = 0x03,
 	VK_BACK       = 0x08,
@@ -95,7 +98,7 @@ enum {
 	VK_RCONTROL,
 	VK_LMENU,
 	VK_RMENU,
-
+	
 	VK_WHEELBASE = 0xb0,
 	VK_BUTTON3 = 0xb3,
 	VK_WHEELUP = 0xb4,
@@ -103,6 +106,7 @@ enum {
 	VK_WHEELLEFT,
 	VK_WHEELRIGHT,
 };
+*/
 
 enum {
 	// NOTE: These probably don't match Windows values.
@@ -187,8 +191,10 @@ char* itoa(int value, char* result, int base);
 
 #endif // WIN32
 
+/*
 SHORT Enabler_GetKeyState(int virtKey);
 int Enabler_ShowCursor(BOOL show);
+*/
 
 #endif // _PLATFORM_H_
 

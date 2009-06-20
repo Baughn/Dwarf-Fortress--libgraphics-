@@ -42,9 +42,11 @@ Lots of HTML/IT stuff: Martin Packman
 
 First Mac port: Matthew Moss and eli
 
-SDL port: Bernard Helyer (see license below)
+SDL port, and additional changes: Bernard Helyer (see license below)
 
-OpenGL upgrade to this millenium: Svein Ove Aas (see license below)
+OpenGL upgrade to this millenium, and additional changes: Svein Ove Aas (see license below)
+
+Additional changes to the SDL Port and related main loop/input code: Theodorick Grau (see license below)
 
 
 

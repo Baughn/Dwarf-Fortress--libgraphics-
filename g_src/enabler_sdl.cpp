@@ -72,167 +72,7 @@ static int glerrorcount = 0;
 # define printGLError()
 #endif
 
-Uint8 symToVkey[1024];
-
-// A run-once function to populate the symToVkey map.
-void keyMap()
-{
-  // Used only to translate non-alphabetic letters. The alphabetic ones are left in as
-  // a fallback in case the SDL uncode support fails for one reason or another.
-  symToVkey[SDLK_BACKSPACE]    = VK_BACK;
-  symToVkey[SDLK_TAB]          = VK_TAB;
-  symToVkey[SDLK_CLEAR]        = VK_CLEAR;
-  symToVkey[SDLK_RETURN]       = VK_RETURN;
-  symToVkey[SDLK_PAUSE]        = VK_PAUSE;
-  symToVkey[SDLK_ESCAPE]       = VK_ESCAPE;
-  symToVkey[SDLK_SPACE]        = VK_SPACE;
-  symToVkey[SDLK_EXCLAIM]      = SDLK_1;
-  symToVkey[SDLK_QUOTEDBL]     = 0xDE; // VK_OEM_7
-  symToVkey[SDLK_HASH]         = SDLK_3;	
-  symToVkey[SDLK_DOLLAR]       = SDLK_4;
-  symToVkey[SDLK_AMPERSAND]    = SDLK_7;
-  symToVkey[SDLK_QUOTE]        = 0xDE; // VK_OEM_7
-  symToVkey[SDLK_LEFTPAREN]    = SDLK_9;
-  symToVkey[SDLK_RIGHTPAREN]   = SDLK_0;
-  symToVkey[SDLK_ASTERISK]     = SDLK_8;
-  symToVkey[SDLK_PLUS]         = 0xBB; // VK_OEM_PLUS
-  symToVkey[SDLK_COMMA]        = 0xBC; // VK_OEM_COMMA
-  symToVkey[SDLK_MINUS]        = 0xBD; // VK_OEM_MINUS
-  symToVkey[SDLK_PERIOD]       = 0xBE; // VK_OEM_PERIOD
-  symToVkey[SDLK_SLASH]        = 0xBF; // VK_OEM_2
-  symToVkey[SDLK_0]            = SDLK_0; // V_KEY 0-9 match ASCII, like SDL.
-  symToVkey[SDLK_1]            = SDLK_1; 
-  symToVkey[SDLK_2]            = SDLK_2;
-  symToVkey[SDLK_3]            = SDLK_3;
-  symToVkey[SDLK_4]            = SDLK_4;
-  symToVkey[SDLK_5]            = SDLK_5;
-  symToVkey[SDLK_6]            = SDLK_6;
-  symToVkey[SDLK_7]            = SDLK_7;
-  symToVkey[SDLK_8]            = SDLK_8;
-  symToVkey[SDLK_9]            = SDLK_9;
-  symToVkey[SDLK_COLON]        = 0xBA; // VK_OEM_1
-  symToVkey[SDLK_SEMICOLON]    = 0xBA; // VK_OEM_1
-  symToVkey[SDLK_LESS]         = 0xBC; // VK_OEM_COMMA
-  symToVkey[SDLK_EQUALS]       = 0xBB; // VK_OEM_PLUS
-  symToVkey[SDLK_GREATER]      = 0xBD; // VK_OEM_MINUS
-  symToVkey[SDLK_QUESTION]     = 0xBF; // VK_OEM_2
-  symToVkey[SDLK_AT]           = SDLK_2; // Remember, VKEY numbers match SDL.
-  symToVkey[SDLK_LEFTBRACKET]  = 0xDB; // VK_OEM_4
-  symToVkey[SDLK_BACKSLASH]    = 0xDC; // VK_OEM_5
-  symToVkey[SDLK_RIGHTBRACKET] = 0xDD; // VK_OEM_6
-  symToVkey[SDLK_CARET]        = SDLK_6; 
-  symToVkey[SDLK_UNDERSCORE]   = 0xBD; // VK_OEM_MINUS
-  symToVkey[SDLK_BACKQUOTE]    = 0xC0; // VK_OEM_3
-  symToVkey[SDLK_a]            = SDLK_a - 0x20;
-  symToVkey[SDLK_b]            = SDLK_b - 0x20;
-  symToVkey[SDLK_c]            = SDLK_c - 0x20;
-  symToVkey[SDLK_d]            = SDLK_d - 0x20;
-  symToVkey[SDLK_e]            = SDLK_e - 0x20;
-  symToVkey[SDLK_f]            = SDLK_f - 0x20;
-  symToVkey[SDLK_g]            = SDLK_g - 0x20;
-  symToVkey[SDLK_h]            = SDLK_h - 0x20;
-  symToVkey[SDLK_i]            = SDLK_i - 0x20;
-  symToVkey[SDLK_j]            = SDLK_j - 0x20;
-  symToVkey[SDLK_k]            = SDLK_k - 0x20;
-  symToVkey[SDLK_l]            = SDLK_l - 0x20;
-  symToVkey[SDLK_m]            = SDLK_m - 0x20;
-  symToVkey[SDLK_n]            = SDLK_n - 0x20;
-  symToVkey[SDLK_o]            = SDLK_o - 0x20;
-  symToVkey[SDLK_p]            = SDLK_p - 0x20;
-  symToVkey[SDLK_q]            = SDLK_q - 0x20;
-  symToVkey[SDLK_r]            = SDLK_r - 0x20;
-  symToVkey[SDLK_s]            = SDLK_s - 0x20;
-  symToVkey[SDLK_t]            = SDLK_t - 0x20;
-  symToVkey[SDLK_u]            = SDLK_u - 0x20;
-  symToVkey[SDLK_v]            = SDLK_v - 0x20;
-  symToVkey[SDLK_w]            = SDLK_w - 0x20;
-  symToVkey[SDLK_x]            = SDLK_x - 0x20;
-  symToVkey[SDLK_y]            = SDLK_y - 0x20;
-  symToVkey[SDLK_z]            = SDLK_z - 0x20;
-  symToVkey[SDLK_DELETE]       = VK_DELETE;
-  symToVkey[SDLK_KP0]          = VK_NUMPAD0;
-  symToVkey[SDLK_KP1]          = VK_NUMPAD1;
-  symToVkey[SDLK_KP2]          = VK_NUMPAD2;
-  symToVkey[SDLK_KP3]          = VK_NUMPAD3;
-  symToVkey[SDLK_KP4]          = VK_NUMPAD4;
-  symToVkey[SDLK_KP5]          = VK_NUMPAD5;
-  symToVkey[SDLK_KP6]          = VK_NUMPAD6;
-  symToVkey[SDLK_KP7]          = VK_NUMPAD7;
-  symToVkey[SDLK_KP8]          = VK_NUMPAD8;
-  symToVkey[SDLK_KP9]          = VK_NUMPAD9;
-  symToVkey[SDLK_KP_PERIOD]    = VK_DECIMAL;
-  symToVkey[SDLK_KP_DIVIDE]    = VK_DIVIDE;
-  symToVkey[SDLK_KP_MULTIPLY]  = VK_MULTIPLY;
-  symToVkey[SDLK_KP_MINUS]     = VK_SUBTRACT;
-  symToVkey[SDLK_KP_PLUS]      = VK_ADD;
-  symToVkey[SDLK_KP_ENTER]     = VK_SEPARATOR;
-  symToVkey[SDLK_KP_EQUALS]    = 0x92; // V_KEY_OEM_NEC_EQUAL
-  symToVkey[SDLK_UP]           = VK_UP;
-  symToVkey[SDLK_DOWN]         = VK_DOWN;
-  symToVkey[SDLK_RIGHT]        = VK_RIGHT;
-  symToVkey[SDLK_LEFT]         = VK_LEFT;
-  symToVkey[SDLK_INSERT]       = VK_INSERT;
-  symToVkey[SDLK_HOME]         = VK_HOME;
-  symToVkey[SDLK_END]          = VK_END;
-  symToVkey[SDLK_PAGEUP]       = VK_PRIOR;
-  symToVkey[SDLK_PAGEDOWN]     = VK_NEXT;
-  symToVkey[SDLK_F1]           = VK_F1;
-  symToVkey[SDLK_F2]           = VK_F2;
-  symToVkey[SDLK_F3]           = VK_F3;
-  symToVkey[SDLK_F4]           = VK_F4;
-  symToVkey[SDLK_F5]           = VK_F5;
-  symToVkey[SDLK_F6]           = VK_F6;
-  symToVkey[SDLK_F7]           = VK_F7;
-  symToVkey[SDLK_F8]           = VK_F8;
-  symToVkey[SDLK_F9]           = VK_F9;
-  symToVkey[SDLK_F10]          = VK_F10;
-  symToVkey[SDLK_F11]          = VK_F11;
-  symToVkey[SDLK_F12]          = VK_F12;
-  symToVkey[SDLK_F13]          = VK_F13;
-  symToVkey[SDLK_F14]          = VK_F14;
-  symToVkey[SDLK_F15]          = VK_F15; 
-//SDL treats the locks as pressed as long as they are lit, better to ignore them
-  symToVkey[SDLK_NUMLOCK]      = 0; //VK_NUMLOCK;
-  symToVkey[SDLK_CAPSLOCK]     = 0; //VK_CAPITAL;
-  symToVkey[SDLK_SCROLLOCK]    = 0; //VK_SCROLL;
-  symToVkey[SDLK_RSHIFT]       = VK_RSHIFT;
-  symToVkey[SDLK_LSHIFT]       = VK_LSHIFT;
-  symToVkey[SDLK_RCTRL]        = VK_RCONTROL;
-  symToVkey[SDLK_LCTRL]        = VK_LCONTROL;
-  symToVkey[SDLK_RALT]         = VK_RMENU;
-  symToVkey[SDLK_LALT]         = VK_LMENU;
-  symToVkey[SDLK_RMETA]        = 0;
-  symToVkey[SDLK_LMETA]        = 0;
-  symToVkey[SDLK_LSUPER]       = 0x5B; // VK_LWIN
-  symToVkey[SDLK_RSUPER]       = 0x5C; // VK_RWIN
-  symToVkey[SDLK_HELP]         = VK_HELP;
-}
-
-/*
-static long vkey_translate(SDL_keysym sym) {
-  // Use unicode translation only for a through Z, otherwise use the keysym
-  // It'd make more sense to only use the keysym for special keys (arrows, etc.),
-  // mapping those to reserved-and-forever-unused unicode code points, but
-  // that would require changes deeper in DF's code.. well, it'd need
-  // to be unicode-capable in general, with all that implies in font wrangling.
-  //
-  // More to the point, if the symbol isn't recognized by the symToVkey lookup,
-  // it's passed through unchanged. It'd be good to allow any such unknown keys
-  // to be used anyway, but shown numerically. (Hex, say)
-  if (sym.unicode >= 'a' && sym.unicode <= 'z')
-    return sym.unicode - 0x20;
-  else if (sym.unicode >= 'A' && sym.unicode <= 'Z' ||
-	   (sym.unicode >= '0' && sym.unicode <= '9'))
-    return sym.unicode;
-  // Parantheses and such like to change places on non-US keyboards.
-  // There's no obvious way to handle this, as things deeper in DF/BC
-  // apparently assume they don't. Oh well.
-  else
-    return symToVkey[sym.sym];
-}
-*/
-
-char is_modkey(SDLKey key) {
+char is_modkey(Uint32 key) {
  switch (key) {
   case SDLK_RSHIFT:
   case SDLK_LSHIFT:
@@ -240,11 +80,24 @@ char is_modkey(SDLKey key) {
   case SDLK_LCTRL:
   case SDLK_RALT:
   case SDLK_LALT:
+  case SDLK_RMETA:
+  case SDLK_LMETA:
+  case SDLK_RSUPER:
+  case SDLK_LSUPER:
   case SDLK_CAPSLOCK:
+  case SDLK_NUMLOCK:
+  case SDLK_SCROLLOCK:
    return 1;
  }
  return 0;
 }
+
+#ifndef MAX
+	#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+#ifndef MIN
+	#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
 
 static void resize_window(int width, int height, double zoom) {
   // We must have at least 80x25 tiles in the window. We ensure
@@ -258,8 +111,8 @@ static void resize_window(int width, int height, double zoom) {
   const int font_w=init.font.small_font_dispx; // Is that right?
   const int font_h=init.font.small_font_dispy;
 
-  const int new_grid_x = MIN(MAX(width / font_w / zoom, 80), 200);
-  const int new_grid_y = MIN(MAX(height / font_h / zoom, 25), 200);
+  const int new_grid_x = MIN(MAX(width / font_w / zoom, 80), MAX_GRID_X);
+  const int new_grid_y = MIN(MAX(height / font_h / zoom, 25), MAX_GRID_Y);
   init.display.small_grid_x = new_grid_x;
   init.display.small_grid_y = new_grid_y;
   enabler.desired_windowed_width = new_grid_x * font_w * zoom;
@@ -294,40 +147,36 @@ static bool zoom_display(double zoom) {
 
 static void eventLoop(GL_Window window)
 {
-  SDL_Event event;
-  SDL_Surface *screen = NULL;
-  Uint32 mouse_lastused = 0;
-  SDL_ShowCursor(SDL_DISABLE);
-  double zoom = 1.0;
-	
-  enabler_inputst newi;
-  memset(&newi,0,sizeof(enabler_inputst));
-  //doing memset with structures and classes is risky.
-  //this works now, but changing the struct definition my cause trouble
-  while (loopvar) {
-    enabler.now = SDL_GetTicks();
-    while (SDL_PollEvent(&event)) {
-      switch (event.type) {
-      case SDL_QUIT:
-	{
-	  // We can't push an sdl keydown event, since we'd never get a keyup one.
-      newi.has_data=1;
-	  newi.key = SDLK_ESCAPE;
-	  break;
-	}
-      case SDL_MOUSEBUTTONDOWN:
-	switch (event.button.button) {
-	case SDL_BUTTON_LEFT:
-	  enabler.mouse_lbut = 1;
-	  enabler.mouse_lbut_down = 1;
-	  break;
-	case SDL_BUTTON_RIGHT:
-	  enabler.mouse_rbut = 1;
-	  enabler.mouse_rbut_down = 1;
-	  break;
-	default: // Any other button should be bindable
-	  {
-	    SDLMod modstate = SDL_GetModState();
+ SDL_Event event;
+ SDL_Surface *screen = NULL;
+ Uint32 mouse_lastused = 0;
+ SDL_ShowCursor(SDL_DISABLE);
+ double zoom = 1.0;
+
+ Uint32 newi=0;
+ while (loopvar) {
+  enabler.now = SDL_GetTicks();
+  while (SDL_PollEvent(&event)) {
+   switch (event.type) {
+    case SDL_QUIT:
+     enabler.add_input(INTERFACEEVENT_QUIT,0);
+    break;
+    case SDL_MOUSEBUTTONDOWN:
+     if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
+      enabler.add_input(INTERFACEEVENT_MOUSE_DOWN,0);
+      newi=event.button.button;
+      if (newi<NUM_MOUSE_BUTTONS) enabler.add_input(KEY_MOUSEDOWN+newi,0);
+      switch (newi) {
+       case SDL_BUTTON_LEFT:
+        enabler.mouse_lbut = 1;
+        enabler.mouse_lbut_down = 1;
+       break;
+       case SDL_BUTTON_RIGHT:
+        enabler.mouse_rbut = 1;
+        enabler.mouse_rbut_down = 1;
+       break;
+ 	default: // Any other button should be bindable
+ 	  {
             if (event.button.button == SDL_BUTTON_WHEELUP ||
                 event.button.button == SDL_BUTTON_WHEELDOWN) {
               const double oldzoom = zoom;
@@ -345,144 +194,119 @@ static void eventLoop(GL_Window window)
               }
               break;
             }
-	    newi.mouse_click = event.button.button;
-	    newi.shift = newi.upper = (modstate & KMOD_SHIFT) ? 1 : 0;
-	    newi.upper ^= (modstate & KMOD_CAPS) ? 1 : 0;
-	    newi.ctrl = !!(modstate & KMOD_CTRL);
-	    newi.alt = !!(modstate & KMOD_ALT);
-            newi.has_data=1;
-	  }
-	}
-	break;
-      case SDL_MOUSEBUTTONUP:
-	switch (event.button.button) {
-	case SDL_BUTTON_LEFT:
-	  enabler.mouse_lbut = 0;
-	  enabler.mouse_lbut_down = 0;
-	  enabler.mouse_lbut_lift = 1;
-	  break;
-	case SDL_BUTTON_RIGHT:
-	  enabler.mouse_rbut = 0;
-	  enabler.mouse_rbut_down = 0;
-	  enabler.mouse_rbut_lift = 1;
-	  break;
-	}
-	break;
-      case SDL_KEYDOWN:
-	{
-	  // Disable mouse if it's been long enough
-	  if (mouse_lastused + 5000 < enabler.now)
-	    SDL_ShowCursor(SDL_DISABLE);
-
-      SDL_keysym* keysym=&(event.key.keysym);
-      SDLMod modstate = keysym->mod;
-      SDLKey key=keysym->sym;
-      if (!is_modkey(key)) newi.key=key;
-      //leave newi.key as 0 when all we got is a modifier
-	  newi.shift = newi.upper = (modstate & KMOD_SHIFT) ? 1 : 0;
-	  newi.upper ^= (modstate & KMOD_CAPS) ? 1 : 0;
-      //xor it to determine whether we are actually uppering letters
-	  newi.ctrl = (modstate & KMOD_CTRL) ? 1 : 0;
-      newi.alt = (modstate & KMOD_ALT) ? 1 : 0;
-	  // Debian _somehow_ managed to patch SDL 1.2 so that the 'lock'
-	   //keys don't generate a modifier. This can be fixed by setting
-	   //an environmental variable that is supposed to _cause_ this
-	   //behaviour. This also effects Ubuntu (as of 8.04.1).
-	   //
-      newi.has_data=1;
-	break;
+			else
+				{
+				zoom=1;
+			  zoom_display(1);
+				}
+ 	  }
       }
-      case SDL_ACTIVEEVENT:
-	if (event.active.state & SDL_APPACTIVE) {
-	  if (event.active.gain) {
-	    exposed = 1;
-	    std::cout << "Gained focus\n";
-	  } else {
-	    // TODO: Disable rendering when nobody would see it anyway
-	    // Or maybe pause?
-	  }
+     }
+    break;
+    case SDL_MOUSEBUTTONUP:
+     if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
+      enabler.add_input(INTERFACEEVENT_MOUSE_UP,0);
+      newi=event.button.button;
+      if (newi<NUM_MOUSE_BUTTONS) enabler.add_input(KEY_MOUSEUP+newi,0);
+      switch (newi) {
+       case SDL_BUTTON_LEFT:
+        enabler.mouse_lbut = 0;
+        enabler.mouse_lbut_down = 0;
+        enabler.mouse_lbut_lift = 1;
+       break;
+       case SDL_BUTTON_RIGHT:
+        enabler.mouse_rbut = 0;
+        enabler.mouse_rbut_down = 0;
+        enabler.mouse_rbut_lift = 1;
+       break;
+      }
+     }
+    break;
+    case SDL_KEYDOWN:
+	{
+     // Disable mouse if it's been long enough
+     if (mouse_lastused + 5000 < enabler.now) {
+      if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE))
+//       hide the mouse picture
+//       enabler.set_tile(0, TEXTURE_MOUSE, enabler.mouse_x, enabler.mouse_y);
+      SDL_ShowCursor(SDL_DISABLE);
+     }
+     Uint32 key=event.key.keysym.sym;
+     //do nothing when all we got is a modifier key
+     if (!is_modkey(key)) enabler.add_input(key,event.key.keysym.unicode);
+
+     /* Debian _somehow_ managed to patch SDL 1.2 so that the 'lock'
+     * keys don't generate a modifier. This can be fixed by setting
+     * an environmental variable that is supposed to _cause_ this
+     * behaviour. This also effects Ubuntu (as of 8.04.1).
+     */
+    break;
 	}
-	break;
-      case SDL_VIDEOEXPOSE:
-	exposed = 1;
-		break;
-      case SDL_MOUSEMOTION:
-        {
-          //Certain things (e.g. switching to fullscreen tears down the original
-          //OpenGL context and initializes a new one) change the screen surface, 
-          //so we ask SDL for the surface everytime, instead of storing it.
-          //
-          screen = SDL_GetVideoSurface();
-          if (screen == NULL) {
-            return;
-          }
-          
-          // Is the mouse over the screen surface?
-          if (event.motion.x >= 0 && event.motion.x < screen->w && 
-              event.motion.y >= 0 && event.motion.y < screen->h)
-            {
-              enabler.oldmouse_x = enabler.mouse_x;
-              enabler.oldmouse_y = enabler.mouse_y;
-              enabler.mouse_x = event.motion.x;
-              enabler.mouse_y = event.motion.y;
-              enabler.tracking_on = 1;
-              Uint32 now = SDL_GetTicks();
-              mouse_lastused = enabler.now;
-              SDL_ShowCursor(SDL_ENABLE);
-            }
-          else
-            {
-              std::cout << "Mouse reset; this should not happen\n";
-              enabler.oldmouse_x = -1;
-              enabler.oldmouse_y = -1;
-              enabler.mouse_x = -1;
-              enabler.mouse_y = -1;
-              enabler.mouse_lbut = 0;
-              enabler.mouse_rbut = 0;
-              enabler.mouse_lbut_lift = 0;
-              enabler.mouse_rbut_lift = 0;
-              enabler.tracking_on = 0;
-            }
-          break;
-        }
+    case SDL_ACTIVEEVENT:
+     if (event.active.state & SDL_APPACTIVE) {
+      if (event.active.gain) {
+       exposed = 1;
+       std::cout << "Gained focus\n";
+      } else {
+       // TODO: Disable rendering when nobody would see it anyway
+       // Or maybe pause?
+      }
+     }
+    break;
+    case SDL_VIDEOEXPOSE: exposed = 1; break;
+    case SDL_MOUSEMOTION:
+     /* Certain things (e.g. switching to fullscreen tears down the original
+     * OpenGL context and initializes a new one) change the screen surface,
+     * so we ask SDL for the surface everytime, instead of storing it.*/
+     screen = SDL_GetVideoSurface();
+     if (screen == NULL) return;
+     // Is the mouse over the screen surface?
+     if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
+      if (event.motion.x < screen->w && event.motion.y < screen->h) {
+       enabler.add_input(INTERFACEEVENT_MOUSE_MOTION,0);
+       enabler.oldmouse_x = enabler.mouse_x;
+       enabler.oldmouse_y = enabler.mouse_y;
+       enabler.mouse_x = event.motion.x;
+       enabler.mouse_y = event.motion.y;
+       enabler.tracking_on = 1;
+       mouse_lastused = enabler.now;
+       if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
+//        turn on mouse picture
+//        enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
+        SDL_ShowCursor(SDL_DISABLE);
+       } else SDL_ShowCursor(SDL_ENABLE);
+       enabler.add_input(INTERFACEEVENT_MOUSE_MOTION,0);
+      } else {
+       std::cout << "Mouse reset; this should not happen\n";
+       enabler.oldmouse_x = -1;
+       enabler.oldmouse_y = -1;
+       enabler.mouse_x = -1;
+       enabler.mouse_y = -1;
+       enabler.mouse_lbut = 0;
+       enabler.mouse_rbut = 0;
+       enabler.mouse_lbut_lift = 0;
+       enabler.mouse_rbut_lift = 0;
+       enabler.tracking_on = 0;
+      }
+     } //init mouse on
+	 break;
       case SDL_VIDEORESIZE:
         {
           resize_window(event.resize.w, event.resize.h, zoom);
         }
-      } // switch (event.type)
-    }
+   } // switch (event.type)
+  } //while have event
 
-    if (newi.has_data) {
-     //some sort of change occurred and we need to take action
-     if (newi.key==0) { //might be mouse or mod change
-      if (newi.mouse_click) {
-       //not really adding these yet, there is just too much architecture involved
-       //just throw it away
-       memset(&newi,0,sizeof(enabler_inputst));
-      } else {
-       enabler.validateinput(&newi);
-       //updates all stored inputs with the new mods
-       memset(&newi,0,sizeof(enabler_inputst));
-      }
-     } else {
-      enabler.add_input(&newi);
-      memset(&newi,0,sizeof(enabler_inputst));
-     }
-     }
-
-    //SDL_PumpEvents was not called so the first frame after an input will
-    //not cause that input to be updated when it is the last event received
-    enabler.validateinput(NULL); //data handled, try to clean up old stuff
-
-    enabler.do_frame();
+  //SDL_PumpEvents was not called so the first frame after an input will
+  //not cause that input to be updated when it is the last event received
+  enabler.validateinput(); //data handled, try to clean up old stuff
+  enabler.do_frame();
 #if !defined(NO_FMOD)
-    // Call FMOD::System.update(). Manages a bunch of sound stuff. 
-    musicsound.update();
+  // Call FMOD::System.update(). Manages a bunch of sound stuff.
+  musicsound.update();
 #endif
-  }
-	
+ }
 }
-
 
 #ifdef unix
 // sig_atomi_c is guaranteed to be atomic.
@@ -554,6 +378,7 @@ int enablerst::loop(void)
 	{
 	  // At this point we should have a window that is setup to render OpenGL.
 	  textures.upload_textures();
+      SDL_EnableUNICODE(1);
 	  eventLoop(window);
 	  textures.remove_uploaded_textures();
 
@@ -637,6 +462,7 @@ void enablerst::terminate_application(GL_Window* window)
 void enablerst::toggle_fullscreen(GL_Window* window)
 {
   enabler.create_full_screen = !enabler.create_full_screen;
+	
 
   reset_gl(window);
    
@@ -657,6 +483,7 @@ void enablerst::reset_gl(GL_Window* window) {
     }
    
   textures.upload_textures();
+  
   ne_toggle_fullscreen();
 }
 
@@ -1458,61 +1285,79 @@ void enablerst::set_tile(long tex, int id, int x, int y) {
   }
 }
 
-void enablerst::add_input(enabler_inputst* newi)
-{
-  input.push_back(*newi);
+void enablerst::add_input(Uint32 newi, Uint16 unicode) {
+ enabler_inputst newn;
+ newn.key=newi;
+ //have to keep the keysym value unchanged to check against sdl keystate table
+ if ((newi<SDLK_KP0)&&(newi>31)) {
+  if (((unicode&0x7F)>31)&&((unicode&0xFF80)==0)) newn.uni=unicode&0x7F;
+  else newn.uni=0;
+ } else newn.uni=0;
+ //only messing with standard english ascii right now, sdl hopefully is mapping
+ //the non-english keys to sdlk_world_0+ as expected
+ //leave symbol values <32, and codes for non-character keys unchanged as well
+ newn.processed=0;
+ newn.next_process=0;
+ input.push_back(newn);
 }
 
 void enablerst::removeinput(long number) {
  if (number<input.size()) input.erase(number);
 }
 
-enabler_inputst* enablerst::getinput(long number)
-{
+enabler_inputst* enablerst::getinput(long number) {
  if (number<input.size()) return &(input[number]);
  else return NULL;
 }
 
-void enablerst::validateinput (enabler_inputst* newi) {
+void enablerst::validateinput (void) {
  long i = input.size();
+ Uint32 key;
  if (i) { //have something to do
-  enabler_inputst* cur=&(input[0]);
-  if (newi) { //making a mod adjustment
-   for (long j=0;j<i;++j,++cur) {
-    cur->shift=newi->shift;
-    cur->upper=newi->upper;
-    cur->alt=newi->alt;
-    cur->ctrl=newi->ctrl;
-   }
-  } else { //checking for released keys
-   Uint8 *keystate = SDL_GetKeyState(NULL);
-   for (long j=0;j<i;) {
-    if (cur->processed==0 && cur->next_process==0) {
-     //interface didn't do anything with it yet
-     ++j;
-     ++cur;
-    } else if (cur->key) { // old keypress
-     if (keystate[cur->key]==0) {
+  enabler_inputst* cur;
+  //checking for released keys
+  Uint8 *keystate = SDL_GetKeyState(NULL);
+  for (long j=0;j<i;) {
+   cur=&(input[j]);
+   key=cur->key;
+   //events don't get checked for keystate and modifiers
+   key&=KEY_BASEVALUE;
+   if ((key>=SDLK_LAST)||(cur->key&KEY_EVENTFLAG)) {
+    //mouse is in the range SDLK_LAST+1 to +more, don't crash keystate
+    if (cur->processed!=0) { //interface has seen it
+     //the deletion reduces size instead of increasing the counter
+     input.erase(j);
+     --i;
+     continue;
+     // erase moves the underlying data, cur is updated to the next record already
+    } else ++j;
+    if (cur->key&KEY_EVENTFLAG) continue;
+    //mouse wants mods to be recorded, mods may break if the fps gets really low
+    //because they might get updated before processing can be done
+   } else {
+    if (keystate[key]==0) {
+     if (cur->processed!=0) {
       input.erase(j);
-      //the deletion reduces size instead of increasing the counter
       --i;
-     } else {
-      //input stands for repeating, adjust mods and move on
-      cur->shift=(keystate[SDLK_LSHIFT]||keystate[SDLK_RSHIFT]);
-      cur->upper=(cur->shift^keystate[SDLK_CAPSLOCK]);
-      cur->alt=(keystate[SDLK_LALT]||keystate[SDLK_RALT]);
-      cur->ctrl=(keystate[SDLK_LCTRL]||keystate[SDLK_RCTRL]);
-      ++j;
-      ++cur;
-     }
-    } else { //old mouse click
-     //not really adding these yet, there is just too much architecture involved
+     } else ++j;
+     continue;
     }
    }
+   //not event and is pressed means update the mods
+   Uint32 Mods=0;
+   char Mod=(keystate[SDLK_LSHIFT]||keystate[SDLK_RSHIFT]);
+   if ((key>=SDLK_a)&&(key<=SDLK_z)) Mod=Mod^keystate[SDLK_CAPSLOCK];
+   //caps lock is only relevant to alpha keys until someone tells me otherwise
+   if (Mod) Mods|=KEY_SHIFTFLAG;
+   if (keystate[SDLK_LCTRL]||keystate[SDLK_RCTRL]) Mods|=KEY_CTRLFLAG;
+   if (keystate[SDLK_LALT]||keystate[SDLK_RALT]) Mods|=KEY_ALTFLAG;
+   if (keystate[SDLK_LMETA]||keystate[SDLK_RMETA]) Mods|=KEY_METAFLAG;
+   if (keystate[SDLK_LSUPER]||keystate[SDLK_RSUPER])Mods|=KEY_SUPERFLAG;
+   cur->key=Mods|key;
+   ++j;
   }
  }
 }
-
 
 char get_slot_and_addbit_uchar(unsigned char &addbit,long &slot,long checkflag,long slotnum)
 {
@@ -1758,8 +1603,7 @@ int main (int argc, char* argv[])
 #if !defined(__APPLE__) && defined(unix)
   gtk_init(&argc, &argv);
 #endif
-  keyMap();
-	
+
   // Initialise relevant SDL subsystems.
   int retval = SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO);
   // Turn on keyboard translation, from raw keycodes to letters
@@ -1924,7 +1768,6 @@ SHORT Enabler_GetKeyState(int virtKey)
     else return 0x0000;
   }
 }
-*/	
 
 int Enabler_ShowCursor(BOOL show)
 {
@@ -1944,6 +1787,7 @@ int Enabler_ShowCursor(BOOL show)
 	
   return displayCount;
 }
+*/
 
 char* itoa(int value, char* result, int base)
 {

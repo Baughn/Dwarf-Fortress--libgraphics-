@@ -1,4 +1,6 @@
 //pelican aka sam dennis wrote this
+#ifndef SVECTOR_H
+#define SVECTOR_H
 
 #include <vector>
 #include <memory>
@@ -17,3 +19,4 @@ class svector : public std::vector<T, A> {
                         vec.insert(begin() + i, v);
                 }
 };
+#endif

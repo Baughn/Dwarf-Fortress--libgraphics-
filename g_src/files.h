@@ -1,8 +1,14 @@
 //Copyright (c) 2006, Tarn Adams
 //All rights reserved.  See game.cpp or license.txt for more information.
+#ifndef FILES_H
+#define FILES_H
 
 #define FILE_IN_BUFF 1000000
 #define FILE_OUT_BUFF 2000000
+
+#include <fstream>
+#include "endian.h"
+#include "svector.h"
 
 class file_compressorst
 {
@@ -350,3 +356,4 @@ class file_compressorst
 
 void clean_directory(const string &directory);
 void copy_file(const string &src,const string &dst);
+#endif

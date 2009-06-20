@@ -1,6 +1,6 @@
 Change this to turn sound off.
 
-[SOUND:OFF]
+[SOUND:ON]
 
 The sound volume runs from 0 (off) to 255 (full).  You can set the volume from the ESC options menu as well.
 
@@ -8,11 +8,11 @@ The sound volume runs from 0 (off) to 255 (full).  You can set the volume from t
 
 Change this to skip the wonderful intro movies.
 
-[INTRO:OFF]
+[INTRO:ON]
 
 This lets you set the starting windowed/fullscreen setting.  Can be YES, NO or PROMPT.
 
-[WINDOWED:YES]
+[WINDOWED:PROMPT]
 
 This is the size and font for windowed mode.  Changing to 800x600 and the 800x600 font might make you happier.
 
@@ -22,10 +22,11 @@ This is the size and font for windowed mode.  Changing to 800x600 and the 800x60
 
 Full screen info.
 
-[FULLSCREENX:1440]
-[FULLSCREENY:900]
+[FULLSCREENX:800]
+[FULLSCREENY:600]
 [FULLFONT:curses_800x600.png]
 
+If this is set to NO, tiles will be stretched to fit the screen if there is a resolution mismatch.
 If this is set to YES, the tiles will not be stretched, but rather the game view will be centralized, surrounded by black space.  Tiles that are too large will always be compressed rather than running off the screen.
 
 [BLACK_SPACE:YES]
@@ -71,9 +72,10 @@ This sets the applications vertical synchronization behavior.  Changing this to 
 
 [VSYNC:OFF]
 
+Change this to NEAREST if you want the texture values to use the nearest pixel without averaging.
 Change this to LINEAR if you want the texture values to be averaged over the adjacent pixels.
 
-[TEXTURE_PARAM:NEAREST]
+[TEXTURE_PARAM:LINEAR]
 
 Change this to make the dwarfort.exe process have a different priority.  From highest to lowest, the options are REALTIME, HIGH, ABOVE_NORMAL, NORMAL, BELOW_NORMAL and IDLE.
 
@@ -192,9 +194,17 @@ If you'd prefer to have it show the history behind every engraving you view in d
 
 [SHOW_ALL_HISTORY_IN_DWARF_MODE:NO]
 
-This controls the number of milliseconds that must pass before a held key sends a repeat press to the game.  You might need to adjust this.
+This controls the number of milliseconds that must pass before a held key sends an initial repeat press to the game.  You might need to adjust this.
 
 [KEY_HOLD_MS:150]
+
+This controls the number of milliseconds that must pass before a held key sends a repeat press to the game after the repeat process has begun.
+
+[KEY_REPEAT_MS:150]
+
+This controls the number of milliseconds between macro instructions.
+
+[MACRO_MS:150]
 
 This controls the number of milliseconds that must pass before input works again after the view recenters on an event in dwarf mode.
 

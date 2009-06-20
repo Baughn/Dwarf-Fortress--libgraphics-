@@ -2,6 +2,9 @@
 //additions and modifications Copyright (c) 2008, Tarn Adams
 //All rights reserved.  See game.cpp or license.txt for more information.
 
+#ifndef ENABLER_H
+#define ENABLER_H
+
 extern "C"{
 #ifndef WIN32
 # include <stdint.h>
@@ -20,6 +23,8 @@ extern "C"{
 }
 
 #include <map>
+
+#include "svector.h"
 
 #define ENABLER
 
@@ -405,20 +410,40 @@ class gridrectst
   GLuint fb_draw_list;
 };
 
-struct enabler_inputst
-{
-  SDLKey key;
-  bool shift;
-  bool upper;
-  bool alt;
-  bool ctrl;
-  bool caps;  //this is going to go away
-  Uint16 mousex;
-  Uint16 mousey;
-  Uint8 mouse_click;
-  Uint32 processed;
-  Uint32 next_process;
-  unsigned char has_data;
+#define KEY_BASEVALUE 0x1FFF
+#define KEY_EVENTFLAG 0x2000
+#define KEY_SHIFTFLAG 0x4000
+#define KEY_CTRLFLAG 0x8000
+#define KEY_ALTFLAG 0x10000
+#define KEY_METAFLAG 0x20000
+#define KEY_SUPERFLAG 0x40000
+#define KEY_MACRODELAY 0x4FFFF
+#define KEY_FULLFLAGS 0x4E000
+#define KEY_FLAGS_NOSHIFT 0x4A000
+#define KEY_BIND 0x800000
+//the BIND is primarily used to allow the keybindings view to intercept all keys
+//it is also used as a flag for some routines
+#define KEY_MOUSEDOWN (SDLK_LAST+1)
+#define NUM_MOUSE_BUTTONS 20
+#define KEY_MOUSEUP (KEY_MOUSEDOWN+NUM_MOUSE_BUTTONS)
+#define KEY_MOUSELAST (KEY_MOUSEUP+NUM_MOUSE_BUTTONS)
+
+enum InterfaceEvents {
+ INTERFACEEVENT_NONE=KEY_EVENTFLAG,
+ INTERFACEEVENT_QUIT,
+ INTERFACEEVENT_NEW_VIEW,
+ INTERFACEEVENT_DEL_VIEW,
+ INTERFACEEVENT_MOUSE_MOTION,
+ INTERFACEEVENT_MOUSE_DOWN,
+ INTERFACEEVENT_MOUSE_UP=INTERFACEEVENT_MOUSE_DOWN,
+ INTERFACEEVENTNUM
+};
+
+struct enabler_inputst {
+ Uint32 key;
+ Uint16 uni;
+ Uint32 processed;
+ Uint32 next_process;
 };
 
 class text_info_elementst
@@ -753,11 +778,11 @@ class enablerst
   int loop(void);
 
   enabler_inputst* getinput(long number);
-  void validateinput (enabler_inputst* newi);
+  void validateinput (void);
   void removeinput(long number);
   long inputcount() {return input.size();}
   void clear_input() {input.clear();}
-  void add_input(enabler_inputst* newi);
+  void add_input(Uint32 newi, Uint16 unicode);
 
   void terminate_application(GL_Window* window);
   char create_full_screen;
@@ -955,6 +980,7 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
 /* 	texture[t]->remove_texture(); */
 /*       } */
 /*   } */
+
  public:
   void reset_gl(GL_Window* window);
   void reset_gl()
@@ -966,3 +992,4 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
 void convert_to_rgb(float &r,float &g,float &b,char col,char bright);
 #endif
 
+#endif //ENABLER_H

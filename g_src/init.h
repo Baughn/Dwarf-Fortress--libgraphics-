@@ -85,12 +85,16 @@ class init_inputst
 {
 	public:
 		long hold_time;
+        long repeat_time;
+        long macro_time;
 		long pause_zoom_no_interface_ms;
 		flagarrayst flag;
 
 		init_inputst()
 			{
 			hold_time=150;
+            repeat_time=150;
+            macro_time=75;
 			pause_zoom_no_interface_ms=0;
 			flag.set_size_on_flag_num(INIT_INPUT_FLAGNUM);
 			}

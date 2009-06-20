@@ -1,3 +1,11 @@
+#ifndef GRAPHICS_H
+#define GRAPHICS_H
+
+#include <string>
+using std::string;
+
+#include "platform.h"
+
 enum Texture
 {
 	TEXTURE_MOUSE,
@@ -96,3 +104,4 @@ class graphicst
 
 		void get_mouse_text_coords(long &mx,long &my);
 };
+#endif
