@@ -185,13 +185,7 @@ static void eventLoop(GL_Window window)
               } else if (event.button.button == SDL_BUTTON_WHEELDOWN) {
                 zoom /= 1.02;
               }
-              if (zoom > 0.95 && zoom < 1.05) {
-                zoom_display(1);
-              } else if (zoom <= 0.95) {
-                if (!zoom_display(zoom+0.05)) zoom = oldzoom;
-              } else if (zoom >= 1.05) {
-                if (!zoom_display(zoom-0.05)) zoom = oldzoom;
-              }
+              zoom_display(zoom);
               break;
             }
 			else
