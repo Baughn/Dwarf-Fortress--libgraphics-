@@ -126,8 +126,8 @@ static void resize_grid(int width, int height, bool resizing) {
   const int font_w=init.font.small_font_dispx;
   const int font_h=init.font.small_font_dispy;
 
-  const int desired_grid_x = width / font_w / grid_zoom_req / viewport_zoom;
-  const int desired_grid_y = height / font_h / grid_zoom_req / viewport_zoom;
+  const int desired_grid_x = width / font_w / grid_zoom_req;
+  const int desired_grid_y = height / font_h / grid_zoom_req;
   printf("Asked for %dx%d grid\n", desired_grid_x, desired_grid_y);
   int new_grid_x = MAX(MIN(desired_grid_x,MAX_GRID_X),80),
       new_grid_y = MAX(MIN(desired_grid_y,MAX_GRID_Y),25);
@@ -155,9 +155,12 @@ static void resize_grid(int width, int height, bool resizing) {
 #ifdef DEBUG
   printf("Setting to %dx%d, grid %dx%d, zoom %f\n", width, height, new_grid_x,new_grid_y,grid_zoom);
 #endif
-  init.display.small_grid_x = new_grid_x;
-  init.display.small_grid_y = new_grid_y;
-  if (!enabler.create_full_screen) {
+  if (enabler.create_full_screen) {
+    init.display.large_grid_x = new_grid_x;
+    init.display.large_grid_y = new_grid_y;
+  } else {
+    init.display.small_grid_x = new_grid_x;
+    init.display.small_grid_y = new_grid_y;
     enabler.desired_windowed_width = resizing ? new_grid_x * font_w * grid_zoom : width;
     enabler.desired_windowed_height = resizing ? new_grid_y * font_h * grid_zoom : height;
   }
@@ -340,8 +343,8 @@ static void eventLoop(GL_Window window)
          enabler.tracking_on = 1;
          // Set viewport_x/y as appropriate, and fixup mouse position for zoom
          // We use only the central 80% of the window for setting viewport origin.
-         viewport_x = (double)event.motion.x / screen->w;
-         viewport_y = (double)event.motion.y / screen->h;
+         viewport_x = MAX(MIN((((double)event.motion.x / screen->w) - 0.2) * 1.5, 1),0);
+         viewport_y = MAX(MIN((((double)event.motion.y / screen->h) - 0.2) * 1.5, 1),0);
          enabler.mouse_x = event.motion.x;
          enabler.mouse_y = event.motion.y;
          mouse_lastused = enabler.now;
@@ -850,11 +853,15 @@ void gridrectst::render()
   // TODO: Complete viewport zoom stuff, combine with black_space, etc.
   if (!zoom_grid) {
     int visible_w = enabler.window_width / viewport_zoom,
-      visible_h = enabler.window_height / viewport_zoom;
-    translatex = -MIN(MAX(viewport_x * enabler.window_width - visible_w/2,0),enabler.window_width-visible_w);
-    translatey = -MIN(MAX(viewport_y * enabler.window_height - visible_h/2,0),enabler.window_height-visible_h);
-    apletsizex *= viewport_zoom;
-    apletsizey *= viewport_zoom;
+      visible_h = enabler.window_height / viewport_zoom,
+      invis_w = enabler.window_width - visible_w,
+      invis_h = enabler.window_height - visible_h,
+      visible_x = invis_w * viewport_x,
+      visible_y = invis_h * viewport_y;
+    // printf("Showing %dx%d pixels, from %dx%d to %dx%d\n", visible_w, visible_h, visible_x, visible_y, visible_x+visible_w, visible_y+visible_h);
+    translatex = -visible_x;
+    translatey = -visible_y;
+    glScalef(viewport_zoom,viewport_zoom,1);
   }
 
   glMatrixMode(GL_MODELVIEW);
