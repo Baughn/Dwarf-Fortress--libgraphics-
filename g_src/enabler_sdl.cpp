@@ -562,8 +562,9 @@ void enablerst::reset_gl(GL_Window* window) {
     }
 
   textures.upload_textures();
-  
-  ne_toggle_fullscreen();
+
+  reset_window();
+  // ne_toggle_fullscreen();
 }
 
 void enablerst::reshape_GL(int width,int height)				// Reshape The Window When It's Moved Or Resized
