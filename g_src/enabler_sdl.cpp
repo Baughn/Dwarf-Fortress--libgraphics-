@@ -68,8 +68,10 @@ static int glerrorcount = 0;
 // GL error macro
 #ifdef DEBUG
 # define printGLError() do { GLenum err; do { err = glGetError(); if (err && glerrorcount < 40) { std::cerr << "GL error: " << err << " in " << __FILE__ << ":" << __LINE__ << "\n"; glerrorcount++; } } while(err); } while(0);
+# define deputs(str) puts(str)
 #else
 # define printGLError()
+# define deputs(str)
 #endif
 
 char is_modkey(Uint32 key) {
@@ -99,50 +101,123 @@ char is_modkey(Uint32 key) {
 	#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
-static void resize_window(int width, int height, double zoom) {
-  // We must have at least 80x25 tiles in the window. We ensure
-  // this by enlarging the window if it's too small.
+// There are two different kinds of zoom.
+// Grid zoom: The game may use a smaller or larger grid than the "natural" size for the window.
+// Viewport zoom: The window may show just part of the grid.
+static double grid_zoom = 1.0, viewport_zoom = 1.0;
+// Further, there's a distinction between forced grid zoom and requested zoom.
+static double grid_zoom_req = 1.0;
+// Furthermore, there's the center of the viewport to consider. Origins range from 0 to 1.
+static double viewport_x = 0, viewport_y = 0;
+// Whether zoom commands affect grid_zoom or viewport_zoom
+static bool zoom_grid = true;
 
-  // Also, this function should never get called in fullscreen mode,
-  // but sometimes it seems to happen anyway. We just ignore it
-  // in this case, and hope for the best
-  if (enabler.create_full_screen) return;
 
-  const int font_w=init.font.small_font_dispx; // Is that right?
+static void resize_grid(int width, int height, bool resizing) {
+  // The grid must fit inside the window. We ensure this by zooming
+  // out if it'd otherwise become smaller than 80x25, or in if it'd
+  // become larger than 200x200.
+  if (enabler.create_full_screen) {
+    width = enabler.window.init.width;
+    height = enabler.window.init.height;
+  }
+
+  // Figure out how large a grid we're being asked for.
+  const int font_w=init.font.small_font_dispx;
   const int font_h=init.font.small_font_dispy;
 
-  const int new_grid_x = MIN(MAX(width / font_w / zoom, 80), MAX_GRID_X);
-  const int new_grid_y = MIN(MAX(height / font_h / zoom, 25), MAX_GRID_Y);
+  const int desired_grid_x = width / font_w / grid_zoom_req / viewport_zoom;
+  const int desired_grid_y = height / font_h / grid_zoom_req / viewport_zoom;
+  printf("Asked for %dx%d grid\n", desired_grid_x, desired_grid_y);
+  int new_grid_x = MAX(MIN(desired_grid_x,MAX_GRID_X),80),
+      new_grid_y = MAX(MIN(desired_grid_y,MAX_GRID_Y),25);
+  double min_zoom = 0, max_zoom = 1000;
+  if (new_grid_x < desired_grid_x)
+    min_zoom = MAX(min_zoom, (double)desired_grid_x / new_grid_x);
+  else if (new_grid_x > desired_grid_x)
+    max_zoom = MIN(max_zoom, (double)desired_grid_x / new_grid_x);
+  if (new_grid_y < desired_grid_y)
+    min_zoom = MAX(min_zoom, (double)desired_grid_y / new_grid_y);
+  else if (new_grid_y > desired_grid_y)
+    max_zoom = MIN(max_zoom, (double)desired_grid_y / new_grid_y);
+
+  if (max_zoom < min_zoom) {
+    puts("I can't handle a window like this. Get a grip.");
+    return;
+  }
+
+  grid_zoom = grid_zoom_req;
+  if (grid_zoom < min_zoom)
+    grid_zoom = min_zoom;
+  if (grid_zoom > max_zoom)
+    grid_zoom = max_zoom;
+
+#ifdef DEBUG
+  printf("Setting to %dx%d, grid %dx%d, zoom %f\n", width, height, new_grid_x,new_grid_y,grid_zoom);
+#endif
   init.display.small_grid_x = new_grid_x;
   init.display.small_grid_y = new_grid_y;
-  enabler.desired_windowed_width = new_grid_x * font_w * zoom;
-  enabler.desired_windowed_height = new_grid_y * font_h * zoom;
-  // printf("Setting to %dx%d, zoom %f\n", new_grid_x,new_grid_y,zoom);
+  if (!enabler.create_full_screen) {
+    enabler.desired_windowed_width = resizing ? new_grid_x * font_w * grid_zoom : width;
+    enabler.desired_windowed_height = resizing ? new_grid_y * font_h * grid_zoom : height;
+  }
   enabler.reset_gl();
 }
 
-static bool zoom_display(double zoom) {
-  // We must have at least 80x25 tiles in the display.
-  // We ensure this by clamping the zoom if it's too large.
+static void reset_window() {
+  if (enabler.create_full_screen)
+    resize_grid(-1,-1, false);
+  else
+    resize_grid(enabler.desired_windowed_width, enabler.desired_windowed_height, false);
+}
+
+static void resize_window(int width, int height) {
+  resize_grid(width, height, true);
+}
+
+enum zoom_commands { zoom_in, zoom_out, zoom_toggle_gridzoom, zoom_reset };
+
+static void zoom_display(enum zoom_commands command) {
   const int font_w = enabler.create_full_screen ? init.font.large_font_dispx : init.font.small_font_dispx;
   const int font_h = enabler.create_full_screen ? init.font.large_font_dispy : init.font.small_font_dispy;
+  const double zoom_factor = 1.05;
 
-  const int new_grid_x = enabler.window_width / font_w / zoom;
-  const int new_grid_y = enabler.window_height / font_h / zoom;
-  // printf("Setting to %dx%d, zoom %f\n", new_grid_x,new_grid_y,zoom);
-  if (new_grid_x < 80 || new_grid_y < 25)
-    return false; // Just ignore the request.
-  if (new_grid_x > 200 || new_grid_y > 200)
-    return false; // FIXME: This should not be required. Please?
-  if (enabler.create_full_screen) {
-    init.display.large_grid_x = new_grid_x;
-    init.display.large_grid_y = new_grid_y;
-  } else {
-    init.display.small_grid_x = new_grid_x;
-    init.display.small_grid_y = new_grid_y;
-  }  
-  enabler.reset_gl();
-  return true;
+  switch (command) {
+  case zoom_toggle_gridzoom:
+    deputs("Toggling zoom_grid");
+    zoom_grid = !zoom_grid;
+    // Todo
+    break;
+  case zoom_reset:
+    deputs("Resetting zoom");
+    grid_zoom_req = 1.0;
+    reset_window();
+    break;
+  case zoom_in:
+    if (zoom_grid) {
+      grid_zoom_req *= zoom_factor;
+      reset_window();
+    } else {
+      viewport_zoom *= zoom_factor;
+#ifdef DEBUG
+      printf("Viewport_zoom = %f\n", viewport_zoom);
+#endif
+    }
+    break;
+  case zoom_out:
+    if (zoom_grid) {
+      grid_zoom_req /= zoom_factor;
+      reset_window();
+    } else {
+      viewport_zoom = MAX(1.0, viewport_zoom / zoom_factor);
+#ifdef DEBUG
+      printf("Viewport_zoom = %f\n", viewport_zoom);
+#endif
+    }
+    break;
+  default:
+    puts("WTF?");
+  }
 }
 
 static void eventLoop(GL_Window window)
@@ -151,7 +226,6 @@ static void eventLoop(GL_Window window)
  SDL_Surface *screen = NULL;
  Uint32 mouse_lastused = 0;
  SDL_ShowCursor(SDL_DISABLE);
- double zoom = 1.0;
 
  Uint32 newi=0;
  while (loopvar) {
@@ -174,26 +248,19 @@ static void eventLoop(GL_Window window)
        case SDL_BUTTON_RIGHT:
         enabler.mouse_rbut = 1;
         enabler.mouse_rbut_down = 1;
-       break;
- 	default: // Any other button should be bindable
- 	  {
-            if (event.button.button == SDL_BUTTON_WHEELUP ||
-                event.button.button == SDL_BUTTON_WHEELDOWN) {
-              const double oldzoom = zoom;
-              if (event.button.button == SDL_BUTTON_WHEELUP) {
-                zoom *= 1.02;
-              } else if (event.button.button == SDL_BUTTON_WHEELDOWN) {
-                zoom /= 1.02;
-              }
-              zoom_display(zoom);
-              break;
-            }
-			else
-				{
-				zoom=1;
-			  zoom_display(1);
-				}
- 	  }
+        break;
+      case SDL_BUTTON_WHEELDOWN:
+        zoom_display(zoom_in);
+        break;
+      case SDL_BUTTON_WHEELUP:
+        zoom_display(zoom_out);
+        break;
+      case SDL_BUTTON_MIDDLE:
+        zoom_display(zoom_toggle_gridzoom);
+        break;
+      default:
+        // TODO: Throw others into add_input
+        break;
       }
      }
     break;
@@ -220,14 +287,21 @@ static void eventLoop(GL_Window window)
 	{
      // Disable mouse if it's been long enough
      if (mouse_lastused + 5000 < enabler.now) {
-      if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE))
+       if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
 //       hide the mouse picture
 //       enabler.set_tile(0, TEXTURE_MOUSE, enabler.mouse_x, enabler.mouse_y);
-      SDL_ShowCursor(SDL_DISABLE);
+       }
+       SDL_ShowCursor(SDL_DISABLE);
      }
      Uint32 key=event.key.keysym.sym;
-     //do nothing when all we got is a modifier key
-     if (!is_modkey(key)) enabler.add_input(key,event.key.keysym.unicode);
+     
+     if (is_modkey(key)) { //do nothing when all we got is a modifier key
+     } else if (key == SDLK_F12) { // Throw F12 over to zoom_display. FIXME: Annoying hardcoding.
+       zoom_display(zoom_reset);
+     } else {
+       enabler.add_input(key,event.key.keysym.unicode);
+     }
+     
 
      /* Debian _somehow_ managed to patch SDL 1.2 so that the 'lock'
      * keys don't generate a modifier. This can be fixed by setting
@@ -256,38 +330,43 @@ static void eventLoop(GL_Window window)
      if (screen == NULL) return;
      // Is the mouse over the screen surface?
      if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
-      if (event.motion.x < screen->w && event.motion.y < screen->h) {
-       enabler.add_input(INTERFACEEVENT_MOUSE_MOTION,0);
-       enabler.oldmouse_x = enabler.mouse_x;
-       enabler.oldmouse_y = enabler.mouse_y;
-       enabler.mouse_x = event.motion.x;
-       enabler.mouse_y = event.motion.y;
-       enabler.tracking_on = 1;
-       mouse_lastused = enabler.now;
-       if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
-//        turn on mouse picture
-//        enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
-        SDL_ShowCursor(SDL_DISABLE);
-       } else SDL_ShowCursor(SDL_ENABLE);
-       enabler.add_input(INTERFACEEVENT_MOUSE_MOTION,0);
-      } else {
-       std::cout << "Mouse reset; this should not happen\n";
-       enabler.oldmouse_x = -1;
-       enabler.oldmouse_y = -1;
-       enabler.mouse_x = -1;
-       enabler.mouse_y = -1;
-       enabler.mouse_lbut = 0;
-       enabler.mouse_rbut = 0;
-       enabler.mouse_lbut_lift = 0;
-       enabler.mouse_rbut_lift = 0;
-       enabler.tracking_on = 0;
-      }
+       if (event.motion.x < screen->w && event.motion.y < screen->h) {
+         enabler.add_input(INTERFACEEVENT_MOUSE_MOTION,0);
+         enabler.oldmouse_x = enabler.mouse_x;
+         enabler.oldmouse_y = enabler.mouse_y;
+         enabler.tracking_on = 1;
+         // Set viewport_x/y as appropriate, and fixup mouse position for zoom
+         // We use only the central 80% of the window for setting viewport origin.
+         viewport_x = (double)event.motion.x / screen->w;
+         viewport_y = (double)event.motion.y / screen->h;
+         enabler.mouse_x = event.motion.x;
+         enabler.mouse_y = event.motion.y;
+         mouse_lastused = enabler.now;
+         if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
+           //        turn on mouse picture
+           //        enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
+           SDL_ShowCursor(SDL_DISABLE);
+         } else SDL_ShowCursor(SDL_ENABLE);
+         enabler.add_input(INTERFACEEVENT_MOUSE_MOTION,0);
+       } else {
+#ifdef DEBUG
+         std::cout << "Mouse reset; this should not happen\n";
+#endif
+         enabler.oldmouse_x = -1;
+         enabler.oldmouse_y = -1;
+         enabler.mouse_x = -1;
+         enabler.mouse_y = -1;
+         enabler.mouse_lbut = 0;
+         enabler.mouse_rbut = 0;
+         enabler.mouse_lbut_lift = 0;
+         enabler.mouse_rbut_lift = 0;
+         enabler.tracking_on = 0;
+       }
      } //init mouse on
-	 break;
-      case SDL_VIDEORESIZE:
-        {
-          resize_window(event.resize.w, event.resize.h, zoom);
-        }
+     break;
+   case SDL_VIDEORESIZE:
+     resize_window(event.resize.w, event.resize.h);
+     break;
    } // switch (event.type)
   } //while have event
 
@@ -475,7 +554,7 @@ void enablerst::reset_gl(GL_Window* window) {
       is_program_looping = FALSE;
       return;
     }
-   
+
   textures.upload_textures();
   
   ne_toggle_fullscreen();
@@ -587,6 +666,7 @@ char enablerst::create_window_GL(GL_Window* window)
   }
 	
   reshape_GL(window->init.width, window->init.height);
+  glClear(GL_COLOR_BUFFER_BIT);
 	
   // Initialize the gridrects
   for (int i=0; i<gridrect.size(); i++)
@@ -763,6 +843,16 @@ void gridrectst::render()
   else translatex=(enabler.window_width-totalsizex)/2.0f;
   if(totalsizey>enabler.window_height||!black_space)apletsizey=(float)enabler.window_height/dimy;
   else translatey=(enabler.window_height-totalsizey)/2.0f;
+
+  // TODO: Complete viewport zoom stuff, combine with black_space, etc.
+  if (!zoom_grid) {
+    int visible_w = enabler.window_width / viewport_zoom,
+      visible_h = enabler.window_height / viewport_zoom;
+    translatex = -MIN(MAX(viewport_x * enabler.window_width - visible_w/2,0),enabler.window_width-visible_w);
+    translatey = -MIN(MAX(viewport_y * enabler.window_height - visible_h/2,0),enabler.window_height-visible_h);
+    apletsizex *= viewport_zoom;
+    apletsizey *= viewport_zoom;
+  }
 
   glMatrixMode(GL_MODELVIEW);
   printGLError();
