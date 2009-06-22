@@ -169,7 +169,7 @@ static void resize_grid(int width, int height, bool resizing) {
   if (resizing)
     enabler.reset_gl(); // Which calls glClear
   else {
-    glClear(GL_COLOR_BUFFER_BIT);
+    exposed = 1;
     ne_toggle_fullscreen();
   }
 }
@@ -209,6 +209,7 @@ static void zoom_display(enum zoom_commands command) {
       reset_window();
     } else {
       viewport_zoom *= zoom_factor;
+      exposed = 1;
 #ifdef DEBUG
       printf("Viewport_zoom = %f\n", viewport_zoom);
 #endif
@@ -220,6 +221,7 @@ static void zoom_display(enum zoom_commands command) {
       reset_window();
     } else {
       viewport_zoom = MAX(1.0, viewport_zoom / zoom_factor);
+      exposed = 1;
 #ifdef DEBUG
       printf("Viewport_zoom = %f\n", viewport_zoom);
 #endif
@@ -352,9 +354,14 @@ static void eventLoop(GL_Window window)
          int visible_w = enabler.window_width / viewport_zoom,
            visible_h = enabler.window_height / viewport_zoom,
            invis_w = enabler.window_width - visible_w,
-           invis_h = enabler.window_height - visible_h;
-         viewport_x = invis_w * center_x;
-         viewport_y = invis_h * center_y;
+           invis_h = enabler.window_height - visible_h,
+           new_viewport_x = invis_w * center_x,
+           new_viewport_y = invis_h * center_y;
+         if (new_viewport_x != viewport_x || new_viewport_y != viewport_y) {
+           exposed=1;
+           viewport_x = new_viewport_x;
+           viewport_y = new_viewport_y;
+         }
          enabler.mouse_x = zoom_grid ? event.motion.x : ((double)event.motion.x / enabler.window_width * visible_w + viewport_x);
          enabler.mouse_y = zoom_grid ? event.motion.y : ((double)event.motion.y / enabler.window_height * visible_h + viewport_y);
          mouse_lastused = enabler.now;
@@ -861,21 +868,21 @@ void gridrectst::render()
   if(totalsizey>enabler.window_height||!black_space)apletsizey=(float)enabler.window_height/dimy;
   else translatey=(enabler.window_height-totalsizey)/2.0f;
 
+
+  glMatrixMode(GL_MODELVIEW);
+  printGLError();
+  glPushMatrix();
+  printGLError();
   // TODO: Complete viewport zoom stuff, combine with black_space, etc.
   if (!zoom_grid) {
     translatex = -viewport_x;
     translatey = -viewport_y;
     glScalef(viewport_zoom,viewport_zoom,1);
   }
-
-  glMatrixMode(GL_MODELVIEW);
-  printGLError();
-  glPushMatrix();
-  printGLError();
   glTranslatef(translatex,translatey,0);
   printGLError();
 
-  if (exposed && !framebuffer)
+  if (exposed)
     glClear(GL_COLOR_BUFFER_BIT | (accum_buffer ? GL_ACCUM_BUFFER_BIT : 0));
 
 
@@ -963,7 +970,7 @@ void gridrectst::render()
 
 	  tex_pos=buffer_texpos[d];
 
-      if(tex_pos==-1 && (!exposed || framebuffer)) {
+      if(tex_pos==-1 && (!exposed)) {
          continue; // Check whether the tile is dirty
         } else {
            // Update dirty buffer
