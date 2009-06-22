@@ -343,10 +343,16 @@ static void eventLoop(GL_Window window)
          enabler.tracking_on = 1;
          // Set viewport_x/y as appropriate, and fixup mouse position for zoom
          // We use only the central 80% of the window for setting viewport origin.
-         viewport_x = MAX(MIN((((double)event.motion.x / screen->w) - 0.2) * 1.5, 1),0);
-         viewport_y = MAX(MIN((((double)event.motion.y / screen->h) - 0.2) * 1.5, 1),0);
-         enabler.mouse_x = event.motion.x;
-         enabler.mouse_y = event.motion.y;
+         double center_x = MAX(MIN((((double)event.motion.x / screen->w) - 0.2) * 1.5, 1),0),
+           center_y = MAX(MIN((((double)event.motion.y / screen->h) - 0.2) * 1.5, 1),0);
+         int visible_w = enabler.window_width / viewport_zoom,
+           visible_h = enabler.window_height / viewport_zoom,
+           invis_w = enabler.window_width - visible_w,
+           invis_h = enabler.window_height - visible_h;
+         viewport_x = invis_w * center_x;
+         viewport_y = invis_h * center_y;
+         enabler.mouse_x = zoom_grid ? event.motion.x : ((double)event.motion.x / enabler.window_width * visible_w + viewport_x);
+         enabler.mouse_y = zoom_grid ? event.motion.y : ((double)event.motion.y / enabler.window_height * visible_h + viewport_y);
          mouse_lastused = enabler.now;
          if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
            //        turn on mouse picture
@@ -853,15 +859,8 @@ void gridrectst::render()
 
   // TODO: Complete viewport zoom stuff, combine with black_space, etc.
   if (!zoom_grid) {
-    int visible_w = enabler.window_width / viewport_zoom,
-      visible_h = enabler.window_height / viewport_zoom,
-      invis_w = enabler.window_width - visible_w,
-      invis_h = enabler.window_height - visible_h,
-      visible_x = invis_w * viewport_x,
-      visible_y = invis_h * viewport_y;
-    // printf("Showing %dx%d pixels, from %dx%d to %dx%d\n", visible_w, visible_h, visible_x, visible_y, visible_x+visible_w, visible_y+visible_h);
-    translatex = -visible_x;
-    translatey = -visible_y;
+    translatex = -viewport_x;
+    translatey = -viewport_y;
     glScalef(viewport_zoom,viewport_zoom,1);
   }
 
