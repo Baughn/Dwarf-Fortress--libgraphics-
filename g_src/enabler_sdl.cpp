@@ -167,9 +167,11 @@ static void resize_grid(int width, int height, bool resizing) {
     enabler.desired_windowed_height = resizing ? new_grid_y * font_h * grid_zoom : height;
   }
   if (resizing)
-    enabler.reset_gl();
-  else
+    enabler.reset_gl(); // Which calls glClear
+  else {
+    glClear(GL_COLOR_BUFFER_BIT);
     ne_toggle_fullscreen();
+  }
 }
 
 static void reset_window() {
