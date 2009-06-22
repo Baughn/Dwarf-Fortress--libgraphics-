@@ -134,14 +134,10 @@ static void resize_grid(int width, int height, bool resizing) {
   int new_grid_x = MAX(MIN(desired_grid_x,MAX_GRID_X),80),
       new_grid_y = MAX(MIN(desired_grid_y,MAX_GRID_Y),25);
   double min_zoom = 0, max_zoom = 1000;
-  if (new_grid_x < desired_grid_x)
-    min_zoom = MAX(min_zoom, (double)desired_grid_x / new_grid_x);
-  else if (new_grid_x > desired_grid_x)
-    max_zoom = MIN(max_zoom, (double)desired_grid_x / new_grid_x);
-  if (new_grid_y < desired_grid_y)
-    min_zoom = MAX(min_zoom, (double)desired_grid_y / new_grid_y);
-  else if (new_grid_y > desired_grid_y)
-    max_zoom = MIN(max_zoom, (double)desired_grid_y / new_grid_y);
+  min_zoom = MAX(min_zoom, (double)width / (font_w * MAX_GRID_X));
+  min_zoom = MAX(min_zoom, (double)height / (font_h * MAX_GRID_Y));
+  max_zoom = MIN(max_zoom, (double)width / (font_w * 80));
+  max_zoom = MIN(max_zoom, (double)height / (font_h * 25));
 
   if (max_zoom < min_zoom) {
     puts("I can't handle a window like this. Get a grip.");
@@ -191,6 +187,7 @@ static void zoom_display(enum zoom_commands command) {
   const int font_w = enabler.create_full_screen ? init.font.large_font_dispx : init.font.small_font_dispx;
   const int font_h = enabler.create_full_screen ? init.font.large_font_dispy : init.font.small_font_dispy;
   const double zoom_factor = 1.05;
+  const double old_req = grid_zoom_req, old_grid_zoom = grid_zoom;
 
   switch (command) {
   case zoom_toggle_gridzoom:
@@ -207,6 +204,8 @@ static void zoom_display(enum zoom_commands command) {
     if (zoom_grid) {
       grid_zoom_req *= zoom_factor;
       reset_window();
+      if (grid_zoom == old_grid_zoom)
+        grid_zoom_req = old_req;
     } else {
       viewport_zoom *= zoom_factor;
       exposed = 1;
@@ -219,6 +218,8 @@ static void zoom_display(enum zoom_commands command) {
     if (zoom_grid) {
       grid_zoom_req /= zoom_factor;
       reset_window();
+      if (grid_zoom == old_grid_zoom)
+        grid_zoom_req = old_req;
     } else {
       viewport_zoom = MAX(1.0, viewport_zoom / zoom_factor);
       exposed = 1;
