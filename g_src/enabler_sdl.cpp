@@ -128,7 +128,9 @@ static void resize_grid(int width, int height, bool resizing) {
 
   const int desired_grid_x = width / font_w / grid_zoom_req;
   const int desired_grid_y = height / font_h / grid_zoom_req;
+#ifdef DEBUG
   printf("Asked for %dx%d grid\n", desired_grid_x, desired_grid_y);
+#endif
   int new_grid_x = MAX(MIN(desired_grid_x,MAX_GRID_X),80),
       new_grid_y = MAX(MIN(desired_grid_y,MAX_GRID_Y),25);
   double min_zoom = 0, max_zoom = 1000;
