@@ -2003,14 +2003,16 @@ void textures::upload_textures() {
   // First, sort the textures by vertical size. We'Ll want to place the large
   // ones first.
   // Since we mustn't alter the raws array, first thing is to create a new one.
+  // We pretend textures are one pixel larger than they actually are, in order
+  // to avoid border scuffles when interpolating.
   std::vector<vsize_pos> ordered;
   long pos = 0;
   for (std::vector<SDL_Surface *>::iterator it = raws.begin();
        it != raws.end(); ++it) {
     if (*it) {
       vsize_pos item;
-      item.h = (*it)->h;
-      item.w = (*it)->w;
+      item.h = (*it)->h+1;
+      item.w = (*it)->w+1;
       item.s = *it;
       item.pos = pos;
       ordered.push_back(item);
@@ -2092,12 +2094,13 @@ void textures::upload_textures() {
   // Guess it will. Well, then, actually upload it
   glBindTexture(GL_TEXTURE_2D, gl_catalog);
       printGLError();
+  char *zeroes = new char[catalog_width*catalog_height*4];
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, catalog_width, catalog_height, 0, GL_RGBA,
-	       GL_UNSIGNED_BYTE, NULL);
+	       GL_UNSIGNED_BYTE, zeroes);
+  delete[] zeroes;
       printGLError();
   glBindTexture(GL_TEXTURE_2D, gl_catalog);
       printGLError();
-  // FIXME: No need for this when the init.txt value is loaded
   GLint param = (init.window.flag.has_flag(INIT_WINDOW_FLAG_TEXTURE_LINEAR) ?
     GL_LINEAR : GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,param);
@@ -2108,10 +2111,9 @@ void textures::upload_textures() {
       printGLError();
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
       printGLError();
-  // This line, though..
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
       printGLError();
-  // Performance isn't critical. Let's make sure there are no alignment issues.
+  // Performance isn't important here. Let's make sure there are no alignment issues.
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
       printGLError();
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -2161,7 +2163,7 @@ void textures::upload_textures() {
     gl_texpos[raws_pos].right  = ((double)ordered[pos].x+s->w) / (double)catalog_width;
     gl_texpos[raws_pos].top    = ((double)ordered[pos].y)      / (double)catalog_height;
     gl_texpos[raws_pos].bottom = ((double)ordered[pos].y+s->h) / (double)catalog_height;
-	}
+  }
   // And that's that. Locked, loaded and ready for texturing.
   printGLError();
   uploaded=true;
