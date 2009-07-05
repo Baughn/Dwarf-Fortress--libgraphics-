@@ -785,6 +785,8 @@ enablerst::enablerst()
 
 void gridrectst::render()
 {
+  if (!gl_initialized)
+    puts("render called without gl being initialized");
   float apletsizex=dispx,apletsizey=dispy;
   float totalsizex=dispx*dimx;
   float totalsizey=dispy*dimy;
@@ -856,6 +858,14 @@ void gridrectst::render()
     }
     // Render to framebuffer
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
+  } else if (vbo_refs[0]) {
+    // Map VBOs
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
+    assert(ptr_bg_color=(GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
+    assert(ptr_fg_color=(GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
+    assert(ptr_tex=(GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
   }
             
   if(totalsizex>enabler.window_width||!black_space)apletsizex=(float)enabler.window_width/dimx;
@@ -942,16 +952,63 @@ void gridrectst::render()
   printGLError();
 
   int tile_count = 0;
-  // Build arrays - background and foreground at the same time is fine.
+  // Build arrays. Vertex array is separated out, as it can be skipped in standard or VBO mode.
   long tex_pos;
   float edge_l=0,edge_r=apletsizex,edge_u,edge_d;
   long px,py;
   long d=0;
-  GLfloat *ptr_vertex_w = ptr_vertex;
   GLfloat *ptr_bg_color_w = ptr_bg_color;
   GLfloat *ptr_fg_color_w = ptr_fg_color;
   GLfloat *ptr_tex_w = ptr_tex;
   const struct gl_texpos *txt = enabler.textures.gl_texpos;
+
+  // Vertex array
+  if (framebuffer || accum_buffer || !vertices_initialized) {
+    vertices_initialized = true;
+    if (vbo_refs[0]) {
+      glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
+      assert(ptr_vertex=(GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
+    }
+    GLfloat *ptr_vertex_w = ptr_vertex;
+    for(px=0;px<dimx;px++,edge_l+=apletsizex,edge_r+=apletsizex)
+      {
+        edge_u=0;
+        edge_d=apletsizey;
+        for(py=0;py<dimy;py++,d++,edge_u+=apletsizey,edge_d+=apletsizey)
+          {
+            tex_pos=buffer_texpos[d];
+            
+            if(tex_pos==-1 && (!exposed)) { // Check whether the tile is dirty
+              continue; // Not dirty
+            } // Don't update dirty buffer here, as this code is not always executed
+            
+            // Set vertex locations
+            *(ptr_vertex_w++) = edge_l; // Upper left
+            *(ptr_vertex_w++) = edge_u;
+            *(ptr_vertex_w++) = edge_r; // Upper right
+            *(ptr_vertex_w++) = edge_u;
+            *(ptr_vertex_w++) = edge_r; // Lower right
+            *(ptr_vertex_w++) = edge_d;
+            
+            *(ptr_vertex_w++) = edge_l; // Upper left
+            *(ptr_vertex_w++) = edge_u;
+            *(ptr_vertex_w++) = edge_r; // Lower right
+            *(ptr_vertex_w++) = edge_d;
+            *(ptr_vertex_w++) = edge_l; // Lower left
+            *(ptr_vertex_w++) = edge_d;
+          }
+      }
+    if (vbo_refs[0]) {
+      glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
+      glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+    }
+      
+    // Reset variables
+    edge_l=0; edge_r=apletsizex;
+    d=0;
+  }
+
+  // FG, BG and tex-coord arrays
   for(px=0;px<dimx;px++,edge_l+=apletsizex,edge_r+=apletsizex)
     {
       edge_u=0;
@@ -962,34 +1019,24 @@ void gridrectst::render()
 	    {
 	      if(py>=1&&py<=init.display.grid_y-2&&px>=init.display.grid_x-55&&px<=init.display.grid_x-26)continue;
 	    }
-
+          
 	  tex_pos=buffer_texpos[d];
-
-      if(tex_pos==-1 && (!exposed)) {
-         continue; // Check whether the tile is dirty
-        } else {
-           // Update dirty buffer
-           s_buffer_texpos[d]=buffer_texpos[d];
-           s_buffer_r[d]=buffer_r[d];
-           s_buffer_g[d]=buffer_g[d];
-           s_buffer_b[d]=buffer_b[d];
-           s_buffer_br[d]=buffer_br[d];
-           s_buffer_bg[d]=buffer_bg[d];
-           s_buffer_bb[d]=buffer_bb[d];
-         }
-
-	  // Set vertex locations
-	  *(ptr_vertex_w++) = edge_l;
-	  *(ptr_vertex_w++) = edge_u;
-	  *(ptr_vertex_w++) = edge_r;
-	  *(ptr_vertex_w++) = edge_u;
-	  *(ptr_vertex_w++) = edge_r;
-	  *(ptr_vertex_w++) = edge_d;
-	  *(ptr_vertex_w++) = edge_l;
-	  *(ptr_vertex_w++) = edge_d;
+          
+          if(tex_pos==-1 && (!exposed)) { // Check whether the tile is dirty
+            continue; // Not dirty
+          } else {
+            // Dirty. Update dirty buffer.
+            s_buffer_texpos[d]=buffer_texpos[d];
+            s_buffer_r[d]=buffer_r[d];
+            s_buffer_g[d]=buffer_g[d];
+            s_buffer_b[d]=buffer_b[d];
+            s_buffer_br[d]=buffer_br[d];
+            s_buffer_bg[d]=buffer_bg[d];
+            s_buffer_bb[d]=buffer_bb[d];
+          }
 
 	  // Background colors
-	  for (int i=0; i<4; i++) {
+	  for (int i=0; i<6; i++) {
 	    // We need one color component for each vertex, even if
 	    // only one is actually used with flat shading.
 	    //
@@ -1000,7 +1047,7 @@ void gridrectst::render()
 	    *(ptr_bg_color_w++) = 1.0; // Alpha, but basically padding.
 	  }
 	  // Foreground colors
-	  for (int i=0; i<4; i++) {
+	  for (int i=0; i<6; i++) {
 	    // Same story as for the background.
 	    *(ptr_fg_color_w++) = buffer_r[d];
 	    *(ptr_fg_color_w++) = buffer_g[d];
@@ -1009,45 +1056,69 @@ void gridrectst::render()
 	  }
 
 	  if (tex_pos<0||tex_pos>=enabler.textures.textureCount())
-		{
-		//         std::cerr << "Assumptions broken!\n";
-	  *(ptr_tex_w++) = 0;
-	  *(ptr_tex_w++) = 0;
-	  *(ptr_tex_w++) = 1;
-	  *(ptr_tex_w++) = 0;
-	  *(ptr_tex_w++) = 1;
-	  *(ptr_tex_w++) = 1;
-	  *(ptr_tex_w++) = 0;
-	  *(ptr_tex_w++) = 1;
-		}
-	  else
-	  {
-	  // Textures
-	  *(ptr_tex_w++) = txt[tex_pos].left;
-	  *(ptr_tex_w++) = txt[tex_pos].bottom;
-	  *(ptr_tex_w++) = txt[tex_pos].right;
-	  *(ptr_tex_w++) = txt[tex_pos].bottom;
-	  *(ptr_tex_w++) = txt[tex_pos].right;
-	  *(ptr_tex_w++) = txt[tex_pos].top;
-	  *(ptr_tex_w++) = txt[tex_pos].left;
-	  *(ptr_tex_w++) = txt[tex_pos].top;
-	  }
+            {
+              //         std::cerr << "Assumptions broken!\n";
+              *(ptr_tex_w++) = 0; // Upper left
+              *(ptr_tex_w++) = 0;
+              *(ptr_tex_w++) = 1; // Upper right
+              *(ptr_tex_w++) = 0;
+              *(ptr_tex_w++) = 1; // Lower right
+              *(ptr_tex_w++) = 1;
 
+              *(ptr_tex_w++) = 0; // Upper left
+              *(ptr_tex_w++) = 0;
+              *(ptr_tex_w++) = 1; // Lower right
+              *(ptr_tex_w++) = 1;
+              *(ptr_tex_w++) = 0; // Lower left
+              *(ptr_tex_w++) = 1;
+            }
+	  else
+            {
+              // Textures
+              *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
+              *(ptr_tex_w++) = txt[tex_pos].bottom;
+              *(ptr_tex_w++) = txt[tex_pos].right;  // Upper right
+              *(ptr_tex_w++) = txt[tex_pos].bottom;
+              *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
+              *(ptr_tex_w++) = txt[tex_pos].top;
+
+              *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
+              *(ptr_tex_w++) = txt[tex_pos].bottom;
+              *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
+              *(ptr_tex_w++) = txt[tex_pos].top;
+              *(ptr_tex_w++) = txt[tex_pos].left;   // Lower left
+              *(ptr_tex_w++) = txt[tex_pos].top;
+            }
+          
 	  // One tile down.
 	  tile_count++;
-	  }
+        }
     }
 
   printGLError();
 
+
+
+  
   // Make ready for rendering the background
   // Pass pointers to our local arrays
-  glVertexPointer(2, GL_FLOAT, 0, ptr_vertex);
-  printGLError();
-  glColorPointer(4, GL_FLOAT, 0, ptr_bg_color);
-  printGLError();
-  glTexCoordPointer(2, GL_FLOAT, 0, ptr_tex);
+  if (vbo_refs[0]) {
+    // We need to unmap the VBOs before use
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
+    glVertexPointer(2, GL_FLOAT, 0, 0);
+    
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]); // background color
+    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+    glColorPointer(4, GL_FLOAT, 0, 0);
 
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]); // texture coordinates
+    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+    glTexCoordPointer(2, GL_FLOAT, 0, 0);
+  } else {
+    glVertexPointer(2, GL_FLOAT, 0, ptr_vertex);
+    glColorPointer(4, GL_FLOAT, 0, ptr_bg_color);
+    glTexCoordPointer(2, GL_FLOAT, 0, ptr_tex);
+  }
   printGLError();
   
   // Draw the background colors
@@ -1059,13 +1130,19 @@ void gridrectst::render()
   printGLError();
   glEnableClientState(GL_VERTEX_ARRAY);
   printGLError();
-  glDrawArrays(GL_QUADS, 0, tile_count*4);
+  glDrawArrays(GL_TRIANGLES, 0, tile_count*6);
   printGLError();
 
   printGLError();
  
   // Draw the foreground, textures and color both
-  glColorPointer(4, GL_FLOAT, 0, ptr_fg_color);
+  if (vbo_refs[0]) {
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
+    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+    glColorPointer(4, GL_FLOAT, 0, 0);
+  } else {
+    glColorPointer(4, GL_FLOAT, 0, ptr_fg_color);
+  }
   printGLError();
 
   glEnable(GL_ALPHA_TEST);
@@ -1081,7 +1158,7 @@ void gridrectst::render()
   printGLError();
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glDrawArrays(GL_QUADS, 0, tile_count*4);
+  glDrawArrays(GL_TRIANGLES, 0, tile_count*6);
   printGLError();
 
   // Clean up
@@ -1124,44 +1201,62 @@ void gridrectst::render()
 
 void gridrectst::init_gl() {
   if (gl_initialized) uninit_gl();
+  vertices_initialized = false;
   // Toady: As things stand, the only reasonable approach for me is to
   // allocate the maximum amount of memory that could possibly be used.
   // Better would be to notify gridrectst when the grid size is supposed
   // to change, or.. something, but this works.
-  int dimx = MAX_GRID_X;
-  int dimy = MAX_GRID_Y;
-  std::cout << "Using OpenGL output path with client-side arrays";
-  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER) && GLEW_EXT_framebuffer_object) {
-    std::cout << " and off-screen framebuffer\n";
-    glGenFramebuffersEXT(1, &framebuffer);
-    framebuffer_initialized = false;
+  if (0 && GLEW_ARB_vertex_buffer_object) { // init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO) instead of 0 here, add a PRINT_MODE:VBO option to init.txt
+    std::cout << "Using OpenGL output path with buffer objects\n";
+    // Allocate memory for the server-side arrays
+    glGenBuffersARB(4, vbo_refs);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
+    glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*2*sizeof(GLfloat), NULL, GL_STATIC_DRAW_ARB);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
+    glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*4*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
+    glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*4*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
+    glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*2*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
   } else {
-    std::cout << "\n";
-    framebuffer = 0;
+    std::cout << "Using OpenGL output path with client-side arrays";
+    if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER) && GLEW_EXT_framebuffer_object) {
+      std::cout << " and off-screen framebuffer\n";
+      glGenFramebuffersEXT(1, &framebuffer);
+      framebuffer_initialized = false;
+    } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER)) {
+      std::cout << " and accumulation buffer\n";
+      accum_buffer=true;
+    } else {
+      std::cout << "\n";
+      framebuffer = 0;
+    }
+    
+    if (accum_buffer)
+      glClearAccum(0,0,0,0);
+    // Allocate memory for the client-side arrays
+#ifdef DEBUG
+    printf("Room for %d vertices allocated\n", dimx*dimy*6);
+#endif
+    ptr_vertex = new GLfloat[dimx*dimy*6*2];   // dimx*dimy tiles,
+    ptr_fg_color = new GLfloat[dimx*dimy*6*4]; // six vertices,
+    ptr_bg_color = new GLfloat[dimx*dimy*6*4]; // two vertex components or
+    ptr_tex = new GLfloat[dimx*dimy*6*2];      // four colors per vertex
   }
-
-  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER))
-	{
-	std::cout << " and accumulation buffer\n";
-	  accum_buffer=true;
-	}
-
-  if (accum_buffer)
-    glClearAccum(0,0,0,0);
-  // Allocate memory for the client-side arrays
-  ptr_vertex = new GLfloat[dimx*dimy*4*2];   // dimx*dimy tiles,
-  ptr_fg_color = new GLfloat[dimx*dimy*4*4]; // four vertices,
-  ptr_bg_color = new GLfloat[dimx*dimy*4*4]; // two vertex components or
-  ptr_tex = new GLfloat[dimx*dimy*4*2];      // four colors per vertex
   gl_initialized = true;
 }
 
 void gridrectst::uninit_gl() {
   if (!gl_initialized) return;
-  delete[] ptr_vertex;
-  delete[] ptr_fg_color;
-  delete[] ptr_bg_color;
-  delete[] ptr_tex;
+  if (vbo_refs[0]) {
+    glDeleteBuffersARB(4, vbo_refs);
+    vbo_refs[0] = 0;
+  } else {
+    delete[] ptr_vertex;
+    delete[] ptr_fg_color;
+    delete[] ptr_bg_color;
+    delete[] ptr_tex;
+  }
   if (framebuffer) {
     glDeleteLists(1, fb_draw_list);
     glDeleteRenderbuffersEXT(1, &fb_depth);
@@ -1248,6 +1343,9 @@ void gridrectst::allocate(long newdimx,long newdimy)
 	  s_buffer_count[d]=0;
 	}
     }
+  // Make sure to reallocate GL buffers if it's running
+  if (gl_initialized)
+    init_gl();
 }
 
 void gridrectst::clean()
@@ -2026,6 +2124,7 @@ void textures::upload_textures() {
   glBindTexture(GL_TEXTURE_2D, gl_catalog);
       printGLError();
   char *zeroes = new char[catalog_width*catalog_height*4];
+  bzero(zeroes, catalog_width*catalog_height*4);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, catalog_width, catalog_height, 0, GL_RGBA,
 	       GL_UNSIGNED_BYTE, zeroes);
   delete[] zeroes;
