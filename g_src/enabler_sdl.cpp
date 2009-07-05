@@ -74,26 +74,6 @@ static int glerrorcount = 0;
 # define deputs(str)
 #endif
 
-char is_modkey(Uint32 key) {
- switch (key) {
-  case SDLK_RSHIFT:
-  case SDLK_LSHIFT:
-  case SDLK_RCTRL:
-  case SDLK_LCTRL:
-  case SDLK_RALT:
-  case SDLK_LALT:
-  case SDLK_RMETA:
-  case SDLK_LMETA:
-  case SDLK_RSUPER:
-  case SDLK_LSUPER:
-  case SDLK_CAPSLOCK:
-  case SDLK_NUMLOCK:
-  case SDLK_SCROLLOCK:
-   return 1;
- }
- return 0;
-}
-
 #ifndef MAX
 	#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
@@ -240,20 +220,27 @@ static void eventLoop(GL_Window window)
  Uint32 mouse_lastused = 0;
  SDL_ShowCursor(SDL_DISABLE);
 
- Uint32 newi=0;
+ KeyUnion NewInput;
+ KeyUnion NewUnicode;
+ NewInput.Value=0;
+ NewInput.flags=KEY_KEYSYMFLAG;
+ NewUnicode.Value=0;
+ NewUnicode.flags=KEY_UNICODEFLAG;
  while (loopvar) {
   enabler.now = SDL_GetTicks();
   while (SDL_PollEvent(&event)) {
    switch (event.type) {
     case SDL_QUIT:
-     enabler.add_input(INTERFACEEVENT_QUIT,0);
+     NewInput.symbol=INTERFACEEVENT_QUIT;
+     NewInput.flags=KEY_EVENTFLAG;
+     enabler.add_input(NewInput.Value,0);
+     NewInput.flags=KEY_KEYSYMFLAG;
     break;
     case SDL_MOUSEBUTTONDOWN:
      if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
-      enabler.add_input(INTERFACEEVENT_MOUSE_DOWN,0);
-      newi=event.button.button;
-      if (newi<NUM_MOUSE_BUTTONS) enabler.add_input(KEY_MOUSEDOWN+newi,0);
-      switch (newi) {
+//      enabler.add_input(INTERFACEEVENT_MOUSE_DOWN,0);
+      NewInput.symbol=event.button.button;
+      switch (NewInput.symbol) {
        case SDL_BUTTON_LEFT:
         enabler.mouse_lbut = 1;
         enabler.mouse_lbut_down = 1;
@@ -272,17 +259,23 @@ static void eventLoop(GL_Window window)
         zoom_display(zoom_toggle_gridzoom);
         break;
       default:
-        // TODO: Throw others into add_input
+        if (NewInput.symbol<NUM_MOUSE_BUTTONS) {
+         NewInput.symbol+=KEY_MOUSEDOWN;
+         enabler.add_input(NewInput.Value,0);
+        }
         break;
       }
      }
     break;
     case SDL_MOUSEBUTTONUP:
      if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
-      enabler.add_input(INTERFACEEVENT_MOUSE_UP,0);
-      newi=event.button.button;
-      if (newi<NUM_MOUSE_BUTTONS) enabler.add_input(KEY_MOUSEUP+newi,0);
-      switch (newi) {
+//      enabler.add_input(INTERFACEEVENT_MOUSE_UP,0);
+      NewInput.symbol=event.button.button;
+      if (NewInput.symbol<NUM_MOUSE_BUTTONS) {
+       NewInput.symbol+=KEY_MOUSEUP;
+       enabler.add_input(NewInput.Value,0);
+      }
+      switch (NewInput.symbol) {
        case SDL_BUTTON_LEFT:
         enabler.mouse_lbut = 0;
         enabler.mouse_lbut_down = 0;
@@ -297,7 +290,6 @@ static void eventLoop(GL_Window window)
      }
     break;
     case SDL_KEYDOWN:
-	{
      // Disable mouse if it's been long enough
      if (mouse_lastused + 5000 < enabler.now) {
        if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
@@ -306,29 +298,29 @@ static void eventLoop(GL_Window window)
        }
        SDL_ShowCursor(SDL_DISABLE);
      }
-     Uint32 key=event.key.keysym.sym;
-     
-     if (is_modkey(key)) { //do nothing when all we got is a modifier key
-     } else if (key == SDLK_F12) { // Throw F12 over to zoom_display. FIXME: Annoying hardcoding.
+     NewInput.symbol=event.key.keysym.sym;
+     //do nothing when all we got is a modifier key
+     if (!enabler.is_modkey(NewInput.symbol)) {
+      if (NewInput.symbol==SDLK_F12) {
        zoom_display(zoom_reset);
-     } else {
-       enabler.add_input(key,event.key.keysym.unicode);
+       break;
+      }
+      NewUnicode.symbol=event.key.keysym.unicode;
+      enabler.add_input(NewInput.Value,NewUnicode.Value);
      }
-     
-
      /* Debian _somehow_ managed to patch SDL 1.2 so that the 'lock'
      * keys don't generate a modifier. This can be fixed by setting
      * an environmental variable that is supposed to _cause_ this
      * behaviour. This also effects Ubuntu (as of 8.04.1).
      */
     break;
-	}
     case SDL_ACTIVEEVENT:
      if (event.active.state & SDL_APPACTIVE) {
       if (event.active.gain) {
        exposed = 1;
        std::cout << "Gained focus\n";
       } else {
+       enabler.clear_input();
        // TODO: Disable rendering when nobody would see it anyway
        // Or maybe pause?
       }
@@ -344,12 +336,17 @@ static void eventLoop(GL_Window window)
      // Is the mouse over the screen surface?
      if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
        if (event.motion.x < screen->w && event.motion.y < screen->h) {
-         enabler.add_input(INTERFACEEVENT_MOUSE_MOTION,0);
+//         enabler.add_input(INTERFACEEVENT_MOUSE_MOTION,0);
          enabler.oldmouse_x = enabler.mouse_x;
          enabler.oldmouse_y = enabler.mouse_y;
          enabler.tracking_on = 1;
          // Set viewport_x/y as appropriate, and fixup mouse position for zoom
          // We use only the central 80% of the window for setting viewport origin.
+
+//Ouch!!!  These calculations are painful to look at.  Most of this should be able
+//to be done 1 time per zoom/resize.  The calculations here should be
+//event.motion.x*factorx+blackx and event.motion.y*factory+blacky
+//--Veroule
          double center_x = MAX(MIN((((double)event.motion.x / screen->w) - 0.2) * 1.5, 1),0),
            center_y = MAX(MIN((((double)event.motion.y / screen->h) - 0.2) * 1.5, 1),0);
          int visible_w = enabler.window_width / viewport_zoom,
@@ -371,7 +368,6 @@ static void eventLoop(GL_Window window)
            //        enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
            SDL_ShowCursor(SDL_DISABLE);
          } else SDL_ShowCursor(SDL_ENABLE);
-         enabler.add_input(INTERFACEEVENT_MOUSE_MOTION,0);
        } else {
 #ifdef DEBUG
          std::cout << "Mouse reset; this should not happen\n";
@@ -394,9 +390,6 @@ static void eventLoop(GL_Window window)
    } // switch (event.type)
   } //while have event
 
-  //SDL_PumpEvents was not called so the first frame after an input will
-  //not cause that input to be updated when it is the last event received
-  enabler.validateinput(); //data handled, try to clean up old stuff
   enabler.do_frame();
 #if !defined(NO_FMOD)
   // Call FMOD::System.update(). Manages a bunch of sound stuff.
@@ -475,6 +468,7 @@ int enablerst::loop(void)
 	{
 	  // At this point we should have a window that is setup to render OpenGL.
 	  textures.upload_textures();
+      keystate=SDL_GetKeyState(0);
       SDL_EnableUNICODE(1);
 	  eventLoop(window);
 	  textures.remove_uploaded_textures();
@@ -1389,80 +1383,6 @@ void enablerst::set_tile(long tex, int id, int x, int y) {
     *(tt++) = textures.gl_texpos[t.tex].left; // SW
     *(tt++) = textures.gl_texpos[t.tex].bottom;
   }
-}
-
-void enablerst::add_input(Uint32 newi, Uint16 unicode) {
- enabler_inputst newn;
- newn.key=newi;
- //have to keep the keysym value unchanged to check against sdl keystate table
- if ((newi<SDLK_KP0)&&(newi>31)) {
-  if (((unicode&0x7F)>31)&&((unicode&0xFF80)==0)) newn.uni=unicode&0x7F;
-  else newn.uni=0;
- } else newn.uni=0;
- //only messing with standard english ascii right now, sdl hopefully is mapping
- //the non-english keys to sdlk_world_0+ as expected
- //leave symbol values <32, and codes for non-character keys unchanged as well
- newn.processed=0;
- newn.next_process=0;
- input.push_back(newn);
-}
-
-void enablerst::removeinput(long number) {
- if (number<input.size()) input.erase(number);
-}
-
-enabler_inputst* enablerst::getinput(long number) {
- if (number<input.size()) return &(input[number]);
- else return NULL;
-}
-
-void enablerst::validateinput (void) {
- long i = input.size();
- Uint32 key;
- if (i) { //have something to do
-  enabler_inputst* cur;
-  //checking for released keys
-  Uint8 *keystate = SDL_GetKeyState(NULL);
-  for (long j=0;j<i;) {
-   cur=&(input[j]);
-   key=cur->key;
-   //events don't get checked for keystate and modifiers
-   key&=KEY_BASEVALUE;
-   if ((key>=SDLK_LAST)||(cur->key&KEY_EVENTFLAG)) {
-    //mouse is in the range SDLK_LAST+1 to +more, don't crash keystate
-    if (cur->processed!=0) { //interface has seen it
-     //the deletion reduces size instead of increasing the counter
-     input.erase(j);
-     --i;
-     continue;
-     // erase moves the underlying data, cur is updated to the next record already
-    } else ++j;
-    if (cur->key&KEY_EVENTFLAG) continue;
-    //mouse wants mods to be recorded, mods may break if the fps gets really low
-    //because they might get updated before processing can be done
-   } else {
-    if (keystate[key]==0) {
-     if (cur->processed!=0) {
-      input.erase(j);
-      --i;
-     } else ++j;
-     continue;
-    }
-   }
-   //not event and is pressed means update the mods
-   Uint32 Mods=0;
-   char Mod=(keystate[SDLK_LSHIFT]||keystate[SDLK_RSHIFT]);
-   if ((key>=SDLK_a)&&(key<=SDLK_z)) Mod=Mod^keystate[SDLK_CAPSLOCK];
-   //caps lock is only relevant to alpha keys until someone tells me otherwise
-   if (Mod) Mods|=KEY_SHIFTFLAG;
-   if (keystate[SDLK_LCTRL]||keystate[SDLK_RCTRL]) Mods|=KEY_CTRLFLAG;
-   if (keystate[SDLK_LALT]||keystate[SDLK_RALT]) Mods|=KEY_ALTFLAG;
-   if (keystate[SDLK_LMETA]||keystate[SDLK_RMETA]) Mods|=KEY_METAFLAG;
-   if (keystate[SDLK_LSUPER]||keystate[SDLK_RSUPER])Mods|=KEY_SUPERFLAG;
-   cur->key=Mods|key;
-   ++j;
-  }
- }
 }
 
 char get_slot_and_addbit_uchar(unsigned char &addbit,long &slot,long checkflag,long slotnum)

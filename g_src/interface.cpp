@@ -779,7 +779,7 @@ void interfacest::insertscreen_as_parent(viewscreenst *scr,viewscreenst *child)
 
 	if(scr->parent!=NULL)scr->parent->child=scr;
 	child->parent=scr;
- enabler.add_input(INTERFACEEVENT_NEW_VIEW,0);
+// enabler.add_input(INTERFACEEVENT_NEW_VIEW,0);
 }
 
 void interfacest::insertscreen_as_child(viewscreenst *scr,viewscreenst *parent)
@@ -795,7 +795,7 @@ void interfacest::insertscreen_as_child(viewscreenst *scr,viewscreenst *parent)
 
 	if(scr->child!=NULL)scr->child->parent=scr;
 	parent->child=scr;
- enabler.add_input(INTERFACEEVENT_NEW_VIEW,0);
+// enabler.add_input(INTERFACEEVENT_NEW_VIEW,0);
 }
 
 void interfacest::insertscreen_at_back(viewscreenst *scr)
@@ -1281,7 +1281,7 @@ void interfacest::print_interface_token(InterfaceKey key)
 	short o_screenf=gps.screenf,o_screenb=gps.screenb,o_screenbright=gps.screenbright;
 	gps.changecolor(2,0,1);
 	char tok[128];
-	gview.GetBindingKeyDisplay(key,tok,0);
+	gview.GetBinding(key)->GetKeyDisplay(tok,0);
 	gps.addst(tok);
 	gps.changecolor(o_screenf,o_screenb,o_screenbright);
 }
@@ -1757,3 +1757,4 @@ char secondaryscrolling(long &selection,long min,long max,long jump,unsigned lon
 //To Do
 //get the gview.c references inside the DEBUG_MOVIE defines
 //make scrolling and stringentry use newer pressed functions for better speed
+//add zoom bindings

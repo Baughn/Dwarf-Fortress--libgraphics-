@@ -1,8 +1,6 @@
 #include "platform.h"
-#include <cerrno>
 #include <string>
 #include <cstring>
-#include <cmath>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -26,40 +24,20 @@ extern "C" {
 using std::string;
 
 #include "basics.h"
-extern GameMode gamemode;
 
-#include "g_basics.h"
-
-extern "C" {
-#ifdef __APPLE__
-# include "osx_messagebox.h"
-#elif defined(unix)
-# include <gtk/gtk.h>
-#endif
-}
-
-#include "endian.h"
-#include "files.h"
-
-#ifndef WIN32
-  #define stricmp strcasecmp
-  #define strnicmp strncasecmp
-#endif
+#include "keybindings.h"
 
 #include "enabler.h"
 extern enablerst enabler;
+#include "g_basics.h"
 #include "graphics.h"
 extern graphicst gps;
 
 #include "music_and_sound_g.h"
-extern musicsoundst musicsound;
-
 #include "interface.h"
 extern interfacest gview;
-
 #include "init.h"
 extern initst init;
-
 
 //some libraries do not define this function in string.h
 char* stpcpy(char* to, const char* from) {
@@ -88,7 +66,7 @@ const BindingCategories BindCats[BINDCATSNUM]={
  {PILEZONEKEY_START,STOCKORDERKEY_START-PILEZONEKEY_START,"Pile/Zone"},
  {STOCKORDERKEY_START,DWARFMAINKEY_START-STOCKORDERKEY_START,"Stock/Order"},
  {MILITIAKEY_START,INTERFACEKEY_STRING_A000-MILITIAKEY_START,"Militia"},
- {0,0,"Macros"}
+ {INTERFACEKEYNUM,0,"Macros"}
 };
 
 typedef struct {
@@ -1239,8 +1217,6 @@ const BindingNames InterfaceNames[INTERFACEKEYNUM]={
 //one missing check
 //,{"",""}
 };
-//one missing
-
 
 unsigned int TokenizeLine(svector<char*> &Tokens,char* Line) {
  //returns count of tokens found
@@ -1267,31 +1243,202 @@ unsigned int TokenizeLine(svector<char*> &Tokens,char* Line) {
  return Tokens.size();
 }
 
-keybindingst::keybindingst(unsigned int key) {
- if (key) keys.push_back(key);
+keybindingst::keybindingst(__int32 ID) {
+ BindID=ID;
+ keys.reserve(5);
+ KeyAccum=0;
 }
 
-keybindingst::~keybindingst() {
+void keybindingst::Clear() {
  keys.clear();
- coms.clear();
+ KeyAccum=0;
+}
+
+int keybindingst::GetKeyDisplay (char* Display, int Limit) {
+ *Display=0;
+ char* Disp=Display;
+ int i=0;
+ int j=keys.size();
+ int k=j;
+ if (Limit) {
+  if (k>Limit) k=Limit;
+  while (i<k) {
+   if (i) Disp=stpcpy(Disp,", ");
+   Disp=ConvertKeyToDisplay(Disp, keys[i]);
+   ++i;
+  }
+  if (j>Limit) {
+   Disp=stpcpy(Disp,", ...");
+  }
+ } else if (j) Disp=ConvertKeyToDisplay(Disp, keys[0]);
+ if (Disp==Display) {
+  strcpy(Display,"None");
+  return 4;
+ }
+ return Disp-Display;
 }
 
 
-macrostackst::macrostackst(unsigned int bind) {
- binding=bind;
+int keybindingst::GetKeyCount() {
+ int i=keys.size();
+ while (i) {
+  --i;
+  if (!(keys[i].flags&KEY_EVENTFLAG)) return i+1;
+ };
+ return 0;
+}
+
+KeyUnion* keybindingst::GetKeyArray() {
+ if (keys.size()) return &(keys[0]);
+ return 0;
+}
+
+int keybindingst::AddKey(KeyUnion key) {
+ int i=keys.size();
+ int j=i;
+ if (!j) {
+  keys.push_back(key);
+  KeyAccum=~key.Value;
+  return 1;
+ }
+ while (i) {
+  --i;
+  if (keys[i].Value==key.Value) return j;
+ }
+ KeyAccum&=~key.Value;
+ //keep the events at the end of the binding list so we don't have to
+ //work too hard at display and save, users are not allowed to bind to events
+ if (key.flags&KEY_EVENTFLAG) {
+  keys.push_back(key);
+  return j+1;
+ }
+ while (i<j) {
+  if (keys[i].flags&KEY_EVENTFLAG) break;
+  ++i;
+ }
+ if (i==j) {
+  keys.push_back(key);
+  return j+1;
+ }
+ keys.push_back(keys[i]);
+ keys[i].Value=key.Value;
+ return j+1;
+}
+
+int keybindingst::RemoveKey(KeyUnion key) {
+ int i=keys.size();
+ int j=i;
+ while (i) {
+  --i;
+  if (keys[i].Value==key.Value) {
+   keys.erase(i);
+   --j;
+   i=j;
+   KeyAccum=0;
+   while (i) {
+    --i;
+    KeyAccum|=keys[i].Value;
+   }
+   KeyAccum=~KeyAccum;
+   return j;
+  }
+ }
+ return j;
+}
+
+int keybindingst::RemoveKeyPos(int pos) {
+ int i=keys.size();
+ if (pos<i) {
+  keys.erase(pos);
+  --i;
+  int j=i;
+  KeyAccum=0;
+  while (i) {
+   --i;
+   KeyAccum|=keys[i].Value;
+  }
+  KeyAccum=~KeyAccum;
+  return j;
+ }
+ return i;
+}
+
+macrostackst::macrostackst(MacroCommand* Commands, unsigned short ID, int count) {
+ coms=Commands;
+ macroID=ID;
+ comCount=count;
+ curCom.Value=0;
  position=0;
  repeat=0;
- nextproc=enabler.now;
+ nextproc=0;
  overflow=0xFFFFFFFF;
+}
+
+char* keybindingst::GetDisplayName(char* Name) {
+ strcpy(Name,displayname.c_str());
+ if (!*Name) strcpy(Name, InterfaceNames[BindID].name);
+ return Name;
+}
+
+char* keybindingst::ChangeDisplayName(char* DisplayName) {
+ if (*DisplayName==0) displayname.erase();
+ else displayname=DisplayName;
+ return DisplayName;
+}
+
+int macrobindingst::GetComCount() {
+ return coms.size();
+}
+
+MacroCommand* macrobindingst::GetComArray() {
+ if (coms.size()) return &(coms[0]);
+ else return 0;
+}
+
+int macrobindingst::AddCommand(MacroCommand com) {
+ if (!com.Repeat) com.Repeat=1;
+ coms.push_back(com);
+ return coms.size();
+}
+
+int macrobindingst::RemoveCommand(int pos) {
+ int i=coms.size();
+ if (pos<i) {
+  coms.erase(pos);
+  return i-1;
+ }
+ return i;
+}
+
+char* macrobindingst::GetDisplayName(char* Name) {
+ strcpy(Name,displayname.c_str());
+ if (!*Name) sprintf(Name,"Macro %i", BindID);
+ return Name;
+}
+
+int macrobindingst::AdjustRepeat(int pos, int Add) {
+ int i=coms.size();
+ if (pos<i) {
+  MacroCommand com=coms[pos];
+  unsigned char rep=com.Repeat;
+  rep+=Add;
+  if (!rep) com.Repeat=1;
+  else com.Repeat=rep;
+  coms[pos]=com;
+  return rep;
+ }
+ return 0;
 }
 
 interfacekeyst::interfacekeyst() {
  currentBinding=0;
- currentKey=0;
+ currentKey.flags=0xFF;
+ currentAlt.flags=0xFF;
  currentInput=0;
  bindings.reserve(1);
  macros.reserve(1);
  macrostack.reserve(1);
+ RunningMacro=0;
 }
 
 interfacekeyst::~interfacekeyst() {
@@ -1315,42 +1462,43 @@ interfacekeyst::~interfacekeyst() {
  macrostack.clear();
 }
 
-// Load/Save/Display functions
-char* interfacekeyst::ConvertKeyToDisplay(char* Str, int Key) {
+char* ConvertKeyToDisplay(char* Str, KeyUnion Key) {
  *Str=0;
- if ((Key&KEY_MACRODELAY)==KEY_MACRODELAY) {
-  Str+=sprintf(Str,"Delay %i ms",Key>>19);
-  return Str;
+ if (Key.flags&KEY_EVENTFLAG) return Str;
+ if (Key.mods&KEY_CTRLFLAG) Str=stpcpy(Str,"Ctrl+");
+ if (Key.mods&KEY_ALTFLAG) Str=stpcpy(Str,"Alt+");
+ if (Key.mods&KEY_METAFLAG) Str=stpcpy(Str,"Meta+");
+ if (Key.mods&KEY_SUPERFLAG) Str=stpcpy(Str,"Super+");
+ if (Key.mods&KEY_SHIFTFLAG) Str=stpcpy(Str,"Shift+");
+ if (Key.flags&KEY_UNICODEFLAG) {
+  //this and the mods stuff will have to change to a wide char output
+  //when we have display support for language fonts
+  if (Key.symbol>255) {
+   Str+=sprintf(Str,"0x%x",Key.symbol);
+   return Str;
+  }
  }
- if (Key&KEY_EVENTFLAG) return Str;
- int code=Key&KEY_BASEVALUE;
- if (Key&KEY_CTRLFLAG) Str=stpcpy(Str,"Ctrl+");
- if (Key&KEY_ALTFLAG) Str=stpcpy(Str,"Alt+");
- if (Key&KEY_METAFLAG) Str=stpcpy(Str,"Meta+");
- if (Key&KEY_SUPERFLAG) Str=stpcpy(Str,"Super+");
- if (Key&KEY_SHIFTFLAG) Str=stpcpy(Str,"Shift+");
- //we assume that the SDL will keep following the ASCII table in the future
- if ((code>32)&&(code<127)) {
-  *Str=code;
+ if ((Key.symbol>32)&&(Key.symbol<127)) {
+  *Str=Key.symbol;
   *(++Str)=0;
   return Str;
  }
- if ((code>=SDLK_KP0)&&(code<=SDLK_KP9)) {
+ if ((Key.symbol>=SDLK_KP0)&&(Key.symbol<=SDLK_KP9)) {
   Str=stpcpy(Str,"Numpad ");
-  *Str='0'+code-SDLK_KP0;
+  *Str='0'+Key.symbol-SDLK_KP0;
   *(++Str)=0;
   return Str;
  }
- if ((code>=SDLK_F1)&&(code<=SDLK_F15)) {
-  Str+=sprintf(Str,"F%i",code-SDLK_F1+1);
+ if ((Key.symbol>=SDLK_F1)&&(Key.symbol<=SDLK_F15)) {
+  Str+=sprintf(Str,"F%i",Key.symbol-SDLK_F1+1);
   return Str;
  }
- if (code>KEY_MOUSEDOWN) {
-  if (code<=KEY_MOUSEUP) Str+=sprintf(Str,"Mouse D%i",code-KEY_MOUSEDOWN);
-  else if (code<=KEY_MOUSELAST) Str+=sprintf(Str,"Mouse U%i",code-KEY_MOUSEUP);
+ if (Key.symbol>KEY_MOUSEDOWN) {
+  if (Key.symbol<=KEY_MOUSEUP) Str+=sprintf(Str,"Mouse D%i",Key.symbol-KEY_MOUSEDOWN);
+  else if (Key.symbol<=KEY_MOUSELAST) Str+=sprintf(Str,"Mouse U%i",Key.symbol-KEY_MOUSEUP);
   return Str;
  }
- switch (code) {
+ switch (Key.symbol) {
   case 0: Str=stpcpy(Str,"None");break;
   case SDLK_BACKSPACE: Str=stpcpy(Str,"Backspace");break;
   case SDLK_TAB: Str=stpcpy(Str,"Tab");break;
@@ -1387,80 +1535,84 @@ char* interfacekeyst::ConvertKeyToDisplay(char* Str, int Key) {
   case SDLK_KP_ENTER: Str=stpcpy(Str,"Numpad Enter");break;
   case SDLK_KP_EQUALS: Str=stpcpy(Str,"Numpad Equals");break;
   default:
-   if ((code<255)&&(code>=SDLK_WORLD_0)) {
-    *Str=code;
+   if ((Key.symbol<255)&&(Key.symbol>SDLK_WORLD_0)) {
+    *Str=Key.symbol;
     *(++Str)=0;
-   } else Str+=sprintf(Str,"0x%x",code);
+   } else Str+=sprintf(Str,"0x%x",Key.symbol);
    break;
  }
  return Str;
 }
 
-char* interfacekeyst::ConvertKeyToSave(char* Str, int Key) {
+char* ConvertKeyToSave(char* Str, KeyUnion Key) {
  *Str=0;
- switch (Key&KEY_BASEVALUE) {
+ switch (Key.symbol) {
   case SDLK_COLON:
   case SDLK_RIGHTBRACKET:
-  break;
+   if (Key.mods&KEY_SHIFTFLAG) Str=stpcpy(Str,"Shift+");
+   if (Key.mods&KEY_CTRLFLAG) Str=stpcpy(Str,"Ctrl+");
+   if (Key.mods&KEY_ALTFLAG) Str=stpcpy(Str,"Alt+");
+   if (Key.mods&KEY_METAFLAG) Str=stpcpy(Str,"Meta+");
+   if (Key.mods&KEY_SUPERFLAG) Str=stpcpy(Str,"Super+");
+   if (Key.symbol==SDLK_COLON) return stpcpy(Str,"Colon");
+   else return stpcpy(Str,"RBracket");
   default: return ConvertKeyToDisplay(Str,Key);
- }
- if (Key&KEY_SHIFTFLAG) Str=stpcpy(Str,"Shift+");
- if (Key&KEY_CTRLFLAG) Str=stpcpy(Str,"Ctrl+");
- if (Key&KEY_ALTFLAG) Str=stpcpy(Str,"Alt+");
- if (Key&KEY_METAFLAG) Str=stpcpy(Str,"Meta+");
- if (Key&KEY_SUPERFLAG) Str=stpcpy(Str,"Super+");
- switch (Key&KEY_BASEVALUE) {
-  case SDLK_COLON:
-   return stpcpy(Str,"Colon");
-  case SDLK_RIGHTBRACKET:
-  default:
-   return stpcpy(Str,"RBracket");
  }
 }
 
-int interfacekeyst::ConvertSaveToKey(char* Str) {
- int Res=0;
+void ConvertSaveToKey(char* Str, KeyUnion* Key) {
+ Key->symbol=0;
+ //don't 0 all, the calling function has to tell us whether we are doing
+ //unicode or keysym handling
  int len=strlen(Str);
  while (len) {
   int count=0;
   if (len==1) { //no modifiers recorded, but we may have to expand some
    unsigned char S=*((unsigned char*)Str);
    if (S>32) { //first single character part we recognize
-    if (S<127) Res|=S;
+    if (S<127) Key->symbol=S;
     //void range is 127 to 159, DELETE is mapped at 127
-    else if (S>=SDLK_WORLD_0) Res|=S;
+    else if (S>SDLK_WORLD_0) Key->symbol=S;
    }
-   break; //while len
+   return;
   } else if (len<=3) { //could be a function key
    if ((*Str|32)=='f') {
-    char n;
-    if (len==2) n=Str[1]-'1';
-    else n=(Str[1]-'0')*10+(Str[2]-'1');
-    if (n<=15) Res|=SDLK_F1+n;
+    if (Key->flags&KEY_UNICODEFLAG) return;
+    if (len==2) count=Str[1]-'1';
+    else count=(Str[1]-'0')*10+(Str[2]-'1');
+    if (count<=15) Key->symbol=SDLK_F1+count;
    } else if ((Str[0]=='0')&&(Str[1]=='x')) { //hex code
-    count=strtol(Str,0,16);
-    if ((count>0)&&(count<=KEY_BASEVALUE)) Res|=count;
-    break; //while len
-   } else {
-    switch (*Str|32) {
-     case 'a': if (stricmp(Str,"Add")==0) Res|=SDLK_KP_PLUS;break;
-     case 'e': if (stricmp(Str,"End")==0) Res|=SDLK_END;break;
-     case 't': if (stricmp(Str,"Tab")==0) Res|=SDLK_TAB;break;
-     case 'u': if (stricmp(Str,"Up")==0) Res|=SDLK_UP;break;
+    //only 1 character available
+    count=Str[2]&0xDF; //strip to upper case
+    if (count>64) {
+     count-=55; //'A'-55 gives 10
+     if (count>15) return; //value is no good
+    } else {
+     count-=16; //'0' is 48, stripped of the 32 bit leaves 16
+     if (count>9) return;
     }
+    Key->symbol=count; //a 0 result becomes a failure elsewhere
+    return;
+   } else {
+    if (Key->flags&KEY_KEYSYMFLAG) {
+     if (stricmp(Str,"Add")==0) {Key->symbol=SDLK_KP_PLUS;return;}
+     if (stricmp(Str,"Up")==0) {Key->symbol=SDLK_UP;return;}
+    }
+    if (stricmp(Str,"End")==0) {Key->symbol=SDLK_END;return;}
+    if (stricmp(Str,"Tab")==0) {Key->symbol=SDLK_TAB;return;}
    }
-   break;  //while len
+   return;
   } else {
    //start by looking for a +
    while (Str[count]) {
     if (Str[count]=='+') {
      switch (*Str|32) {
-      case 'a': if (strnicmp(Str,"Alt+",count)==0) Res|=KEY_ALTFLAG;break;
-      case 'c': if (strnicmp(Str,"Ctrl+",count)==0) Res|=KEY_CTRLFLAG;break;
-      case 'm': if (strnicmp(Str,"Meta+",count)==0) Res|=KEY_METAFLAG;break;
+      case 'a': if (strnicmp(Str,"Alt+",count)==0) Key->mods|=KEY_ALTFLAG;break;
+      case 'c': if (strnicmp(Str,"Ctrl+",count)==0) Key->mods|=KEY_CTRLFLAG;break;
+      case 'm': if (strnicmp(Str,"Meta+",count)==0) Key->mods|=KEY_METAFLAG;break;
       case 's': {
-       if (strnicmp(Str,"Shift+",count)==0) Res|=KEY_SHIFTFLAG;
-       else if (strnicmp(Str,"Super+",count)==0) Res|=KEY_SUPERFLAG;
+       if (strnicmp(Str,"Shift+",count)==0) Key->mods|=KEY_SHIFTFLAG;
+       else if (strnicmp(Str,"Super+",count)==0) Key->mods|=KEY_SUPERFLAG;
        break;
       }
      }
@@ -1472,294 +1624,108 @@ int interfacekeyst::ConvertSaveToKey(char* Str) {
     ++count;
    } // + scan
    if (strnicmp(Str,"Mouse ",6)==0) {
+    if (Key->flags&KEY_UNICODEFLAG) return; //disallowed
     Str+=6;
     len-=7;
-    int n;
-    if (len==1) n=Str[1]-'0';
-    else n=(Str[1]-'0')*10+(Str[2]-'0');
-    if ((n<=NUM_MOUSE_BUTTONS)&&(n>0)) {
-     if ((*Str|32)=='d') Res|=KEY_MOUSEDOWN+n;
-     else if ((*Str|32)=='u') Res|=KEY_MOUSEUP+n;
+    if (len==1) count=Str[1]-'0';
+    else count=(Str[1]-'0')*10+(Str[2]-'0');
+    if ((count<=NUM_MOUSE_BUTTONS)&&(count>0)) {
+     if ((*Str|32)=='d') Key->symbol=KEY_MOUSEDOWN+count;
+     else if ((*Str|32)=='u') Key->symbol=KEY_MOUSEUP+count;
     }
-    break;
+    return;
    }
    if ((Str[0]=='0')&&(Str[1]=='x')) { //hex code
     count=strtol(Str,0,16);
-    if ((count>0)&&(count<=KEY_BASEVALUE)) Res|=count;
-    break; //while len
+    if (!count) return; //negative invalid
+    if (Key->flags&KEY_KEYSYMFLAG) {
+     if (count>255) return;
+    } else if (count>0xFFFF) return;
+    Key->symbol=count;
+    return;
    }
-   if (len<=3) continue; //while len
+   if (len<=3) continue; //covers a scan finish
    switch (len) {
     case 4:
+     if (Key->flags&KEY_UNICODEFLAG) return;
      switch (*Str|32) {
-      case 'd': if (stricmp(Str,"Down")==0) Res|=SDLK_DOWN;break;
-      case 'e': if (stricmp(Str,"Euro")==0) Res|=SDLK_EURO;break;
+      case 'd': if (stricmp(Str,"Down")==0) Key->symbol=SDLK_DOWN;break;
+      case 'e': if (stricmp(Str,"Euro")==0) Key->symbol=SDLK_EURO;break;
       case 'h':
-       if (stricmp(Str,"Help")==0) Res|=SDLK_HELP;
-       if (stricmp(Str,"Home")==0) Res|=SDLK_HOME;
+       if (stricmp(Str,"Help")==0) Key->symbol=SDLK_HELP;
+       if (stricmp(Str,"Home")==0) Key->symbol=SDLK_HOME;
       break;
-      case 'l': if (stricmp(Str,"Left")==0) Res|=SDLK_LEFT;break;
+      case 'l': if (stricmp(Str,"Left")==0) Key->symbol=SDLK_LEFT;break;
       case 'm':
-       if (stricmp(Str,"Mode")==0) Res|=SDLK_MODE;
-       if (stricmp(Str,"Menu")==0) Res|=SDLK_MENU;
+       if (stricmp(Str,"Mode")==0) Key->symbol=SDLK_MODE;
+       if (stricmp(Str,"Menu")==0) Key->symbol=SDLK_MENU;
       break;
-//      case 'n': if (stricmp(Str,"None")==0) Res|=0;break;
-      case 'u': if (stricmp(Str,"Undo")==0) Res|=SDLK_UNDO;break;
+//      case 'n': if (stricmp(Str,"None")==0) Key->symbol=0;break;
+      case 'u': if (stricmp(Str,"Undo")==0) Key->symbol=SDLK_UNDO;break;
      }
     break; //switch len
     case 5:
+     if (stricmp(Str,"Colon")==0) Key->symbol=SDLK_COLON;
+     else if (stricmp(Str,"Space")==0) Key->symbol=SDLK_SPACE;
+     else if (stricmp(Str,"Enter")==0) Key->symbol=SDLK_RETURN;
+     if (Key->flags&KEY_UNICODEFLAG) return;
      switch (*Str|32) {
-      case 'b': if (stricmp(Str,"Break")==0) Res|=SDLK_BREAK;break;
-      case 'c':
-       if (stricmp(Str,"Clear")==0) Res|=SDLK_CLEAR;
-       if (stricmp(Str,"Colon")==0) Res|=SDLK_COLON;
-      break;
-      case 'e': if (stricmp(Str,"Enter")==0) Res|=SDLK_RETURN;break;
+      case 'b': if (stricmp(Str,"Break")==0) Key->symbol=SDLK_BREAK;break;
+      case 'c': if (stricmp(Str,"Clear")==0) Key->symbol=SDLK_CLEAR;break;
       case 'p':
-       if (stricmp(Str,"Pause")==0) Res|=SDLK_PAUSE;
-       if (stricmp(Str,"Power")==0) Res|=SDLK_POWER;
+       if (stricmp(Str,"Pause")==0) Key->symbol=SDLK_PAUSE;
+       if (stricmp(Str,"Power")==0) Key->symbol=SDLK_POWER;
       break;
-      case 'r': if (stricmp(Str,"Right")==0) Res|=SDLK_RIGHT;break;
-      case 's': if (stricmp(Str,"Space")==0) Res|=SDLK_SPACE;break;
+      case 'r': if (stricmp(Str,"Right")==0) Key->symbol=SDLK_RIGHT;break;
      }
     break; //switch len
     case 6:
-     switch (*Str|32) {
-      case 'd':
-       if (stricmp(Str,"Delete")==0) Res|=SDLK_DELETE;
-       if (stricmp(Str,"Divide")==0) Res|=SDLK_KP_DIVIDE;
-      break;
-      case 'e': if (stricmp(Str,"Escape")==0) Res|=SDLK_ESCAPE;break;
-      case 'i': if (stricmp(Str,"Insert")==0) Res|=SDLK_INSERT;break;
-     }
+     if (stricmp(Str,"Delete")==0) Key->symbol=SDLK_DELETE;
+     else if (stricmp(Str,"Escape")==0) Key->symbol=SDLK_ESCAPE;
+     if (Key->flags&KEY_UNICODEFLAG) return;
+     if (stricmp(Str,"Divide")==0) Key->symbol=SDLK_KP_DIVIDE;
+     else if (stricmp(Str,"Insert")==0) Key->symbol=SDLK_INSERT;
     break; //switch len
     case 7:
-     switch (*Str|32) {
-      case 'c': if (stricmp(Str,"Compose")==0) Res|=SDLK_COMPOSE;break;
-      case 'd': if (stricmp(Str,"Decimal")==0) Res|=SDLK_KP_PERIOD;break;
-      case 'p': if (stricmp(Str,"Page Up")==0) Res|=SDLK_PAGEUP;break;
-     }
+     if (Key->flags&KEY_UNICODEFLAG) return;
+     if (stricmp(Str,"Compose")==0) Key->symbol=SDLK_COMPOSE;
+     else if (stricmp(Str,"Decimal")==0) Key->symbol=SDLK_KP_PERIOD;
+     else if (stricmp(Str,"Page Up")==0) Key->symbol=SDLK_PAGEUP;
     break; //switch len
     case 8: case 9:
+     if (stricmp(Str,"Backspace")==0) Key->symbol=SDLK_BACKSPACE;
+     else if (stricmp(Str,"RBracket")==0) Key->symbol=SDLK_RIGHTBRACKET;
+     if (Key->flags&KEY_UNICODEFLAG) return;
      switch (*Str|32) {
-      case 'b': if (stricmp(Str,"Backspace")==0) Res|=SDLK_BACKSPACE;break;
-      case 'm': if (stricmp(Str,"Multiply")==0) Res|=SDLK_KP_MULTIPLY;break;
-      case 'n': if (strnicmp(Str,"Numpad ",7)==0) Res|=Str[7]+SDLK_KP0-'0';break;
-      case 'p': if (stricmp(Str,"Page Down")==0) Res|=SDLK_PAGEDOWN;break;
-      case 'r': if (stricmp(Str,"RBracket")==0) Res|=SDLK_RIGHTBRACKET;break;
-      case 's': if (stricmp(Str,"Subtract")==0) Res|=SDLK_KP_MINUS;break;
+      case 'm': if (stricmp(Str,"Multiply")==0) Key->symbol=SDLK_KP_MULTIPLY;break;
+      case 'n': if (strnicmp(Str,"Numpad ",7)==0) Key->symbol=Str[7]+SDLK_KP0-'0';break;
+      case 'p': if (stricmp(Str,"Page Down")==0) Key->symbol=SDLK_PAGEDOWN;break;
+      case 's': if (stricmp(Str,"Subtract")==0) Key->symbol=SDLK_KP_MINUS;break;
      }
     break; //switch len
     default:
+     if (Key->flags&KEY_UNICODEFLAG) return;
      switch (*Str|32) {
       case 'n':
-       if (stricmp(Str,"Numpad Enter")==0) Res|=SDLK_KP_ENTER;
-       if (stricmp(Str,"Numpad Equals")==0) Res|=SDLK_KP_EQUALS;
+       if (stricmp(Str,"Numpad Enter")==0) Key->symbol=SDLK_KP_ENTER;
+       if (stricmp(Str,"Numpad Equals")==0) Key->symbol=SDLK_KP_EQUALS;
       break;
-      case 'p': if (stricmp(Str,"Print Screen")==0) Res|=SDLK_PRINT;break;
-      case 's': if (stricmp(Str,"Sys Request")==0) Res|=SDLK_SYSREQ;break;
+      case 'p': if (stricmp(Str,"Print Screen")==0) Key->symbol=SDLK_PRINT;break;
+      case 's': if (stricmp(Str,"Sys Request")==0) Key->symbol=SDLK_SYSREQ;break;
      }
     break; //switch len
    } //switch len
-   break; //while len
+   return;
   } //else len>3
  } //while len
- if (Res&KEY_BASEVALUE) return Res;
- return 0;
 }
 
-int interfacekeyst::GetBindingKeyDisplay (int binding, char* Display, int Limit) {
- *Display=0;
- char* Disp=Display;
- keybindingst* Bind=bindings[binding];
- if (Bind) {
-  int i=0;
-  int j=Bind->keys.size(), k=j;
-  if (Limit) {
-   if (k>Limit) k=Limit;
-   while (i<k) {
-    if (i) Disp=stpcpy(Disp,", ");
-    Disp=ConvertKeyToDisplay(Disp, Bind->keys[i]);
-    ++i;
-   }
-   if (j>Limit) {
-    Disp=stpcpy(Disp,", ...");
-   }
-  } else if (j) Disp=ConvertKeyToDisplay(Disp, Bind->keys[0]);
- }
- if (Disp==Display) {
-  strcpy(Display,"None");
-  return 4;
- }
- return Disp-Display;
-}
-
-int interfacekeyst::AddMacro(char* DisplayName) {
+macrobindingst* interfacekeyst::AddMacro(char* DisplayName) {
  int i=macros.size();
- macros.push_back(new keybindingst());
- if (DisplayName==0) {
-  char str[128];
-  sprintf(str,"Macro %i",i);
-  macros[i]->displayname=str;
- } else macros[i]->displayname=DisplayName;
- return i;
-}
-
-char* interfacekeyst::ChangeBindingName(int binding, char* DisplayName) {
- if (bindings[binding]==0) bindings[binding]=new keybindingst();
- if (*DisplayName==0) bindings[binding]->displayname.erase();
- else bindings[binding]->displayname=DisplayName;
- return DisplayName;
-}
-
-char* interfacekeyst::ChangeMacroName(int macro, char* DisplayName) {
- if (*DisplayName==0) sprintf(DisplayName,"Macro %i", macro);
- macros[macro]->displayname=DisplayName;
- return DisplayName;
-}
-
-int interfacekeyst::GetBindingKeys(int binding) {
- keybindingst* Res=bindings[binding];
- if(Res==0)return 0;
- int i=Res->keys.size();
- while (i) {
-  --i;
-  if ((Res->keys[i]&KEY_EVENTFLAG)==0) return i+1;
- };
- return 0;
-}
-
-int interfacekeyst::GetMacroKeys(int macro) {
- return macros[macro]->keys.size();
-}
-
-int interfacekeyst::GetMacroComs(int macro) {
- return macros[macro]->coms.size();
-}
-
-int interfacekeyst::AddKeyToBinding(int binding, int key) {
- keybindingst* Res=bindings[binding];
- if (Res==0) Res=bindings[binding]= new keybindingst(key);
- else {
-  int i=Res->keys.size();
-  int j=i;
-  while (i) {
-   --i;
-   if (Res->keys[i]==key) return j;
-  }
-  //keep the events at the end of the binding list so we don't have to
-  //work too hard at display and save, users are not allowed to bind to events
-  if (key&KEY_EVENTFLAG) {
-   Res->keys.push_back(key);
-   return j+1;
-  }
-  i=0;
-  while (i<j) {
-   if ((Res->keys[i]&KEY_EVENTFLAG)==0) ++i;
-   else break;
-  }
-  if (i==j) {
-   Res->keys.push_back(key);
-   return j+1;
-  }
-  Res->keys.push_back(Res->keys[i]);
-  Res->keys[i]=key;
-  return j+1;
- }
- return 1;
-}
-
-int interfacekeyst::AddKeyToMacro(int macro, int key) {
- keybindingst* Res=macros[macro];
- int i=Res->keys.size();
- int j=i;
- while (i) {
-  --i;
-  if (Res->keys[i]==key) return j;
- }
- Res->keys.push_back(key);
- return j+1;
-}
-
-int interfacekeyst::AddCommandToMacro(int macro, int com) {
- keybindingst* Res=macros[macro];
- if ((com>>19)==0) com|=1<<19;
- Res->coms.push_back(com);
- return Res->coms.size();
-}
-
-int interfacekeyst::RemoveCommandFromMacro(int macro, int pos) {
- keybindingst* Res=macros[macro];
- int i=Res->coms.size();
- if (pos<i) {
-  Res->coms.erase(pos);
-  return i-1;
- }
- return i;
-}
-
-int interfacekeyst::RemoveKeyFromBinding(int binding, int key) {
- keybindingst* Res=bindings[binding];
- if(Res==0)return 0;
- int i=Res->keys.size();
- int j=i;
- while (i) {
-  --i;
-  if (Res->keys[i]==key) {
-   Res->keys.erase(i);
-   return j-1;
-  }
- }
- return j;
-}
-
-int interfacekeyst::RemoveKeyFromMacro(int macro, int key) {
- keybindingst* Res=macros[macro];
- int i=Res->keys.size();
- int j=i;
- while (i) {
-  --i;
-  if (Res->keys[i]==key) {
-   Res->keys.erase(i);
-   return j-1;
-  }
- }
- return j;
-}
-
-int interfacekeyst::RemoveKeyPosFromBinding(int binding, int pos) {
- keybindingst* Res=bindings[binding];
- if(Res==0)return 0;
- int i=Res->keys.size();
- if (pos<i) {
-  Res->keys.erase(pos);
-  return i-1;
- }
- return i;
-}
-
-int interfacekeyst::RemoveKeyPosFromMacro(int macro, int pos) {
- keybindingst* Res=macros[macro];
- int i=Res->keys.size();
- if (pos<i) {
-  Res->keys.erase(pos);
-  return i-1;
- }
- return i;
-}
-
-int interfacekeyst::AdjustMacroRepeat(int macro, int pos, int Add) {
- keybindingst* Res=macros[macro];
- int i=Res->coms.size();
- if (pos<i) {
-  int com=Res->coms[pos];
-  int rep=(com>>19)+Add;
-  if (rep<=0) rep=1;
-  else if (rep>1000) rep=1000;
-  Res->coms[pos]=(com&KEY_MACRODELAY)|(rep<<19);
-  return rep;
- }
- return 0;
+ macrobindingst* Res=new macrobindingst(i);
+ macros.push_back(Res);
+ if (DisplayName) Res->ChangeDisplayName(DisplayName);
+ return Res;
 }
 
 int interfacekeyst::MatchBindingName(const char* Name) {
@@ -1768,7 +1734,7 @@ int interfacekeyst::MatchBindingName(const char* Name) {
   if (strcmp(Name,InterfaceNames[i].token)) ++i;
   else return i;
  }
- return 0;
+ return -1;
 }
 
 int interfacekeyst::MatchMacroName(const char* Name) {
@@ -1778,32 +1744,14 @@ int interfacekeyst::MatchMacroName(const char* Name) {
   Name+=5;
   while (*Name) {
    j*=10;
-   if (*Name<'0') return KEY_BIND;
-   if (*Name>'9') return KEY_BIND;
+   if (*Name<'0') return -1;
+   if (*Name>'9') return -1;
    j+=*Name-'0';
    ++Name;
   }
-  if (j<i) return j;
+  return j;
  }
- return KEY_BIND;
-}
-
-char* interfacekeyst::GetBindingDisplayName(int binding, char* Name) {
- *Name=0;
- keybindingst* Bind=bindings[binding];
- if (Bind==0) strcpy(Name, InterfaceNames[binding].name);
- else {
-  strcpy(Name,Bind->displayname.c_str());
-  if (*Name==0) strcpy(Name, InterfaceNames[binding].name);
- }
- return Name;
-}
-
-char* interfacekeyst::GetMacroDisplayName(int macro, char* Name) {
- *Name=0;
- keybindingst* Bind=macros[macro];
- strcpy(Name,Bind->displayname.c_str());
- return Name;
+ return -1;
 }
 
 void interfacekeyst::Load(const char* filename) {
@@ -1815,7 +1763,9 @@ void interfacekeyst::Load(const char* filename) {
    bindings.push_back(0);
    ++Binding;
   }
-  if (bindings[count]) bindings[count]->keys.clear();
+  if (bindings[count]) {
+   bindings[count]->Clear();
+  }
   ++count;
  }
  //completely remove macros
@@ -1831,7 +1781,7 @@ void interfacekeyst::Load(const char* filename) {
   if (macrostack[Binding]) delete macrostack[Binding];
  }
  macrostack.clear();
- Binding=0;
+ Binding=-1;
  std::ifstream fseed(filename);
  string str;
  char cstr[256];
@@ -1841,47 +1791,71 @@ void interfacekeyst::Load(const char* filename) {
   while(std::getline(fseed,str)) {
    strcpy(cstr,str.c_str());
    count=TokenizeLine(Tokens,cstr);
-
    if (count>1) {
     int dir=strcmp(Tokens[0],"KEY");
     if (dir==0) {
-     if (BindType) AddKeyToMacro(Binding,ConvertSaveToKey(Tokens[1]));
-     else AddKeyToBinding(Binding,ConvertSaveToKey(Tokens[1]));
+     if (Binding>-1) {
+      KeyUnion Key;
+      Key.Value=0;
+      Key.flags=KEY_UNICODEFLAG;
+      ConvertSaveToKey(Tokens[1],&Key);
+      if (BindType) macros[Binding]->AddKey(Key);
+      else bindings[Binding]->AddKey(Key);
+     }
     }
     else if (dir>0) {
-     if (strcmp("MACRO",Tokens[0])==0) {
-      if (strcmp("DELAY",Tokens[1])==0) {
-       if (count==3) {
-        dir=atoi(Tokens[2]);
-        if (dir>0) {
-         if (dir>1000) dir=1000;
-         count=(dir<<19)|KEY_MACRODELAY;
-         AddCommandToMacro(Binding,count);
+     if (Binding>-1) {
+      if (strcmp("SYM",Tokens[0])==0) {
+        KeyUnion Key;
+        Key.Value=0;
+        Key.flags=KEY_KEYSYMFLAG;
+        ConvertSaveToKey(Tokens[1],&Key);
+        if (BindType) macros[Binding]->AddKey(Key);
+        else bindings[Binding]->AddKey(Key);
+      } else if (strcmp("MACRO",Tokens[0])==0) {
+       MacroCommand com;
+       com.Value=0;
+       if (strcmp("DELAY",Tokens[1])==0) {
+        if (count==3) {
+         dir=atoi(Tokens[2]);
+         if (dir<1) com.Repeat=1;
+         else if (dir>255) com.Repeat=255;
+         else com.Repeat=dir;
+         macros[Binding]->AddCommand(com);
         }
-       }
-      } else {
-       if (count==3) {
-        dir=atoi(Tokens[2]);
-        if (dir<1) dir=1;
-        if (dir>1000) dir=1000;
-       } else dir=1;
-       count=MatchBindingName(Tokens[1]);
-       if (count==0) {
-        MatchMacroName(Tokens[1]);
-        if (count!=KEY_BIND) count|=KEY_EVENTFLAG;
-        else count=0;
-       }
-       if (count) AddCommandToMacro(Binding,count|(dir<<19));
-      }
-     }
-    } else {
-     if (strcmp("BIND",Tokens[0])==0) {
-      Binding=MatchBindingName(Tokens[1]);
-      if (Binding) {
-       BindType=0;
-       if ((count==3)&&(*Tokens[2])) ChangeBindingName(Binding,Tokens[2]);
-      } else {
+       } else {
+        if (count==3) {
+         dir=atoi(Tokens[2]);
+         if (dir>255) com.Repeat=255;
+         else com.Repeat=dir;
+        } else com.Repeat=1;
+        dir=MatchBindingName(Tokens[1]);
+        if (dir==-1) {
+         dir=MatchMacroName(Tokens[1]);
+         if (dir!=-1) {
+          com.flags=1;
+          com.Binding=dir;
+         } else com.Value=0;
+        } else com.Binding=dir;
+        if (com.Value) macros[Binding]->AddCommand(com);
+       } //else macro command
+      } //match macro
+     } //in binding
+    } else if (strcmp("BIND",Tokens[0])==0) {
+     Binding=MatchBindingName(Tokens[1]);
+     if (Binding!=-1) {
+      BindType=0;
+      if (!bindings[Binding]) bindings[Binding]=new keybindingst(Binding);
+      if ((count==3)&&(*Tokens[2])) bindings[Binding]->ChangeDisplayName(Tokens[2]);
+     } else {
+      Binding=MatchMacroName(Tokens[1]);
+      if (Binding!=-1) {
        BindType=1;
+       int i=Binding-macros.size();
+       while (i>0) {
+        AddMacro();
+        --i;
+       }
        if (count==3) AddMacro(Tokens[2]);
        else AddMacro();
       }
@@ -1891,9 +1865,13 @@ void interfacekeyst::Load(const char* filename) {
   } //while
   fseed.close();
  }
- if (bindings[INTERFACEKEY_OPTIONS]!=0)
- bindings[INTERFACEKEY_OPTIONS]->keys.push_back(INTERFACEEVENT_QUIT);
- else bindings[INTERFACEKEY_OPTIONS]= new keybindingst(INTERFACEEVENT_QUIT);
+ if (!bindings[INTERFACEKEY_OPTIONS])
+  bindings[INTERFACEKEY_OPTIONS]= new keybindingst(INTERFACEKEY_OPTIONS);
+ KeyUnion key;
+ key.symbol=INTERFACEEVENT_QUIT;
+ key.flags=KEY_EVENTFLAG;
+ key.mods=0;
+ bindings[INTERFACEKEY_OPTIONS]->AddKey(key);
 }
 
 void interfacekeyst::Save(const char* filename) {
@@ -1905,51 +1883,51 @@ void interfacekeyst::Save(const char* filename) {
   while (binding<count) {
    if (binding<INTERFACEKEYNUM) Bind=bindings[binding];
    else Bind=macros[binding-INTERFACEKEYNUM];
-   int keys;
-   int coms;
-   const char* display;
    if (Bind) {
-    keys=Bind->keys.size();
-    coms=Bind->coms.size();
-    display=Bind->displayname.c_str();
+    int keys=Bind->GetKeyCount();
+    int coms=Bind->GetComCount();
     char savekey[128];
     //have some data for this one
     if (binding>=INTERFACEKEYNUM) {
-     sprintf(savekey,"%i:",binding-INTERFACEKEYNUM);
+     sprintf(savekey,"%i",binding-INTERFACEKEYNUM);
      fseed<<"[BIND:MACRO"<<savekey;
     } else fseed<<"[BIND:"<<InterfaceNames[binding].token;
-    fseed<<display<<']'<<std::endl;
+    if (*(Bind->displayname.c_str())) fseed<<':'<<Bind->displayname<<']'<<std::endl;
+    else fseed<<']'<<std::endl;
     //bound keys next
-    int i=0;
-    while (i<keys) {
-     //events drop back quickly and return the original pointer
-     if (ConvertKeyToSave(savekey,Bind->keys[i])!=savekey)
-      fseed<<"[KEY:"<<savekey<<']'<<std::endl;
-     ++i;
+    if (keys) {
+     int i=0;
+     KeyUnion* key=Bind->GetKeyArray();
+     do {
+      //events drop back quickly and return the original pointer
+      if (ConvertKeyToSave(savekey,*key)!=savekey) {
+       if (key->flags&KEY_UNICODEFLAG) fseed<<"[KEY:";
+       else fseed<<"[SYM:";
+       fseed<<savekey<<']'<<std::endl;
+      }
+      ++i;
+      ++key;
+     } while (i<keys);
     }
     //now the macro data
-    i=0;
-    while (i<coms) {
-     fseed<<"[MACRO:";
-      int j=Bind->coms[i];
-      int k=j&KEY_MACRODELAY;
-     //this usage of the delay is actually get full key and flags
-     if (k>INTERFACEKEYNUM) {
-      //don't have to check for events, the user can't input them
-      if (k==KEY_MACRODELAY) {
-       sprintf(savekey,":%i]",j>>19);
-       fseed<<"DELAY"<<savekey<<std::endl;
-      } else {
-       sprintf(savekey,"%i",k&~KEY_EVENTFLAG);
+    if (coms) {
+     int i=0;
+     MacroCommand* com=Bind->GetComArray();
+     do {
+      fseed<<"[MACRO:";
+      if (com->flags) { //only flag so far is macro/keybinding
+       sprintf(savekey,"%i",com->Binding);
        fseed<<"MACRO"<<savekey;
-       sprintf(savekey,":%i]",j>>19);
+       sprintf(savekey,":%i]",com->Repeat);
        fseed<<savekey<<std::endl;
+      } else {
+       sprintf(savekey,":%i]",com->Repeat);
+       if (com->Binding) fseed<<InterfaceNames[com->Binding].token<<savekey<<std::endl;
+       else fseed<<"DELAY"<<savekey<<std::endl;
       }
-     } else {
-      sprintf(savekey,":%i]",j>>19);
-      fseed<<InterfaceNames[k].token<<savekey<<std::endl;
-     }
-     ++i;
+      ++i;
+      ++com;
+     } while (i<coms);
     }
    } //if have data
    ++binding;
@@ -1958,24 +1936,100 @@ void interfacekeyst::Save(const char* filename) {
  } //if isopen
 }
 
+MacroResult macrostackst::DoMacro(unsigned int now) {
+ MacroResult Res;
+ Res.Value=0;
+ if ((now<overflow)&&(now>=nextproc)) {
+  //do macro
+  repeat++;
+  if ((int)curCom.Repeat>=repeat) {
+   //same command again
+   nextproc=now+init.input.macro_time;
+   if (nextproc<now) overflow=now-1;
+   else overflow=0xFFFFFFFF;
+   Res.bind=curCom.Binding;
+   if (!curCom.flags) {
+    Res.action=MACROACTION_EXECUTE;
+    return Res;
+   }
+   //else got another macro
+   if (curCom.Binding!=macroID) {
+    Res.action=MACROACTION_NEW;
+   } else { //same macro, reset to start
+    position=0;
+    repeat=0;
+    Res.action=MACROACTION_RECALL;
+   }
+   return Res;
+  }
+  if (position==comCount) {
+   //hit the end jump up a level on the macro stack
+   Res.action=MACROACTION_DONE;
+   return Res;
+  }
+  curCom.Value=coms[position].Value;
+  if (!curCom.flags) { //binding or delay
+   if (curCom.Binding) { //binding
+    Res.bind=curCom.Binding;
+    Res.action=MACROACTION_EXECUTE;
+    nextproc=now+init.input.macro_time;
+    if (nextproc<now) overflow=now-1;
+    else overflow=0xFFFFFFFF;
+    repeat=1;
+    position++;
+   } else { //delay
+    nextproc=now+curCom.Repeat;
+    if (nextproc<now) overflow=now-1;
+    else overflow=0xFFFFFFFF;
+    //time set, max repeat so it will move on
+    repeat=255;
+    Res.action=MACROACTION_WAIT;
+   }
+   return Res;
+  } //else got another macro
+  Res.bind=curCom.Binding;
+  if (curCom.Binding!=macroID) {
+   repeat=1;
+   position++;
+   Res.action=MACROACTION_NEW;
+  } else { //same macro, reset to start
+   position=0;
+   repeat=0;
+   Res.action=MACROACTION_RECALL;
+  }
+ } else { //in macro but it is waiting
+  Res.action=MACROACTION_WAIT;
+ }
+ return Res;
+}
+
 // Work functions
-int interfacekeyst::keynext() {
- //first check for an active macro
- int count=macrostack.size();
- int enCount=enabler.inputcount();
- enabler_inputst* input;
- if (count) {
-  //we have a macro, have to check for the macro break binding before we go with it
-  //go from latest to oldest
-  int i=enCount;
-  currentBinding=0;
-  while (i) {
-   --i;
-   input=enabler.getinput(i);
-   input->processed=0xFFFFFFFF;
-   input->next_process=enabler.now-1;
-   currentKey=input->key;
-   if (keypress(INTERFACEKEY_MACRO_BREAK)) {
+int interfacekeyst::RunMacros(int count) {
+ macrostackst* Cur=macrostack[count];
+ do {
+  MacroResult Res=Cur->DoMacro(enabler.now);
+  switch (Res.action) {
+   case MACROACTION_WAIT: return 0;
+   case MACROACTION_EXECUTE: return currentBinding=Res.bind;
+   case MACROACTION_NEW:
+    RunningMacro=1;
+    Cur=new macrostackst(&(macros[Res.bind]->coms[0]),Res.bind,macros[Res.bind]->coms.size());
+    macrostack.push_back(Cur);
+    count++;
+   break;
+   case MACROACTION_DONE:
+    macrostack.pop_back();
+    count--;
+    if (count>=0) Cur=macrostack[count];
+    else {
+     RunningMacro=0;
+     return -1;
+    }
+   break;
+   case MACROACTION_RECALL: break;
+   default: {
+    errorlog_string("Macro attempted illegal action");
+    count=macrostack.size();
     while (count) {
      --count;
      delete macrostack[count];
@@ -1984,155 +2038,186 @@ int interfacekeyst::keynext() {
     return 0;
    }
   }
-  count--;
-  while (count>-1) { //still doing the macro
-   macrostackst* Cur=macrostack[count];
-   if ((enabler.now<Cur->overflow)&&(enabler.now>=Cur->nextproc)) {
-    //do macro
-    keybindingst* Bind;
-    i=Cur->binding;
-    if (i&KEY_EVENTFLAG) Bind=macros[i&~KEY_EVENTFLAG];
-    else Bind=bindings[i];
-    i=Bind->coms.size();
-    if (Cur->position==i) {
-     //this check covers delay not checking
-     delete Cur;
-     macrostack.pop_back();
-     count--;
-     continue;
+ } while (count>=0); //still doing the macro
+}
+
+int interfacekeyst::keynext() {
+ //first check for an active macro
+ int count=macrostack.size();
+ int enCount=enabler.inputcount();
+ InputRec* input;
+ if (count) {
+  //running macro, have to check for the macro break binding before we go with it
+  //go from latest to oldest
+  int i=enCount;
+  currentBinding=0;
+  currentInput=0;
+  while (i) {
+   --i;
+   input=enabler.getinput(i);
+   currentKey.Value=input->key.Value;
+   currentAlt.Value=input->key2.Value;
+   if (keypress(INTERFACEKEY_MACRO_BREAK)) {
+    currentKey.flags=0xFF;
+    currentAlt.flags=0xFF;
+    currentBinding=0;
+    RunningMacro=0;
+    while (count) {
+     --count;
+     delete macrostack[count];
     }
-    int Key=Bind->coms[Cur->position];
-    int Rep=Key>>19;
-    Cur->repeat++;
-    if (Rep>=Cur->repeat) {
-     //same key again
-     Cur->nextproc=enabler.now+init.input.macro_time;
-     if (Cur->nextproc<enabler.now) Cur->overflow=enabler.now-1;
-     else Cur->overflow=0xFFFFFFFF;
-     if ((Key&KEY_EVENTFLAG)==0) {
-      currentBinding=Key&KEY_BASEVALUE;
-      currentKey=KEY_BIND;
-      return currentBinding;
-     }
-     //got another macro
-     Key&=KEY_MACRODELAY;
-     if (Key!=Cur->binding) {
-      count++;
-      macrostack.push_back(new macrostackst(Key));
-     } else { //same macro, reset to start
-      Cur->position=0; 
-      Cur->repeat=0;
-     }
-     continue;
-    }
-    Cur->position++;
-    if (i>Cur->position) {
-     Key=Bind->coms[Cur->position];
-     if ((Key&KEY_MACRODELAY)==KEY_MACRODELAY) {
-      Rep=Key>>19;
-      Cur->nextproc=enabler.now+Rep;
-      if (Cur->nextproc<enabler.now) Cur->overflow=enabler.now-1;
-      else Cur->overflow=0xFFFFFFFF;
-      //time set, put the time value as the repeat so it will move on
-      Cur->repeat=Rep;
-      return 0;
-     }
-     Cur->repeat=1;
-     if ((Key&KEY_EVENTFLAG)==0) {
-      currentBinding=Key&KEY_BASEVALUE;
-      currentKey=KEY_BIND;
-      return currentBinding;
-     }
-     Key&=KEY_MACRODELAY;
-     if (Key!=Cur->binding) {
-      count++;
-      macrostack.push_back(new macrostackst(Key));
-     } else {
-      Cur->position=0;
-      Cur->repeat=0;
-     }
-     continue;
-    } else {
-     //hit the end jump up a level on the macro stack
-     delete Cur;
-     macrostack.pop_back();
-    }
-   } else return 0; //in macro but it is waiting
-   count--;
-  } //while count of macro stack
-  //got here means the stack has become empty
-  return 0;
+    macrostack.clear();
+    enabler.clear_input();
+    return 0;
+   }
+  }
+  if (enCount) {
+   enabler.clear_input();
+   enCount=0;
+  }
+  if (count) {
+   currentKey.flags=0xFF;
+   currentAlt.flags=0xFF;
+   count=RunMacros(--count);
+   if (count>=0) return count;
+   else return 0;
+  } //if macrostack still has something
  } //if count of macro stack
  //check for key press
  int i=0;
- while (i<enCount) {
-  input=enabler.getinput(i);
-  if (input->processed==0) break;
-  if ((enabler.now<input->processed)&&(enabler.now>input->next_process)) break;
-  ++i;
- }
- if (i<enCount) {
+ if (enCount) input=enabler.currentinput(enabler.now);
+ else return 0;
+ if (input) {
   currentInput=input;
-  currentKey=input->key;
-  altKey=input->uni;
-  if (altKey) { //unicode value is set, enabler_sdl pulls down to <128
-   if ((currentKey&KEY_BASEVALUE)!=altKey) altKey=(currentKey&KEY_FLAGS_NOSHIFT)|altKey;
-   else altKey=KEY_BIND;
-   //strip the shift flag and use the value sdl converted for us
-   //covers everything in the english keyboard at least
-  } else altKey=KEY_BIND;
+  currentKey.Value=input->key.Value;
+  currentAlt.Value=input->key2.Value;
   //check to see if this is a macro
   i=0;
   count=macros.size();
   while (i<count) {
-   keybindingst* Bind=macros[i];
-   enCount=Bind->keys.size();
-   int j=0;
-   while (j<enCount) {
-    if ((currentKey==Bind->keys[j])||(altKey==Bind->keys[j])) {
-     macrostack.push_back(new macrostackst(i|KEY_EVENTFLAG));
-     currentBinding=INTERFACEKEYNUM;
-     //just lock it out, and let the next frame start running the macro
-     return 0;
-    }
-    ++j;
-   }
+   macrobindingst* Bind=macros[i];
+   int keyCount=Bind->keys.size();
+   switch (keyCount) {
+    case 0: break; //no keys, no check
+    case 1:
+     if ((Bind->keys[0].Value==currentKey.Value)||(Bind->keys[0].Value==currentAlt.Value)) {
+      macrostack.push_back(new macrostackst(&(Bind->coms[0]),i,Bind->coms.size()));
+      //safe to figure this is the first in the stack
+      keydone();
+      currentKey.flags=0xFF;
+      currentAlt.flags=0xFF;
+      int j;
+      if ((j=RunMacros(0))>=0) { //macro took it
+       RunningMacro=1;
+       return j;
+      } else return 0;
+     }
+    break;
+    default:
+     if (!(Bind->KeyAccum&currentKey.Value)) {
+      //don't have any bits that aren't amongst the keys do loop checking
+      int j=0;
+      do {
+       if (currentKey.Value==Bind->keys[j].Value) {
+        macrostack.push_back(new macrostackst(&(Bind->coms[0]),i,Bind->coms.size()));
+        keydone();
+        currentKey.flags=0xFF;
+        currentAlt.flags=0xFF;
+        if ((j=RunMacros(0))>=0) {
+         RunningMacro=1;
+         return j;
+        } else return 0;
+       }
+       ++j;
+      } while (j<keyCount);
+     }
+     if (!(Bind->KeyAccum&currentAlt.Value)) {
+      int j=0;
+      do {
+       if (currentAlt.Value==Bind->keys[j].Value) {
+        macrostack.push_back(new macrostackst(&(Bind->coms[0]),i,Bind->coms.size()));
+        keydone();
+        currentKey.flags=0xFF;
+        currentAlt.flags=0xFF;
+        if ((j=RunMacros(0))>=0) {
+         RunningMacro=1;
+         return j;
+        } else return 0;
+       }
+       ++j;
+      } while (j<keyCount);
+     }
+    break;
+   } //switch keycount
    ++i;
-  }
-  return INTERFACEKEYNUM;
- }
+  } //while macros
+  return currentKey.Value;
+ } //if had a key waiting
  return 0;
 }
 
 int interfacekeyst::keypress(int KeyNo) {
- if (currentKey==0) return 0;
  if (currentBinding) {
   if (currentBinding!=KeyNo) return 0;
   else return KeyNo;
  }
- if (KeyNo==KEY_BIND) {
-  if ((currentKey&KEY_EVENTFLAG)==0) {
-   //this is for the key bindings view so it can claim keypresses away from everything
-   currentBinding=KeyNo;
-   if (altKey==KEY_BIND) return currentKey;
-   else return altKey; //make the binding come back with the alternate
-  } else return 0;
+ if (currentKey.flags==0xFF) return 0;
+ //this is for the key bindings view so it can claim keypresses away from everything
+ switch (KeyNo) {
+  case KEY_BIND_SCAN:
+   if (!(currentKey.flags&KEY_EVENTFLAG)) {
+    currentBinding=KEY_BIND_SCAN;
+    return currentKey.Value;
+   } else return 0;
+  case KEY_BIND_UNICODE:
+   if (currentAlt.Value) {
+    currentBinding=KEY_BIND_UNICODE;
+    return currentAlt.Value;
+   } else return 0;
+  default: break;
  }
+ if (KeyNo>INTERFACEKEYNUM) return 0;
  keybindingst* Bind=bindings[KeyNo];
  if (Bind==0) return 0;
- int i=Bind->keys.size();
- while (i) {
-  --i;
-  if ((Bind->keys[i]==currentKey)||(Bind->keys[i]==altKey)) {
-   currentBinding=KeyNo;
-   return KeyNo;
-  }
- }
- return 0;
+ int keyCount=Bind->keys.size();
+ switch (keyCount) {
+  case 0: return 0;
+  case 1:
+   if ((Bind->keys[0].Value==currentKey.Value)||(Bind->keys[0].Value==currentAlt.Value)) {
+    currentKey.flags=0xFF;
+    currentAlt.flags=0xFF;
+    return currentBinding=KeyNo;
+   }
+  return 0;
+  default:
+   if (!(Bind->KeyAccum&currentKey.Value)) {
+    //don't have any bits that aren't amongst the keys do loop checking
+    int j=0;
+    do {
+     if (currentKey.Value==Bind->keys[j].Value) {
+      currentKey.flags=0xFF;
+      currentAlt.flags=0xFF;
+      return currentBinding=KeyNo;
+     }
+     ++j;
+    } while (j<keyCount);
+   }
+   if (!(Bind->KeyAccum&currentAlt.Value)) {
+    int j=0;
+    do {
+     if (currentAlt.Value==Bind->keys[j].Value) {
+      currentKey.flags=0xFF;
+      currentAlt.flags=0xFF;
+      return currentBinding=KeyNo;
+     }
+     ++j;
+    } while (j<keyCount);
+   }
+  return 0;
+ } //switch keycount
 }
 
 int interfacekeyst::pressedList(const int* KeyList, int ListSize) {
- if (currentKey==0) return 0;
  int i=0;
  if (currentBinding) {
   while (i<ListSize) {
@@ -2141,32 +2226,69 @@ int interfacekeyst::pressedList(const int* KeyList, int ListSize) {
   }
   return 0;
  }
+ if (currentKey.flags==0xFF) return 0;
+ keybindingst* Bind;
  while (i<ListSize) {
-  keybindingst* Bind=bindings[KeyList[i]];
+  if (KeyList[i]<INTERFACEKEYNUM) {
+   if (KeyList[i]>0) Bind=bindings[KeyList[i]];
+   else Bind=0;
+  } else Bind=0;
   if (Bind) {
-    int j=Bind->keys.size();
-   while (j) {
-    --j;
-    if ((Bind->keys[j]==currentKey)||(Bind->keys[j]==altKey)) {
-     currentBinding=KeyList[i];
-     return currentBinding;
-    }
-   }
-  }
+   int keyCount=Bind->keys.size();
+   switch (keyCount) {
+    case 0: break;
+    case 1:
+     if ((Bind->keys[0].Value==currentKey.Value)||(Bind->keys[0].Value==currentAlt.Value)) {
+      currentKey.flags=0xFF;
+      currentAlt.flags=0xFF;
+      return currentBinding=KeyList[i];
+     }
+    break;
+    default:
+     if (!(Bind->KeyAccum&currentKey.Value)) {
+      int j=0;
+      do {
+       if (currentKey.Value==Bind->keys[j].Value) {
+        currentKey.flags=0xFF;
+        currentAlt.flags=0xFF;
+        return currentBinding=KeyList[i];
+       }
+       ++j;
+      } while (j<keyCount);
+     }
+     if (!(Bind->KeyAccum&currentAlt.Value)) {
+      int j=0;
+      do {
+       if (currentAlt.Value==Bind->keys[j].Value) {
+        currentKey.flags=0xFF;
+        currentAlt.flags=0xFF;
+        return currentBinding=KeyList[i];
+       }
+       ++j;
+      } while (j<keyCount);
+     }
+   } //switch keycount
+  } //if Bind
   ++i;
  }
  return 0;
 }
 
 void interfacekeyst::keydone() {
- if (currentInput==0) return;
+ if (currentInput==0) {
+  currentBinding=0; //macro may have set the binding
+  return;
+ }
  int i=init.input.repeat_time;
- enabler_inputst* Input=(enabler_inputst*)currentInput;
+ InputRec* Input=currentInput;
+ currentInput=0;
  if (Input->processed) Input->next_process=enabler.now+i; //already done once
  else {
   if (currentBinding==0) { //it was looked at and the view didn't want it
-   Input->processed=Input->next_process=enabler.now-1;
+   Input->processed=1;
+   Input->next_process=0xFFFFFFFF;
    //process it again never
+   currentBinding=0;
    return;
   }
   i=init.input.hold_time;
@@ -2177,8 +2299,14 @@ void interfacekeyst::keydone() {
  if (Input->next_process<enabler.now) Input->processed=enabler.now-1;
  else Input->processed=0xFFFFFFFF;
  currentBinding=0;
- currentKey=0;
- currentInput=0;
+}
+
+keybindingst* interfacekeyst::GetBinding(int Binding) {
+ if (Binding>=INTERFACEKEYNUM) {
+  int i=Binding-INTERFACEKEYNUM;
+  if (i<macros.size()) return macros[i];
+  return 0;
+ } else return bindings[Binding];
 }
 
 const int FTabKey[]={INTERFACEKEY_CHANGETAB};
@@ -2205,9 +2333,30 @@ void viewscreen_keybindingsst::SetScrollKeys(ScrollListWidget* List) {
  List->PDKeySize=2;
 }
 
+void viewscreen_keybindingsst::UpdateBinding() {
+ if (DoBind) {
+  curBind=gview.GetBinding(DoBind);
+  if (curBind) {
+   curKeys=curBind->GetKeyArray();
+   if (curKeys) Keys->SetListCount(curBind->GetKeyCount()+2);
+   else Keys->SetListCount(2);
+   curComs=curBind->GetComArray();
+  } else {
+   curKeys=0;
+   Keys->SetListCount(2);
+   curComs=0;
+  }
+ } else {
+  curBind=0;
+  curKeys=0;
+  curComs=0;
+  Keys->SetListCount(0); //selector is at New Macro
+ }
+}
+
 viewscreen_keybindingsst::viewscreen_keybindingsst() {
  DoBind=BindCats[0].ofset;
- Mode=0;
+ OnSetting=Mode=0;
  short x=init.display.grid_x-1;
  short y=init.display.grid_y-2;
  Tabs=new TabBarWidget(1,x,1,1);
@@ -2226,10 +2375,10 @@ viewscreen_keybindingsst::viewscreen_keybindingsst() {
  Keys=new ScrollListWidget(x*2/3+1,x,3,y);
  Keys->ListSrc=this;
  SetScrollKeys(Keys);
- Keys->SetListCount(gview.GetBindingKeys(DoBind)+1);
  Commands=new ScrollListWidget(x>>1,x,3,y);
  Commands->ListSrc=this;
  SetScrollKeys(Commands);
+ UpdateBinding();
 }
 
 viewscreen_keybindingsst::~viewscreen_keybindingsst() {
@@ -2272,30 +2421,33 @@ void viewscreen_keybindingsst::input() {
  //Mode 3 Adding a command to the macro, unlocks bindings for user selection
  int i;
  if (Mode==1) {
-  int keyval=gview.keypress(KEY_BIND);
-  if (keyval) {
-   if (Tabs->selected==BINDCATSNUM-1) i=gview.AddKeyToMacro(DoBind,keyval);
-   else i=gview.AddKeyToBinding(DoBind,keyval);
-   Keys->SetListCount(i+1);
+  KeyUnion keyval;
+  if (Keys->selected==0) keyval.Value=gview.keypress(KEY_BIND_UNICODE);
+  else keyval.Value=gview.keypress(KEY_BIND_SCAN);
+  if (keyval.symbol) {
+   i=curBind->AddKey(keyval);
+   UpdateBinding(); //have to call this incase of realloc of the key vector
+   Keys->SetListCount(i+2);
    Mode=0;
   }
   return;
  }
  if (Tabs->input()) {
+  OnSetting=0;
   Bindings->HasFocus=1;
   Bindings->Jump(0);
   if (Tabs->selected==BINDCATSNUM-1) { //macros
    if (!Mode) {
     DoBind=0;
-    Keys->SetListCount(0); //selector is at New Macro
+    UpdateBinding();
    }
-   int i=gview.macros.size();
+   int i=gview.GetMacroCount();
    Bindings->SetListCount(i+1);
   } else {
    Bindings->SetListCount(BindCats[Tabs->selected].count);
    if (!Mode) {
     DoBind=BindCats[Tabs->selected].ofset;
-    Keys->SetListCount(gview.GetBindingKeys(DoBind)+1);
+    UpdateBinding();
    }
   }
   if (!Mode) {
@@ -2305,24 +2457,26 @@ void viewscreen_keybindingsst::input() {
   return;
  }
  if (Bindings->input()) {
+  OnSetting=0;
   if (!Mode) {
    DoBind=Bindings->selected;
    if (Tabs->selected==BINDCATSNUM-1) { //macros
-    if (DoBind) {
-     DoBind--;
-     Keys->SetListCount(gview.GetMacroKeys(DoBind)+1);
-    } else Keys->SetListCount(0);
-   } else {
-    DoBind+=BindCats[Tabs->selected].ofset;
-    Keys->SetListCount(gview.GetBindingKeys(DoBind)+1);
-   }
+    if (DoBind) DoBind+=BindCats[Tabs->selected].ofset-1;
+   } else DoBind+=BindCats[Tabs->selected].ofset;
+   UpdateBinding();
    Keys->Jump(0);
   }
   return;
  }
  if (Mode==0) { //better to check mode then make calls we don't have to
-  if (Keys->input()) return;
- } else if (Commands->input()) return;
+  if (Keys->input()) {
+   OnSetting=(Keys->selected>1);
+   return;
+  }
+ } else if (Commands->input()) {
+  OnSetting=Commands->selected;
+  return;
+ }
  int Pressed=gview.pressedList(KeyList,sizeof(KeyList)/sizeof(KeyList[0]));
  switch (Pressed) {
   case INTERFACEKEY_LEAVESCREEN:
@@ -2337,7 +2491,7 @@ void viewscreen_keybindingsst::input() {
      Tabs->HasFocus=0;
      Tabs->Jump(BINDCATSNUM-1);
      Bindings->HasFocus=0;
-     Bindings->SetListCount(gview.macros.size()+1);
+     Bindings->SetListCount(gview.GetMacroCount()+1);
      Bindings->Jump(DoBind+1);
      Commands->HasFocus=1;
     return;
@@ -2361,7 +2515,7 @@ void viewscreen_keybindingsst::input() {
    Bindings->SetListCount(BindCats[0].count);
    Keys->HasFocus=0;
    Keys->Jump(0);
-   Keys->SetListCount(gview.GetBindingKeys(DoBind)+1);
+   UpdateBinding();
   break;
   case INTERFACEKEY_STANDARDSCROLL_LEFT:
    if (!Mode) {
@@ -2379,54 +2533,54 @@ void viewscreen_keybindingsst::input() {
   break;
   case INTERFACEKEY_SECONDSCROLL_UP:
    if ((Mode==2)&&(Commands->selected>0))
-    gview.AdjustMacroRepeat(DoBind, Commands->selected-1, -1);
+    ((macrobindingst*)curBind)->AdjustRepeat(Commands->selected-1, -1);
   break;
   case INTERFACEKEY_SECONDSCROLL_DOWN:
    if ((Mode==2)&&(Commands->selected>0))
-    gview.AdjustMacroRepeat(DoBind, Commands->selected-1, 1);
+    ((macrobindingst*)curBind)->AdjustRepeat(Commands->selected-1, 1);
   break;
   case INTERFACEKEY_SECONDSCROLL_PAGEUP:
    if ((Mode==2)&&(Commands->selected>0))
-    gview.AdjustMacroRepeat(DoBind, Commands->selected-1, -10);
+    ((macrobindingst*)curBind)->AdjustRepeat(Commands->selected-1, -10);
   break;
   case INTERFACEKEY_SECONDSCROLL_PAGEDOWN:
    if ((Mode==2)&&(Commands->selected>0))
-    gview.AdjustMacroRepeat(DoBind, Commands->selected-1, 10);
+    ((macrobindingst*)curBind)->AdjustRepeat(Commands->selected-1, 10);
   break;
   case INTERFACEKEY_SELECT:
    switch (Mode) {
     case 0: //normal binding view
      if (Keys->HasFocus) {
       i=Keys->selected;
-      if (i) {
-       --i;
-       if (Tabs->selected==7) gview.RemoveKeyPosFromMacro(DoBind,i);
-       else gview.RemoveKeyPosFromBinding(DoBind,i);
+      if (i>1) {
+       i-=2;
+       curBind->RemoveKeyPos(i);
        Keys->SetListCount(-1);
       } else Mode=1; //add key
       return;
      }
      if (Tabs->selected==BINDCATSNUM-1) { //macros
-      DoBind=Bindings->selected-1;
       Mode=2;
       Bindings->HasFocus=0;
       Commands->HasFocus=1;
       Tabs->HasFocus=0;
-      if (DoBind>=0) Commands->SetListCount(gview.GetMacroComs(DoBind)+1);
-      else {
-       DoBind=gview.AddMacro();
-       Bindings->SetListCount(DoBind+2); //+1 for the Delay, +1 count
-       Commands->SetListCount(1);
+      if (!Bindings->selected) {
+       gview.AddMacro();
+       DoBind=gview.GetMacroCount();
+       Bindings->SetListCount(DoBind+1); //+1 for AddMacro
+       Bindings->Jump(DoBind+1);
+       DoBind+=INTERFACEKEYNUM-1;
+       UpdateBinding();
       }
+      if (curComs) Commands->SetListCount(curBind->GetComCount()+1);
+      else Commands->SetListCount(1);
       Commands->Jump(0);
-     } else {
-      //rename binding
      }
     break;
     case 2:
      i=Commands->selected;
      if (i) {
-      gview.RemoveCommandFromMacro(DoBind,i-1);
+      ((macrobindingst*)curBind)->RemoveCommand(i-1);
       Commands->SetListCount(-1);
      } else { //add command to macro, set the bindings list to the beginning
       Mode=3;
@@ -2438,25 +2592,32 @@ void viewscreen_keybindingsst::input() {
       Commands->HasFocus=0;
      }
     break;
-    case 3:
-     i=Bindings->selected;
+    case 3: { //add command mode
      Mode=2;
+     i=Bindings->selected;
      Bindings->HasFocus=0;
-     Bindings->SetListCount(gview.macros.size()+1);
+     Bindings->SetListCount(gview.GetMacroCount()+1);
      Bindings->Jump(DoBind+1);
      Commands->HasFocus=1;
      Commands->SetListCount(Commands->GetCount()+1); //adding a command will always succeed
-     switch (Tabs->selected) {
-      case BINDCATSNUM-1: //macro
-       if (i) gview.AddCommandToMacro(DoBind,(i-1)|KEY_EVENTFLAG);
-       else gview.AddCommandToMacro(DoBind,KEY_MACRODELAY+(100<<19));
-       return;
-      default: i+=BindCats[Tabs->selected].ofset;
+     MacroCommand com;
+     com.Value=0;
+     com.Repeat=1;
+     if (Tabs->selected==BINDCATSNUM-1) { //macro
+      if (i) {
+       com.flags=1; //macro command
+       --i;
+      } else com.Repeat=100; //delay command
+     } else {
+      i+=BindCats[Tabs->selected].ofset;
      }
+     com.Binding=i;
      Tabs->HasFocus=0;
      Tabs->Jump(BINDCATSNUM-1);
-     gview.AddCommandToMacro(DoBind,i);
-    break;
+     ((macrobindingst*)curBind)->AddCommand(com);
+     UpdateBinding(); //pick up any reallocs
+     break;
+    }
    } //switch mode
   break; //case select
  } //switch key press
@@ -2465,7 +2626,6 @@ void viewscreen_keybindingsst::input() {
 typedef struct {
  int cat;
  int which;
- svector<unsigned int> *data;
 } BindingSelector;
 
 void viewscreen_keybindingsst::render() {
@@ -2489,67 +2649,49 @@ void viewscreen_keybindingsst::render() {
  }
  //draw panels
  Tabs->render(0);
- gps.changecolor(4,0,1);
- gps.locate(init.display.grid_y-2,40);
- switch (Mode) {
-  case 1: //bind key
-   gps.addst("Press key to bind to ");
-   if (P.cat==BINDCATSNUM-1) gps.addst(gview.GetMacroDisplayName(DoBind, text));
-   else {
-    P.which+=BindCats[P.cat].ofset;
-    gps.addst(gview.GetBindingDisplayName(P.which, text));
-   }
-  break;
-//  case 2: //display macro commands
-//nothing special for this mode
-  case 3: //bind command to macro
-   //gps.addst("Select command to add to ");
-   //gps.addst(gview.GetMacroDisplayName(DoBind, text));
-  break;
- }
- if (Mode==2&&(Commands->selected>0)) {
-	 gps.changecolor(7,0,1);
+ if (Mode==1) { //bind key
+  gps.changecolor(4,0,1);
   gps.locate(init.display.grid_y-2,40);
-  gview.print_interface_token(INTERFACEKEY_SECONDSCROLL_PAGEUP);
-  gview.print_interface_token(INTERFACEKEY_SECONDSCROLL_PAGEDOWN);
-  gview.print_interface_token(INTERFACEKEY_SECONDSCROLL_UP);
-  gview.print_interface_token(INTERFACEKEY_SECONDSCROLL_DOWN);
-  gps.addst(" - Adjust count");
+  gps.addst("Press key to bind to ");
+  gps.addst(curBind->GetDisplayName(text));
+ } else {
+  gps.changecolor(7,0,1);
+  if (!Bindings->HasFocus) {
+   if (Mode==2) gps.locate(init.display.grid_y-2,20);
+   else gps.locate(init.display.grid_y-2,40);
+   gview.print_interface_token(INTERFACEKEY_SELECT);
+   if (OnSetting) {
+    gps.addst(" - Remove");
+    if (Mode==2) {
+     gps.locate(init.display.grid_y-2,40);
+     gview.print_interface_token(INTERFACEKEY_SECONDSCROLL_PAGEUP);
+     gview.print_interface_token(INTERFACEKEY_SECONDSCROLL_PAGEDOWN);
+     gview.print_interface_token(INTERFACEKEY_SECONDSCROLL_UP);
+     gview.print_interface_token(INTERFACEKEY_SECONDSCROLL_DOWN);
+     gps.addst(" - Adjust count");
+    }
+   } else gps.addst(" - Select");
+  } else {
+   if (Tabs->selected==BINDCATSNUM-1) {
+    gps.locate(init.display.grid_y-2,40);
+    gview.print_interface_token(INTERFACEKEY_SELECT);
+    if (Bindings->selected) gps.addst(" - Commands");
+    else gps.addst(" - Select");
+   }
+  }
+  if (Mode>1) {
+   gps.locate(init.display.grid_y-2,60);
+   gview.print_interface_token(INTERFACEKEY_LEAVESCREEN);
+   gps.addst(" - Done");
+  }
  }
- if (Mode>=2)
-	{
-	 gps.changecolor(7,0,1);
- if(Mode==3)gps.locate(init.display.grid_y-2,40);
-  else gps.locate(init.display.grid_y-2,20);
-  gview.print_interface_token(INTERFACEKEY_SELECT);
-  if (Mode==2&&(Commands->selected>0))gps.addst(" - Remove");
-  else gps.addst(" - Select");
-
-	 gps.changecolor(7,0,1);
-  gps.locate(init.display.grid_y-2,60);
-  gview.print_interface_token(INTERFACEKEY_LEAVESCREEN);
-  gps.addst(" - Done");
-	}
  P.which=0;
  Bindings->render(&P);
  P.which++;
- keybindingst* bind;
- if (Mode<2) {
-  if (P.cat==BINDCATSNUM-1)
-	{
-	if(DoBind>=0&&DoBind<gview.macros.size())bind=gview.macros[DoBind];
-	else bind=NULL;
-	}
-  else bind=gview.bindings[DoBind];
-  if (bind) P.data=&(bind->keys);
-  else P.data=0;
-  Keys->render(&P);
- } else { //mode 2 display commands, mode 3 add command
+ if (Mode<2) Keys->render(&P);
+ else { //mode 2 display commands, mode 3 add command
   P.which++;
   // P.cat available
-  bind=gview.macros[DoBind];
-  if (bind) P.data=&(bind->coms);
-  else P.data=0;
   Commands->render(&P);
  }
  gps.renewscreen();
@@ -2560,48 +2702,49 @@ const char* viewscreen_keybindingsst::ListItem
  BindingSelector* P=(BindingSelector*)Param;
  if (P) {
   switch (P->which) {
-   case 2: // Commands, P->data points to the coms svector
+   case 2: // Commands
     if (Index) {
-     unsigned int i=(*(P->data))[Index-1];
-     if ((i&KEY_MACRODELAY)!=KEY_MACRODELAY) {
-      if (i&KEY_EVENTFLAG)
-       gview.GetMacroDisplayName(i&KEY_BASEVALUE,Store);
-      else gview.GetBindingDisplayName(i&KEY_BASEVALUE,Store);
-      sprintf(strchr(Store,0),": %i",i>>19);
-     } else gview.ConvertKeyToDisplay(Store,i);
+     MacroCommand com;
+     com.Value=curComs[Index-1].Value;
+     if ((com.flags)||(com.Binding)) {//macro or binding
+      if (com.flags) com.Binding+=INTERFACEKEYNUM;
+      gview.GetBinding(com.Binding)->GetDisplayName(Store);
+//      curBind->GetDisplayName(Store);
+      sprintf(strchr(Store,0),": %i",com.Repeat);
+     } else sprintf(Store,"Delay: %i",com.Repeat);
      return Store;
     }
     return strcpy(Store,"Add Command");
    break;
-   case 1: // Keys, P->data points to the keys svector
-    if (Index) {
-     unsigned int i=(*(P->data))[Index-1];
-     if (i&KEY_EVENTFLAG) *Store=0;
-     else gview.ConvertKeyToDisplay(Store,i);
-    } else return strcpy(Store,"Add Key");
-    return Store;
+   case 1: // Keys
+    switch (Index) {
+     case 0: return strcpy(Store,"Add Unicode Key");
+     case 1: return strcpy(Store,"Add Scan Key");
+     default:
+      if (curKeys[Index-2].flags&KEY_UNICODEFLAG) strcpy(Store,"U: ");
+      else strcpy(Store,"S: ");
+      ConvertKeyToDisplay(Store+3,curKeys[Index-2]);
+     return Store;
+    }
    break;
    case 0: // Bindings
    default:
-    switch (P->cat) {
-     case BINDCATSNUM-1:
-      if (Mode<2) {
-       if (!Index) return strcpy(Store,"New Macro");
-       return gview.GetMacroDisplayName(--Index, Store);
-      } else {
-       if (!Index) return strcpy(Store,"");
-       return gview.GetMacroDisplayName(--Index, Store);
-      }
-     default: Index+=BindCats[P->cat].ofset;
+    if (P->cat==BINDCATSNUM-1) {
+     if (!Index) {
+      if (Mode==3) return strcpy(Store,"Delay 100ms");
+      else return strcpy(Store,"New Macro");
+     } else --Index;
     }
-    return gview.GetBindingDisplayName(Index, Store);
-   break;
-  }
+   return gview.GetBinding(BindCats[P->cat].ofset+Index)->GetDisplayName(Store);
+  } //switch param->which
  } else return BindCats[Index].name; //TabBar
 }
 
 //To Do
+//pare down the includes list
 //must be able to delete macros
 //add pressedRange for string entry
 //make binding view mouse enabled, clicks for select
-//seperate key repeat and key hold init options
+//put in the binding renaming
+
+//Bugs

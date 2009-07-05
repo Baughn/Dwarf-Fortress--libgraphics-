@@ -3,121 +3,164 @@
 
 #include "ViewBase.h"
 #include "svector.h"
+#include "enabler_input.h"
 
-struct keybindingst {
+#define KEY_BIND_UNICODE 0x10000
+#define KEY_BIND_SCAN 0x10001
+//the BIND is used to allow the keybindings view to intercept all keys
+
+char* ConvertKeyToDisplay(char* Str, KeyUnion Key);
+ //sets Str to display string for an SDL_Key with mods, returns pointer to end of string
+char* ConvertKeyToSave(char* Str, KeyUnion Key);
+ //sets Str to save string for an SDL_Key with mods, returns pointer to end of string
+void ConvertSaveToKey(char* Str, KeyUnion* Key);
+ //set flags byte of key before calling to indicate unicode or keysym limits
+
+typedef union {
+ struct {
+  unsigned __int16 Binding;
+  //key binding 0 used for macro delay
+  unsigned __int8 Repeat;
+  unsigned __int8 flags;
+  //Bit0: 0 key binding, 1 macro binding
+ };
+ unsigned __int32 Value;
+} MacroCommand;
+
+class keybindingst {
+ friend class interfacekeyst;
+ protected:
  string displayname;
- svector<unsigned int> keys;
- svector<unsigned int> coms;
- //bits 0 to 12 SDL_Key, macros store InterfaceKey values, event number when flagged
- //bit 13 event flag in keys, macro flag in coms
- //not permitted to be user bindable, see InterfaceEvents in enabler.h
- //bit 14 shift
- //bit 15 ctrl
- //bit 16 alt
- //bit 17 meta, SDL doesn't define these 2 as modifier keys but we do
- //bit 18 super
- //MACRODELAY indicates Delay in macro
- //bits 19-30 repeat count or delay value for macros, limit 1000
- //bit 31 reserved
- keybindingst(unsigned int key=0);
- ~keybindingst();
+ svector<KeyUnion> keys;
+ unsigned __int32 KeyAccum;
+ __int32 BindID;
+ public:
+ keybindingst(__int32 ID);
+ ~keybindingst() {keys.clear();}
+ void Clear();
+ int GetKeyCount();
+ //returns count of keys, excluding events
+ KeyUnion* GetKeyArray();
+ virtual int GetComCount() {return 0;}
+ virtual MacroCommand* GetComArray() {return 0;}
+ int AddKey(KeyUnion key);
+ //puts the key into the binding key list, maintaining events at the end of the list
+ //returns count of keys, excluding events
+ int RemoveKey(KeyUnion key);
+ //scans the binding/macro key list for matching key and removes it
+ int RemoveKeyPos(int pos);
+ //removes the key at pos from binding/macro key list
+ int GetKeyDisplay(char* Display, int Limit=3);
+ //sets Display to ',' seperated list of keys, returns length of string
+ //Limit 0 produces only the first key, >0 causes ... to be appeneded when there
+ //are more keys than the the Limit value
+ virtual char* GetDisplayName(char* Name);
+ //gets Name to display text for the binding returns pointer to Name
+ char* ChangeDisplayName(char* DisplayName);
+ //sets the name for the binding to DisplayName, returns pointer to DisplayName
 };
 
-struct macrostackst {
- unsigned int binding; //number for the macro binding
+class macrobindingst:public keybindingst {
+ friend class interfacekeyst;
+ protected:
+ svector<MacroCommand> coms;
+ public:
+ macrobindingst(__int32 ID):keybindingst(ID) {}
+ ~macrobindingst() {coms.clear();}
+ virtual int GetComCount();
+ //returns count of commands
+ virtual MacroCommand* GetComArray();
+ //returns pointer to coms vector
+ int AddCommand(MacroCommand com);
+ //puts the com into the macro coms list, com should be a binding number with repeat value
+ //INTERFACEKEY_EVENTFLAG indicates macro
+ int RemoveCommand(int pos);
+ //removes the com at pos from the macro coms list
+ //returns count of commands
+ int AdjustRepeat(int pos, int Add);
+ virtual char* GetDisplayName(char* Name);
+ //gets Name to display text for the macro returns pointer to Name
+};
+
+enum {
+ MACROACTION_NONE=0,
+ MACROACTION_WAIT,
+ MACROACTION_EXECUTE,
+ MACROACTION_NEW,
+ MACROACTION_DONE,
+ MACROACTION_RECALL
+};
+
+typedef union {
+ struct {
+  unsigned __int16 bind;
+  unsigned __int8 action;
+  unsigned __int8 reserved;
+ };
+ unsigned __int32 Value;
+} MacroResult;
+
+class macrostackst {
+ protected:
+ MacroCommand* coms; //pointer to the commands
+ MacroCommand curCom;
+ unsigned __int16 macroID;
  unsigned int position; //current position in the macro
+ int comCount;          //number of commands in the coms array
  unsigned int repeat; //current repeat counter for repeated presses
  unsigned int nextproc; //GetTick based time to next character
  unsigned int overflow; //indicates if the nextproc overflowed
-
- macrostackst(unsigned int bind);
+ public:
+ macrostackst(MacroCommand* Commands, unsigned __int16 ID, int count);
+ MacroResult DoMacro(unsigned int now);
 };
 
 class interfacekeyst {
- public:
+ protected:
  svector<keybindingst*> bindings;
- svector<keybindingst*> macros;
+ svector<macrobindingst*> macros;
  svector<macrostackst*> macrostack;
+ KeyUnion currentKey;
+ KeyUnion currentAlt;
+ InputRec* currentInput;
+
+ int MatchBindingName(const char* Name);
+ int MatchMacroName(const char* Name);
+ //returns binding number for that token or -1 on no match
+ int RunMacros(int count);
+ //passed count of macros in stack, returns binding result of macro step
+ public:
  unsigned int currentBinding;
- unsigned int currentKey;
- unsigned int altKey;
- void* currentInput;
- //uses a cast to enabler_inputst* in the code to break the circular dependency
+ int RunningMacro;
+ interfacekeyst();
+ ~interfacekeyst();
+ // Work functions
+ int keynext();
+ //returns 0 when there is no key to be processed
+ __pascal int keypress(int Binding);
+ //checks the keystroke for match, sets current when a match is found
+ //returns value set to current
+ __pascal int pressedList(const int* BindingList, int ListSize);
+ //checks all keys in the list for a match returning the matched binding or 0
+ void keydone();
+ //clears the current key stroke and updates the processing time for repeat
+ //Load/Save/Display functions
+ void Load(const char* filename);
+ void Save(const char* filename);
+ macrobindingst* AddMacro(char* DisplayName=0);
+ //creates a new macro, defaults the name to macro %i, return pointer to new macro
+ keybindingst* GetBinding(int Binding);
+ //passed number to get with macros at INTERFACEKEYNUM+, returns appropiate pointer
+ int GetMacroCount() {return macros.size();}
+};
 
  //when next() is called it sets the current* values
  //currentInput is set when the source of an input is a new event in the enabler
  //curentKey is the key value to be tested against bindings
  //currentBinding becomes set by the first match found with pressed()
  //once matched that is the only binding that will match until done() is called
- //macros cause currentBinding to be set in next(), a check is done for the macro_break
+ //macros cause currentBinding to be set in keynext(), a check is done for the macro_break
  //binding at that time
-
- interfacekeyst();
- ~interfacekeyst();
-
-// Work functions
- int keynext();
- //returns 0 when there is no key to be processed
- int keypress(int Binding);
- //checks the keystroke for match, sets current when a match is found
- //returns value set to current
- int pressedList(const int* BindingList, int ListSize);
- //checks all keys in the list for a match returning the matched binding or 0
- void keydone();
- //clears the current key stroke and updates the processing time for repeat
-
-//Load/Save/Display functions
- void Load(const char* filename);
- void Save(const char* filename);
- char* ConvertKeyToDisplay(char* Str, int Key);
- //sets Str to display string for an SDL_Key with mods, returns pointer to end of string
- char* ConvertKeyToSave(char* Str, int Key);
- //sets Str to save string for an SDL_Key with mods, returns pointer to end of string
- int ConvertSaveToKey(char* Str);
- //returns the key value result
- char* GetBindingDisplayName(int binding, char* Name);
- char* GetMacroDisplayName(int macro, char* Name);
- //sets Name to display text for the binding/macro returns pointer to Name
- int GetBindingKeyDisplay(int binding, char* Display, int Limit=3);
- int GetMacroKeyDisplay(int binding, char* Display, int Limit=3);
- //sets Display to , seperated list of keys, returns length of string
- //Limit 0 produces only the first key, >0 causes ... to be appeneded when there
- //are more keys than the the Limit value
- int AddMacro(char* DisplayName=0);
- //creates a new macro, defaults the name to macro %i, return new macro number
- char* ChangeBindingName(int binding, char* DisplayName);
- char* ChangeMacroName(int macro, char* DisplayName);
- //sets the name for the binding/macro to DisplayName, returns pointer to DisplayName
-
- //group returns count for list
- int GetBindingKeys(int binding);
- //returns count of keys, excluding events
- int GetMacroKeys(int macro);
- //returns count of keys
- int GetMacroComs(int macro);
- //returns count of commands
- int AddKeyToBinding(int binding, int key);
- //puts the key into the binding key list, maintaining events at the end of the list
- //returns count of keys, excluding events
- int AddKeyToMacro(int macro, int key);
- //puts the key into the macro binding key list
- //returns count of keys
- int AddCommandToMacro(int macro, int com);
- //puts the com into the macro coms list, com should be a binding number with repeat value
- //INTERFACEKEY_EVENTFLAG indicates macro
- int RemoveCommandFromMacro(int macro, int pos);
- //removes the com at pos from the macro coms list
- int RemoveKeyFromBinding(int binding, int key);
- int RemoveKeyFromMacro(int macro, int key);
- //scans the binding/macro key list for matching key and removes it
- int RemoveKeyPosFromBinding(int binding, int pos);
- int RemoveKeyPosFromMacro(int macro, int pos);
- //removes the key at pos from binding/macro key list
- int AdjustMacroRepeat(int macro, int pos, int Add);
-
- int MatchBindingName(const char* Name);
- int MatchMacroName(const char* Name);
- //returns binding number for that token or 0/INTERFACEBIND on no match
 
 /* File format
 null DISPLAYNAME indicates use default
@@ -125,12 +168,12 @@ null DISPLAYNAME indicates use default
 if the binding is a macro, token name must be MACRO###
 
  [KEY:keydata]
+ [SYM:keydata]
  [MACRO:TOKENNAME:count]
 count may be left out and defaults to 1
  [MACRO:DELAY:ms]
 delay time ms is required, line is skipped when it is missing
 */
-};
 
 class viewscreen_keybindingsst : viewscreenst, ListItemCB {
  public:
@@ -146,9 +189,14 @@ class viewscreen_keybindingsst : viewscreenst, ListItemCB {
   ScrollListWidget *Bindings, *Keys, *Commands;
   void SetScrollKeys(ScrollListWidget* List);
   int DoBind;
-  char Mode;
+  int OnSetting;
+  keybindingst* curBind;
+  KeyUnion* curKeys;
+  MacroCommand* curComs;
+  int Mode;
   viewscreen_keybindingsst();
   ~viewscreen_keybindingsst();
+  void UpdateBinding();
 };
 
 enum InterfaceKey {

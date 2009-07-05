@@ -1,35 +1,17 @@
 #include "platform.h"
 #include <string.h>
-#include <math.h>
-#include <iosfwd>
-#include <iostream>
-#include <ios>
-#include <streambuf>
-#include <istream>
-#include <ostream>
-#include <iomanip>
-#include <sstream>
-#include <cstdlib>
-#include <fstream>
-#include <zlib.h>
 
 #include "svector.h"
 using std::string;
 
 #include "random.h"
 
-#include "endian.h"
 
 #include "g_basics.h"
 #include "graphics.h"
 extern graphicst gps;
 
-#include "files.h"
 #include "enabler.h"
-//this really gets on my nerves, need enabler so interface can have stringvectorst
-//and that needs files
-//and files needed something else
-//and that had needs too
 
 #include "music_and_sound_g.h"
 
@@ -225,3 +207,4 @@ void ScrollListWidget::render(void* param) {
 //make it check mouse position for in scroll region for wheel
 //left click for select, needs seperate binding or something
 //border option for regions
+//string entry widget
