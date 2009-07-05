@@ -2124,6 +2124,7 @@ void textures::upload_textures() {
   glBindTexture(GL_TEXTURE_2D, gl_catalog);
       printGLError();
   char *zeroes = new char[catalog_width*catalog_height*4];
+  bzero(zeroes, catalog_width*catalog_height*4);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, catalog_width, catalog_height, 0, GL_RGBA,
 	       GL_UNSIGNED_BYTE, zeroes);
   delete[] zeroes;
