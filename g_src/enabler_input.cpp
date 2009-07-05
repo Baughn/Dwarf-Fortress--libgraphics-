@@ -1,6 +1,6 @@
 #include "enabler_input.h"
 
-int enabler_inputst::is_modkey(unsigned __int16 key) {
+int enabler_inputst::is_modkey(uint16_t key) {
  switch (key) {
   case SDLK_RSHIFT:
   case SDLK_LSHIFT:
@@ -17,7 +17,7 @@ int enabler_inputst::is_modkey(unsigned __int16 key) {
   case SDLK_SCROLLOCK:
    return 1;
   default: {
-   unsigned __int8 Mods=(keystate[SDLK_LSHIFT]||keystate[SDLK_RSHIFT]);
+   uint8_t Mods=(keystate[SDLK_LSHIFT]||keystate[SDLK_RSHIFT]);
    if ((key>=SDLK_a)&&(key<=SDLK_z)) Mods=Mods^keystate[SDLK_CAPSLOCK];
    //caps lock is only relevant to alpha keys until someone tells me otherwise
    if (Mods) Mods=KEY_SHIFTFLAG;
@@ -37,7 +37,7 @@ enabler_inputst::enabler_inputst() {
  KeyMods=0;
 }
 
-void enabler_inputst::add_input(unsigned __int32 sym, unsigned __int32 unicode) {
+void enabler_inputst::add_input(uint32_t sym, uint32_t unicode) {
  InputRec newn;
  newn.key.Value=sym;
  newn.key2.Value=unicode;
