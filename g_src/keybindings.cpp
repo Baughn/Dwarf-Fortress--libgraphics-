@@ -39,8 +39,10 @@ extern interfacest gview;
 #include "init.h"
 extern initst init;
 
+#ifndef NO_FMOD
 extern GameMode gamemode;
 extern musicsoundst musicsound;
+#endif
 
 //some libraries do not define this function in string.h
 char* stpcpy(char* to, const char* from) {
