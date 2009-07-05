@@ -398,7 +398,8 @@ class gridrectst
   ~gridrectst();
 
   bool gl_initialized;
-  // Arrays for vertex, texture and color data
+  // Arrays for vertex, texture and color data, overloaded as VBO mapping pointers in VBO mode
+  bool vertices_initialized; // Used to skip rewriting them in standard and VBO mode
   GLfloat *ptr_vertex, *ptr_tex;
   GLfloat *ptr_bg_color, *ptr_fg_color;
   // True if accumulation buffer is used

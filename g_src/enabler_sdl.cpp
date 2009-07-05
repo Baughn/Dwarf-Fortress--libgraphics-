@@ -866,8 +866,6 @@ void gridrectst::render()
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
   } else if (vbo_refs[0]) {
     // Map VBOs
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
-    assert(ptr_vertex=(GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
     assert(ptr_bg_color=(GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
@@ -960,16 +958,63 @@ void gridrectst::render()
   printGLError();
 
   int tile_count = 0;
-  // Build arrays - background and foreground at the same time is fine.
+  // Build arrays. Vertex array is separated out, as it can be skipped in standard or VBO mode.
   long tex_pos;
   float edge_l=0,edge_r=apletsizex,edge_u,edge_d;
   long px,py;
   long d=0;
-  GLfloat *ptr_vertex_w = ptr_vertex;
   GLfloat *ptr_bg_color_w = ptr_bg_color;
   GLfloat *ptr_fg_color_w = ptr_fg_color;
   GLfloat *ptr_tex_w = ptr_tex;
   const struct gl_texpos *txt = enabler.textures.gl_texpos;
+
+  // Vertex array
+  if (framebuffer || accum_buffer || !vertices_initialized) {
+    vertices_initialized = true;
+    if (vbo_refs[0]) {
+      glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
+      assert(ptr_vertex=(GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
+    }
+    GLfloat *ptr_vertex_w = ptr_vertex;
+    for(px=0;px<dimx;px++,edge_l+=apletsizex,edge_r+=apletsizex)
+      {
+        edge_u=0;
+        edge_d=apletsizey;
+        for(py=0;py<dimy;py++,d++,edge_u+=apletsizey,edge_d+=apletsizey)
+          {
+            tex_pos=buffer_texpos[d];
+            
+            if(tex_pos==-1 && (!exposed)) { // Check whether the tile is dirty
+              continue; // Not dirty
+            } // Don't update dirty buffer here, as this code is not always executed
+            
+            // Set vertex locations
+            *(ptr_vertex_w++) = edge_l; // Upper left
+            *(ptr_vertex_w++) = edge_u;
+            *(ptr_vertex_w++) = edge_r; // Upper right
+            *(ptr_vertex_w++) = edge_u;
+            *(ptr_vertex_w++) = edge_r; // Lower right
+            *(ptr_vertex_w++) = edge_d;
+            
+            *(ptr_vertex_w++) = edge_l; // Upper left
+            *(ptr_vertex_w++) = edge_u;
+            *(ptr_vertex_w++) = edge_r; // Lower right
+            *(ptr_vertex_w++) = edge_d;
+            *(ptr_vertex_w++) = edge_l; // Lower left
+            *(ptr_vertex_w++) = edge_d;
+          }
+      }
+    if (vbo_refs[0]) {
+      glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
+      glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+    }
+      
+    // Reset variables
+    edge_l=0; edge_r=apletsizex;
+    d=0;
+  }
+
+  // FG, BG and tex-coord arrays
   for(px=0;px<dimx;px++,edge_l+=apletsizex,edge_r+=apletsizex)
     {
       edge_u=0;
@@ -995,21 +1040,6 @@ void gridrectst::render()
             s_buffer_bg[d]=buffer_bg[d];
             s_buffer_bb[d]=buffer_bb[d];
           }
-          
-	  // Set vertex locations
-          *(ptr_vertex_w++) = edge_l; // Upper left
-	  *(ptr_vertex_w++) = edge_u;
-	  *(ptr_vertex_w++) = edge_r; // Upper right
-	  *(ptr_vertex_w++) = edge_u;
-	  *(ptr_vertex_w++) = edge_r; // Lower right
-	  *(ptr_vertex_w++) = edge_d;
-
-          *(ptr_vertex_w++) = edge_l; // Upper left
-	  *(ptr_vertex_w++) = edge_u;
-	  *(ptr_vertex_w++) = edge_r; // Lower right
-	  *(ptr_vertex_w++) = edge_d;
-          *(ptr_vertex_w++) = edge_l; // Lower left
-	  *(ptr_vertex_w++) = edge_d;
 
 	  // Background colors
 	  for (int i=0; i<6; i++) {
@@ -1081,7 +1111,6 @@ void gridrectst::render()
   if (vbo_refs[0]) {
     // We need to unmap the VBOs before use
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
-    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
     glVertexPointer(2, GL_FLOAT, 0, 0);
     
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]); // background color
@@ -1178,11 +1207,12 @@ void gridrectst::render()
 
 void gridrectst::init_gl() {
   if (gl_initialized) uninit_gl();
+  vertices_initialized = false;
   // Toady: As things stand, the only reasonable approach for me is to
   // allocate the maximum amount of memory that could possibly be used.
   // Better would be to notify gridrectst when the grid size is supposed
   // to change, or.. something, but this works.
-  if (1 && GLEW_ARB_vertex_buffer_object) { // init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO) instead of 1 here, add a PRINT_MODE:VBO option to init.txt
+  if (0 && GLEW_ARB_vertex_buffer_object) { // init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO) instead of 0 here, add a PRINT_MODE:VBO option to init.txt
     std::cout << "Using OpenGL output path with buffer objects\n";
     // Allocate memory for the server-side arrays
     glGenBuffersARB(4, vbo_refs);
