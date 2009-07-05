@@ -49,7 +49,7 @@ This is the dimensions in tiles of the display grid.  Minimum x is 80.  Minimum 
 
 These settings can have a significant impact on frame rate, especially for people that have slow frame rates on the title screen.  Available modes are STANDARD, PARTIAL:<number>, ACCUM_BUFFER and FRAME_BUFFER.  The number after PARTIAL refers to how many frames it will redo a printed tile before skipping it, so you might try increasing it a bit if you have flickering when PARTIAL is set.  Please note that any of these combinations might cause frame rates to drop significantly or cause unpleasant side effects like flickering.
 
-[PRINT_MODE:STANDARD]
+[PRINT_MODE:PARTIAL:0]
 [SINGLE_BUFFER:NO]
 
 Change this to YES to keep the DF window on top of your other windows.
