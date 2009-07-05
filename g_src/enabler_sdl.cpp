@@ -1270,8 +1270,9 @@ void gridrectst::allocate(long newdimx,long newdimy)
 	  s_buffer_count[d]=0;
 	}
     }
-  // Make sure to reallocate the vertex buffers
-  init_gl();
+  // Make sure to reallocate GL buffers if it's running
+  if (gl_initialized)
+    init_gl();
 }
 
 void gridrectst::clean()
