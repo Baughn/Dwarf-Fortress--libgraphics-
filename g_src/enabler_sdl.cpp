@@ -968,34 +968,39 @@ void gridrectst::render()
 	    {
 	      if(py>=1&&py<=init.display.grid_y-2&&px>=init.display.grid_x-55&&px<=init.display.grid_x-26)continue;
 	    }
-
+          
 	  tex_pos=buffer_texpos[d];
-
-      if(tex_pos==-1 && (!exposed)) {
-         continue; // Check whether the tile is dirty
-        } else {
-           // Update dirty buffer
-           s_buffer_texpos[d]=buffer_texpos[d];
-           s_buffer_r[d]=buffer_r[d];
-           s_buffer_g[d]=buffer_g[d];
-           s_buffer_b[d]=buffer_b[d];
-           s_buffer_br[d]=buffer_br[d];
-           s_buffer_bg[d]=buffer_bg[d];
-           s_buffer_bb[d]=buffer_bb[d];
-         }
-
+          
+          if(tex_pos==-1 && (!exposed)) { // Check whether the tile is dirty
+            continue; // Not dirty
+          } else {
+            // Dirty. Update dirty buffer.
+            s_buffer_texpos[d]=buffer_texpos[d];
+            s_buffer_r[d]=buffer_r[d];
+            s_buffer_g[d]=buffer_g[d];
+            s_buffer_b[d]=buffer_b[d];
+            s_buffer_br[d]=buffer_br[d];
+            s_buffer_bg[d]=buffer_bg[d];
+            s_buffer_bb[d]=buffer_bb[d];
+          }
+          
 	  // Set vertex locations
-	  *(ptr_vertex_w++) = edge_l;
+          *(ptr_vertex_w++) = edge_l; // Upper left
 	  *(ptr_vertex_w++) = edge_u;
-	  *(ptr_vertex_w++) = edge_r;
+	  *(ptr_vertex_w++) = edge_r; // Upper right
 	  *(ptr_vertex_w++) = edge_u;
-	  *(ptr_vertex_w++) = edge_r;
+	  *(ptr_vertex_w++) = edge_r; // Lower right
 	  *(ptr_vertex_w++) = edge_d;
-	  *(ptr_vertex_w++) = edge_l;
+
+          *(ptr_vertex_w++) = edge_l; // Upper left
+	  *(ptr_vertex_w++) = edge_u;
+	  *(ptr_vertex_w++) = edge_r; // Lower right
+	  *(ptr_vertex_w++) = edge_d;
+          *(ptr_vertex_w++) = edge_l; // Lower left
 	  *(ptr_vertex_w++) = edge_d;
 
 	  // Background colors
-	  for (int i=0; i<4; i++) {
+	  for (int i=0; i<6; i++) {
 	    // We need one color component for each vertex, even if
 	    // only one is actually used with flat shading.
 	    //
@@ -1006,7 +1011,7 @@ void gridrectst::render()
 	    *(ptr_bg_color_w++) = 1.0; // Alpha, but basically padding.
 	  }
 	  // Foreground colors
-	  for (int i=0; i<4; i++) {
+	  for (int i=0; i<6; i++) {
 	    // Same story as for the background.
 	    *(ptr_fg_color_w++) = buffer_r[d];
 	    *(ptr_fg_color_w++) = buffer_g[d];
@@ -1015,33 +1020,43 @@ void gridrectst::render()
 	  }
 
 	  if (tex_pos<0||tex_pos>=enabler.textures.textureCount())
-		{
-		//         std::cerr << "Assumptions broken!\n";
-	  *(ptr_tex_w++) = 0;
-	  *(ptr_tex_w++) = 0;
-	  *(ptr_tex_w++) = 1;
-	  *(ptr_tex_w++) = 0;
-	  *(ptr_tex_w++) = 1;
-	  *(ptr_tex_w++) = 1;
-	  *(ptr_tex_w++) = 0;
-	  *(ptr_tex_w++) = 1;
-		}
-	  else
-	  {
-	  // Textures
-	  *(ptr_tex_w++) = txt[tex_pos].left;
-	  *(ptr_tex_w++) = txt[tex_pos].bottom;
-	  *(ptr_tex_w++) = txt[tex_pos].right;
-	  *(ptr_tex_w++) = txt[tex_pos].bottom;
-	  *(ptr_tex_w++) = txt[tex_pos].right;
-	  *(ptr_tex_w++) = txt[tex_pos].top;
-	  *(ptr_tex_w++) = txt[tex_pos].left;
-	  *(ptr_tex_w++) = txt[tex_pos].top;
-	  }
+            {
+              //         std::cerr << "Assumptions broken!\n";
+              *(ptr_tex_w++) = 0; // Upper left
+              *(ptr_tex_w++) = 0;
+              *(ptr_tex_w++) = 1; // Upper right
+              *(ptr_tex_w++) = 0;
+              *(ptr_tex_w++) = 1; // Lower right
+              *(ptr_tex_w++) = 1;
 
+              *(ptr_tex_w++) = 0; // Upper left
+              *(ptr_tex_w++) = 0;
+              *(ptr_tex_w++) = 1; // Lower right
+              *(ptr_tex_w++) = 1;
+              *(ptr_tex_w++) = 0; // Lower left
+              *(ptr_tex_w++) = 1;
+            }
+	  else
+            {
+              // Textures
+              *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
+              *(ptr_tex_w++) = txt[tex_pos].bottom;
+              *(ptr_tex_w++) = txt[tex_pos].right;  // Upper right
+              *(ptr_tex_w++) = txt[tex_pos].bottom;
+              *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
+              *(ptr_tex_w++) = txt[tex_pos].top;
+
+              *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
+              *(ptr_tex_w++) = txt[tex_pos].bottom;
+              *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
+              *(ptr_tex_w++) = txt[tex_pos].top;
+              *(ptr_tex_w++) = txt[tex_pos].left;   // Lower left
+              *(ptr_tex_w++) = txt[tex_pos].top;
+            }
+          
 	  // One tile down.
 	  tile_count++;
-	  }
+        }
     }
 
   printGLError();
@@ -1065,7 +1080,7 @@ void gridrectst::render()
   printGLError();
   glEnableClientState(GL_VERTEX_ARRAY);
   printGLError();
-  glDrawArrays(GL_QUADS, 0, tile_count*4);
+  glDrawArrays(GL_TRIANGLES, 0, tile_count*6);
   printGLError();
 
   printGLError();
@@ -1087,7 +1102,7 @@ void gridrectst::render()
   printGLError();
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glDrawArrays(GL_QUADS, 0, tile_count*4);
+  glDrawArrays(GL_TRIANGLES, 0, tile_count*6);
   printGLError();
 
   // Clean up
@@ -1134,8 +1149,6 @@ void gridrectst::init_gl() {
   // allocate the maximum amount of memory that could possibly be used.
   // Better would be to notify gridrectst when the grid size is supposed
   // to change, or.. something, but this works.
-  int dimx = MAX_GRID_X;
-  int dimy = MAX_GRID_Y;
   std::cout << "Using OpenGL output path with client-side arrays";
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER) && GLEW_EXT_framebuffer_object) {
     std::cout << " and off-screen framebuffer\n";
@@ -1155,10 +1168,13 @@ void gridrectst::init_gl() {
   if (accum_buffer)
     glClearAccum(0,0,0,0);
   // Allocate memory for the client-side arrays
-  ptr_vertex = new GLfloat[dimx*dimy*4*2];   // dimx*dimy tiles,
-  ptr_fg_color = new GLfloat[dimx*dimy*4*4]; // four vertices,
-  ptr_bg_color = new GLfloat[dimx*dimy*4*4]; // two vertex components or
-  ptr_tex = new GLfloat[dimx*dimy*4*2];      // four colors per vertex
+#ifdef DEBUG
+  printf("Room for %d vertices allocated\n", dimx*dimy*6);
+#endif
+  ptr_vertex = new GLfloat[dimx*dimy*6*2];   // dimx*dimy tiles,
+  ptr_fg_color = new GLfloat[dimx*dimy*6*4]; // six vertices,
+  ptr_bg_color = new GLfloat[dimx*dimy*6*4]; // two vertex components or
+  ptr_tex = new GLfloat[dimx*dimy*6*2];      // four colors per vertex
   gl_initialized = true;
 }
 
@@ -1254,6 +1270,8 @@ void gridrectst::allocate(long newdimx,long newdimy)
 	  s_buffer_count[d]=0;
 	}
     }
+  // Make sure to reallocate the vertex buffers
+  init_gl();
 }
 
 void gridrectst::clean()
