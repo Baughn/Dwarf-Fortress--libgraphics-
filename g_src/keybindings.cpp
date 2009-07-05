@@ -39,6 +39,9 @@ extern interfacest gview;
 #include "init.h"
 extern initst init;
 
+extern GameMode gamemode;
+extern musicsoundst musicsound;
+
 //some libraries do not define this function in string.h
 char* stpcpy(char* to, const char* from) {
  while (*to=*from) {
@@ -1243,7 +1246,7 @@ unsigned int TokenizeLine(svector<char*> &Tokens,char* Line) {
  return Tokens.size();
 }
 
-keybindingst::keybindingst(__int32 ID) {
+keybindingst::keybindingst(int32_t ID) {
  BindID=ID;
  keys.reserve(5);
  KeyAccum=0;

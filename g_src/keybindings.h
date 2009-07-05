@@ -18,13 +18,13 @@ void ConvertSaveToKey(char* Str, KeyUnion* Key);
 
 typedef union {
  struct {
-  unsigned __int16 Binding;
+  uint16_t Binding;
   //key binding 0 used for macro delay
-  unsigned __int8 Repeat;
-  unsigned __int8 flags;
+  uint8_t Repeat;
+  uint8_t flags;
   //Bit0: 0 key binding, 1 macro binding
  };
- unsigned __int32 Value;
+ uint32_t Value;
 } MacroCommand;
 
 class keybindingst {
@@ -32,10 +32,10 @@ class keybindingst {
  protected:
  string displayname;
  svector<KeyUnion> keys;
- unsigned __int32 KeyAccum;
- __int32 BindID;
+ uint32_t KeyAccum;
+ int32_t BindID;
  public:
- keybindingst(__int32 ID);
+ keybindingst(int32_t ID);
  ~keybindingst() {keys.clear();}
  void Clear();
  int GetKeyCount();
@@ -65,7 +65,7 @@ class macrobindingst:public keybindingst {
  protected:
  svector<MacroCommand> coms;
  public:
- macrobindingst(__int32 ID):keybindingst(ID) {}
+ macrobindingst(int32_t ID):keybindingst(ID) {}
  ~macrobindingst() {coms.clear();}
  virtual int GetComCount();
  //returns count of commands
@@ -93,25 +93,25 @@ enum {
 
 typedef union {
  struct {
-  unsigned __int16 bind;
-  unsigned __int8 action;
-  unsigned __int8 reserved;
+  uint16_t bind;
+  uint8_t action;
+  uint8_t reserved;
  };
- unsigned __int32 Value;
+ uint32_t Value;
 } MacroResult;
 
 class macrostackst {
  protected:
  MacroCommand* coms; //pointer to the commands
  MacroCommand curCom;
- unsigned __int16 macroID;
+ uint16_t macroID;
  unsigned int position; //current position in the macro
  int comCount;          //number of commands in the coms array
  unsigned int repeat; //current repeat counter for repeated presses
  unsigned int nextproc; //GetTick based time to next character
  unsigned int overflow; //indicates if the nextproc overflowed
  public:
- macrostackst(MacroCommand* Commands, unsigned __int16 ID, int count);
+ macrostackst(MacroCommand* Commands, uint16_t ID, int count);
  MacroResult DoMacro(unsigned int now);
 };
 
@@ -137,10 +137,10 @@ class interfacekeyst {
  // Work functions
  int keynext();
  //returns 0 when there is no key to be processed
- __pascal int keypress(int Binding);
+ int keypress(int Binding);
  //checks the keystroke for match, sets current when a match is found
  //returns value set to current
- __pascal int pressedList(const int* BindingList, int ListSize);
+ int pressedList(const int* BindingList, int ListSize);
  //checks all keys in the list for a match returning the matched binding or 0
  void keydone();
  //clears the current key stroke and updates the processing time for repeat

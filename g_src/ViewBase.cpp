@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "svector.h"
+#include <string>
 using std::string;
 
 #include "random.h"

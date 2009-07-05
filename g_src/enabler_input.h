@@ -1,6 +1,7 @@
 #ifndef ENABLER_INPUT_H
 #define ENABLER_INPUT_H
 
+#include <stdint.h>
 #include "svector.h"
 #include "SDL/SDL_keysym.h"
 
@@ -22,14 +23,14 @@ enum MouseActions {
 #define KEY_EVENTFLAG 0x04
 typedef union {
  struct {
-  unsigned __int16 symbol;
-  unsigned __int8 mods;
-  unsigned __int8 flags;
+  uint16_t symbol;
+  uint8_t mods;
+  uint8_t flags;
   //Bit 0: keysym
   //Bit 1: unicode
   //Bit 2: Event
  };
- unsigned __int32 Value;
+ uint32_t Value;
 } KeyUnion;
 
 enum InterfaceEvents {
@@ -46,10 +47,10 @@ typedef struct {
  KeyUnion key2;
  union {
   struct {
-   unsigned __int32 processed;
-   unsigned __int32 next_process;
+   uint32_t processed;
+   uint32_t next_process;
   };
-  unsigned __int64 procValue;
+  uint64_t procValue;
  };
 } InputRec;
 
@@ -57,16 +58,16 @@ class enabler_inputst {
  svector<InputRec> input;
  protected:
  enabler_inputst();
- unsigned __int8 KeyMods;
- unsigned __int8 *keystate;
+ uint8_t KeyMods;
+ uint8_t *keystate;
  public:
- int is_modkey(unsigned __int16 key);
+ int is_modkey(uint16_t key);
  InputRec* getinput(int number);
  InputRec* currentinput(int now);
  void removeinput(int number);
  int inputcount() {return input.size();}
  void clear_input() {input.clear();}
- void add_input(unsigned __int32 sym, unsigned __int32 unicode);
+ void add_input(uint32_t sym, uint32_t unicode);
  //handle the mods change in eventloop
 };
 #endif
