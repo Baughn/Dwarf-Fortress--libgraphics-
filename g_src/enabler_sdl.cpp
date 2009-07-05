@@ -963,7 +963,7 @@ void gridrectst::render()
   const struct gl_texpos *txt = enabler.textures.gl_texpos;
 
   // Vertex array
-  if (framebuffer || accum_buffer || !vertices_initialized) {
+  if (framebuffer || accum_buffer || !vertices_initialized || init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
     vertices_initialized = true;
     if (vbo_refs[0]) {
       glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
