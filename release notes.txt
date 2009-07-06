@@ -39,6 +39,19 @@ If you can get to the ESC keybindings menu (from the start screen, press ESC and
 
 ******************************************************
 
+Release notes for 0.28.181.40d13 (July 6, 2009):
+
+tweaked linux gtk code (Baughn)
+update to zooming (Baughn)
+large input update (Veroule)
+replace quads by triangles (Baughn)
+added VBO support (Baughn)
+fixed manual key display
+repaired basic adv mode input (Veroule)
+added ability to export some map information in text string form
+
+******************************************************
+
 Release notes for 0.28.181.40d12 (June 20, 2009):
 
 updated/streamlined all sound files (bhelyer)
