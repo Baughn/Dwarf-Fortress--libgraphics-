@@ -840,7 +840,9 @@ char interfacest::loop() {
     gps.print_index=(gps.print_index+1)%100;
    }
    //GATHER INPUT
-   keynext();
+   if ((flag & INTERFACEFLAG_RETAIN_NONZERO_INPUT)==0) keynext();
+   else flag&=~INTERFACEFLAG_RETAIN_NONZERO_INPUT;
+
    //TOGGLE SCREEN
    if(currentscreen->is_legacy_screen()) currentscreen->view();
    else {
@@ -879,7 +881,9 @@ char interfacest::loop() {
    else if(keypress(INTERFACEKEY_HELP)) currentscreen->help();
    //HANDLE MOVIE
    else if(currentscreen->movies_okay()) handlemovie(0);
-   if ((flag & INTERFACEFLAG_RETAIN_NONZERO_INPUT)==0) keydone();
+
+   keydone();
+
   break;
 		case INTERFACE_BREAKDOWN_QUIT:
 			{

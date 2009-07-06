@@ -1,7 +1,15 @@
 #ifndef ENABLER_INPUT_H
 #define ENABLER_INPUT_H
 
-#include <stdint.h>
+extern "C"{
+#ifndef WIN32
+# include <stdint.h>
+#else
+# include <windows.h>
+#endif
+
+#include <SDL/SDL.h>
+}
 #include "svector.h"
 #include "SDL/SDL_keysym.h"
 

@@ -90,6 +90,7 @@ const BindingNames InterfaceNames[INTERFACEKEYNUM]={
 {"CLOSE_MEGA_ANNOUNCEMENT","Close mega announcement"},
 {"OPTIONS","Main menu"},
 {"OPTION_EXPORT","Options, Export Local Image"},
+{"OPTION_EXPORT_RAW_INFO","Options, Export Raw Info"},
 {"HELP","Help"},
 {"TOGGLE_FULLSCREEN","Toggle Fullscreen"},
 {"MOVIES","Movies"},
@@ -1223,6 +1224,11 @@ const BindingNames InterfaceNames[INTERFACEKEYNUM]={
 //,{"",""}
 };
 
+const char *grab_interface_token(InterfaceKey key)
+{
+	return InterfaceNames[key].token;
+}
+
 unsigned int TokenizeLine(svector<char*> &Tokens,char* Line) {
  //returns count of tokens found
  //places a pointer to the start of each token in Tokens
@@ -2044,6 +2050,8 @@ int interfacekeyst::RunMacros(int count) {
    }
   }
  } while (count>=0); //still doing the macro
+
+ return -1;
 }
 
 int interfacekeyst::keynext() {

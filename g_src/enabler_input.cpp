@@ -37,7 +37,7 @@ enabler_inputst::enabler_inputst() {
  KeyMods=0;
 }
 
-void enabler_inputst::add_input(uint32_t sym, uint32_t unicode) {
+void enabler_inputst::add_input(uint32_t sym,uint32_t unicode) {
  InputRec newn;
  newn.key.Value=sym;
  newn.key2.Value=unicode;

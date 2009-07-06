@@ -117,10 +117,6 @@ class interfacest : public interfacekeyst
 		void read_movie_chunk(long &maxmoviepos,char &is_playing);
 };
 
-void getstring_interfacechar(string &str,interfacekeyst &key);
-void getstring_interfacechar_save(string &str,interfacekeyst &key);
-void convertstring_interfacechar_save(string &str,interfacekeyst &key);
-
 #define SCROLLING_NOSELECT BIT1
 #define SCROLLING_NO_WRAP BIT2
 #define SCROLLING_REVERSE BIT3

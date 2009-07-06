@@ -92,7 +92,6 @@ static double viewport_x = 0, viewport_y = 0;
 // Whether zoom commands affect grid_zoom or viewport_zoom
 static bool zoom_grid = true;
 
-
 static void resize_grid(int width, int height, bool resizing) {
   // The grid must fit inside the window. We ensure this by zooming
   // out if it'd otherwise become smaller than 80x25, or in if it'd
@@ -202,14 +201,14 @@ static void zoom_display(enum zoom_commands command) {
         grid_zoom_req = old_req;
     } else {
       viewport_zoom = MAX(1.0, viewport_zoom / zoom_factor);
-      exposed = 1;
+	  exposed = 1;
 #ifdef DEBUG
       printf("Viewport_zoom = %f\n", viewport_zoom);
 #endif
     }
     break;
   default:
-    puts("WTF?");
+    puts("invalid zoom command");
   }
 }
 
@@ -342,11 +341,6 @@ static void eventLoop(GL_Window window)
          enabler.tracking_on = 1;
          // Set viewport_x/y as appropriate, and fixup mouse position for zoom
          // We use only the central 80% of the window for setting viewport origin.
-
-//Ouch!!!  These calculations are painful to look at.  Most of this should be able
-//to be done 1 time per zoom/resize.  The calculations here should be
-//event.motion.x*factorx+blackx and event.motion.y*factory+blacky
-//--Veroule
          double center_x = MAX(MIN((((double)event.motion.x / screen->w) - 0.2) * 1.5, 1),0),
            center_y = MAX(MIN((((double)event.motion.y / screen->h) - 0.2) * 1.5, 1),0);
          int visible_w = enabler.window_width / viewport_zoom,
@@ -884,6 +878,7 @@ void gridrectst::render()
     translatey = -viewport_y;
     glScalef(viewport_zoom,viewport_zoom,1);
   }
+
   glTranslatef(translatex,translatey,0);
   printGLError();
 
@@ -1019,7 +1014,7 @@ void gridrectst::render()
 	    {
 	      if(py>=1&&py<=init.display.grid_y-2&&px>=init.display.grid_x-55&&px<=init.display.grid_x-26)continue;
 	    }
-          
+
 	  tex_pos=buffer_texpos[d];
           
           if(tex_pos==-1 && (!exposed)) { // Check whether the tile is dirty
@@ -1090,6 +1085,7 @@ void gridrectst::render()
               *(ptr_tex_w++) = txt[tex_pos].top;
             }
           
+
 	  // One tile down.
 	  tile_count++;
         }
@@ -1097,9 +1093,6 @@ void gridrectst::render()
 
   printGLError();
 
-
-
-  
   // Make ready for rendering the background
   // Pass pointers to our local arrays
   if (vbo_refs[0]) {
@@ -1206,7 +1199,7 @@ void gridrectst::init_gl() {
   // allocate the maximum amount of memory that could possibly be used.
   // Better would be to notify gridrectst when the grid size is supposed
   // to change, or.. something, but this works.
-  if (0 && GLEW_ARB_vertex_buffer_object) { // init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO) instead of 0 here, add a PRINT_MODE:VBO option to init.txt
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO) && GLEW_ARB_vertex_buffer_object) {
     std::cout << "Using OpenGL output path with buffer objects\n";
     // Allocate memory for the server-side arrays
     glGenBuffersARB(4, vbo_refs);
@@ -2124,7 +2117,7 @@ void textures::upload_textures() {
   glBindTexture(GL_TEXTURE_2D, gl_catalog);
       printGLError();
   char *zeroes = new char[catalog_width*catalog_height*4];
-  bzero(zeroes, catalog_width*catalog_height*4);
+  memset(zeroes,0,sizeof(char)*catalog_width*catalog_height*4);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, catalog_width, catalog_height, 0, GL_RGBA,
 	       GL_UNSIGNED_BYTE, zeroes);
   delete[] zeroes;

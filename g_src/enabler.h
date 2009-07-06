@@ -413,7 +413,7 @@ class gridrectst
   GLuint fb_texture, fb_depth;
   GLuint fb_draw_list;
   // VBO references, vbo_refs[0]=0 if they are unused.
-  uint vbo_refs[4];
+  uint32_t vbo_refs[4];
 };
 
 class text_info_elementst
