@@ -74,6 +74,7 @@ static int glerrorcount = 0;
 # define deputs(str)
 #endif
 
+
 #ifndef MAX
 	#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
@@ -1193,6 +1194,7 @@ void gridrectst::render()
 }
 
 void gridrectst::init_gl() {
+  static bool shown=false; // It's a bit hacky, but we want to only show the message once
   if (gl_initialized) uninit_gl();
   vertices_initialized = false;
   // Toady: As things stand, the only reasonable approach for me is to
@@ -1200,7 +1202,10 @@ void gridrectst::init_gl() {
   // Better would be to notify gridrectst when the grid size is supposed
   // to change, or.. something, but this works.
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO) && GLEW_ARB_vertex_buffer_object) {
-    std::cout << "Using OpenGL output path with buffer objects\n";
+#ifndef DEBUG
+    if (!shown)
+#endif
+      std::cout << "Using OpenGL output path with buffer objects\n";
     // Allocate memory for the server-side arrays
     glGenBuffersARB(4, vbo_refs);
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
@@ -1212,16 +1217,28 @@ void gridrectst::init_gl() {
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
     glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*2*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
   } else {
-    std::cout << "Using OpenGL output path with client-side arrays";
+#ifndef DEBUG
+    if (!shown)
+#endif
+      std::cout << "Using OpenGL output path with client-side arrays";
     if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER) && GLEW_EXT_framebuffer_object) {
-      std::cout << " and off-screen framebuffer\n";
+#ifndef DEBUG
+      if (!shown)
+#endif
+        std::cout << " and off-screen framebuffer\n";
       glGenFramebuffersEXT(1, &framebuffer);
       framebuffer_initialized = false;
     } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER)) {
-      std::cout << " and accumulation buffer\n";
+#ifndef DEBUG
+      if (!shown)
+#endif
+        std::cout << " and accumulation buffer\n";
       accum_buffer=true;
     } else {
-      std::cout << "\n";
+#ifndef DEBUG
+      if (!shown)
+#endif
+        std::cout << "\n";
       framebuffer = 0;
     }
     
@@ -1237,6 +1254,7 @@ void gridrectst::init_gl() {
     ptr_tex = new GLfloat[dimx*dimy*6*2];      // four colors per vertex
   }
   gl_initialized = true;
+  shown = true;
 }
 
 void gridrectst::uninit_gl() {
@@ -2091,8 +2109,10 @@ void textures::upload_textures() {
       break; // Otherwise we're done.
    }
 
+#ifdef DEBUG
   std::cout << "Ideal catalog size: " << catalog_width << "x" << catalog_height << "\n";
-
+#endif
+  
   // Check whether the GPU supports non-power-of-two textures
   bool npot = false;
   if (GLEW_ARB_texture_rectangle && GLEW_ARB_texture_non_power_of_two)
