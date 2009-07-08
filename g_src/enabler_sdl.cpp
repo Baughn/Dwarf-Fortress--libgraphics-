@@ -57,7 +57,6 @@ extern musicsoundst musicsound;
 char beginroutine(void);
 char mainloop(void);
 void endroutine(void);
-void render_things(void);
 void ne_toggle_fullscreen(void);
 
 static int loopvar = 1;
@@ -499,6 +498,11 @@ void enablerst::do_frame()
   //ENABLERFLAG_MAXFPS can lead to negative values, at least for frames_outstanding
   if (gframes_outstanding < -5) gframes_outstanding = -5;
   if (frames_outstanding < -20) frames_outstanding = -20;
+
+  // Initiate graphics rendering, if appropriate
+  if (gframes_outstanding > 0) {
+    render(window, setup);
+  }
   
   // Run the main loop if appropriate
   if (frames_outstanding > 0||(flag & ENABLERFLAG_MAXFPS)) {
@@ -507,9 +511,9 @@ void enablerst::do_frame()
       is_program_looping = FALSE;
   }
 
-  // Print graphics, if appropriate
+  // Finish rendering graphics, if appropriate
   if (gframes_outstanding > 0) {
-    render(window);
+    render(window, complete);
     current_render_count++;
     secondary_render_count++;
     gframes_outstanding--;
@@ -529,16 +533,19 @@ void enablerst::do_frame()
   }
 }
 
-void enablerst::render(GL_Window &window)
+void enablerst::render(GL_Window &window, enum render_phase phase)
 {
   if(flag & ENABLERFLAG_RENDER)
     {
       // Draw everything to the front buffer.
-      render_things();
+      // TODO: Pass phase through render_things
+      render_things(phase);
       // Make sure OpenGL starts rendering.. it'll finish at... some point.
-      SDL_GL_SwapBuffers();
+      if (phase == complete) {
+        SDL_GL_SwapBuffers();
 		
-      flag&=~ENABLERFLAG_RENDER;
+        flag&=~ENABLERFLAG_RENDER;
+      }
     }		
 }
 
@@ -554,7 +561,8 @@ void enablerst::toggle_fullscreen(GL_Window* window)
 	
 
   reset_gl(window);
-  render(*window);
+  render(*window, setup);
+  render(*window, complete);
   reset_window();
 }
 
@@ -634,11 +642,11 @@ char enablerst::create_window_GL(GL_Window* window)
   }
   // Set it up for windowed or fullscreen, depending on what they asked for.
   if (window->init.isFullScreen) { 
-    flags |= SDL_FULLSCREEN;
+//     flags |= SDL_FULLSCREEN;
     window->init.width = desired_fullscreen_width;
     window->init.height = desired_fullscreen_height;
   } else {
-    flags |= SDL_RESIZABLE;
+//     flags |= SDL_RESIZABLE;
     window->init.width = desired_windowed_width;
     window->init.height = desired_windowed_height;
   }
@@ -785,418 +793,424 @@ enablerst::enablerst()
 }
 
 
-void gridrectst::render()
+void gridrectst::render(enum render_phase phase)
 {
-  if (!gl_initialized)
-    puts("render called without gl being initialized");
-  float apletsizex=dispx,apletsizey=dispy;
-  float totalsizex=dispx*dimx;
-  float totalsizey=dispy*dimy;
-  float translatex=0,translatey=0;
+  printf("%d ", phase);
+  fflush(stdout);
 #ifdef DEBUG
   static int frame = 0;
 #endif
-
-  if (accum_buffer) {
-    // Copy the previous frame's buffer back in
-    glAccum(GL_RETURN, 1);
-  }
-  else if (framebuffer) {
-    // Setup a framebuffer for rendering
-    if (!framebuffer_initialized) {
-      // Allocate FBO texture memory
-      glGenTextures(1, &fb_texture);
-      glEnable(GL_TEXTURE_2D);
-      glBindTexture(GL_TEXTURE_2D, fb_texture);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-		   enabler.window_width, enabler.window_height,
-		   0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-      glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-      GLint param = (init.window.flag.has_flag(INIT_WINDOW_FLAG_TEXTURE_LINEAR) ?
-	GL_LINEAR : GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,param);
-      glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,param);
-
-      // Bind texture to FBO
-      glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
-      glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-				GL_TEXTURE_2D, fb_texture, 0);
-      framebuffer_initialized = true;
-      // Create and attach a depth buffer
-      glGenRenderbuffersEXT(1, &fb_depth);
-      glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fb_depth);
-      glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, enabler.window_width, enabler.window_height);
-      glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fb_depth);
-      if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
-	framebuffer_initialized = true;
-	// Create a display list for blitting the buffer to screen
-	fb_draw_list = glGenLists(1);
-	glNewList(fb_draw_list, GL_COMPILE);
-        glBindTexture(GL_TEXTURE_2D, fb_texture);
-	glBegin(GL_TRIANGLE_STRIP);
-	glTexCoord2f(0,1);
-	glVertex2f(0,0);
-	
-	glTexCoord2f(0,0);
-	glVertex2f(0,enabler.window_height);
-	
-	glTexCoord2f(1,1);
-	glVertex2f(enabler.window_width,0);
-	
-	glTexCoord2f(1,0);
-	glVertex2f(enabler.window_width,enabler.window_height);
-	glEnd();
-	glEndList();
-      }
-      else {
-	glDeleteRenderbuffersEXT(1, &fb_depth);
-	glDeleteTextures(1, &fb_texture);
-	glDeleteFramebuffersEXT(1, &framebuffer);
-	framebuffer = 0; // Disable framebuffer
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-	std::cout << "Error: Invalid framebuffer configuration, FBO disabled. No action required.\n";
-      }
-      glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-    }
-    // Render to framebuffer
-    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
-  } else if (vbo_refs[0]) {
-    // Map VBOs
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
-    assert(ptr_bg_color=(GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
-    assert(ptr_fg_color=(GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
-    assert(ptr_tex=(GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
-  }
-            
-  if(totalsizex>enabler.window_width||!black_space)apletsizex=(float)enabler.window_width/dimx;
-  else translatex=(enabler.window_width-totalsizex)/2.0f;
-  if(totalsizey>enabler.window_height||!black_space)apletsizey=(float)enabler.window_height/dimy;
-  else translatey=(enabler.window_height-totalsizey)/2.0f;
-
-
-  glMatrixMode(GL_MODELVIEW);
-  printGLError();
-  glPushMatrix();
-  printGLError();
-  // TODO: Complete viewport zoom stuff, combine with black_space, etc.
-  if (!zoom_grid) {
-    translatex = -viewport_x;
-    translatey = -viewport_y;
-    glScalef(viewport_zoom,viewport_zoom,1);
-  }
-
-  glTranslatef(translatex,translatey,0);
-  printGLError();
-
-  if (exposed)
-    glClear(GL_COLOR_BUFFER_BIT | (accum_buffer ? GL_ACCUM_BUFFER_BIT : 0));
-
-
-  // This code looks incredibly slow, but isn't normally used. It should be fine.
-  // Toady: Is it still actually in use? Anywhere?
-  if(trinum>0)
+  switch (phase) {
+  case setup:
     {
-      glEnable(GL_FOG);
-      glFogf(GL_FOG_START,0);
-  printGLError();
-      glFogf(GL_FOG_END,1000);
-      glFogf(GL_FOG_MODE,GL_LINEAR);
-      float fcolor[4]={0,0,0,0};
-      glFogfv(GL_FOG_COLOR,fcolor);
+      if (!gl_initialized)
+        puts("render called without gl being initialized");
+      float apletsizex=dispx,apletsizey=dispy;
+      float totalsizex=dispx*dimx;
+      float totalsizey=dispy*dimy;
+      float translatex=0,translatey=0;
 
-      glMatrixMode(GL_PROJECTION);
-      glPushMatrix();
-      glLoadIdentity();
-  printGLError();
-      gluPerspective(54.0f, enabler.window_width/enabler.window_height, 2.0f, 1000.0f);
-      glMatrixMode(GL_MODELVIEW);
-      glPushMatrix();
-      gluLookAt(115+160.0f*(float)sin(view_angle),-115-160.0f*(float)cos(view_angle),view_z,115,-115,150,0,0,1);
-
-      glEnable(GL_DITHER);
-      glShadeModel(GL_SMOOTH);
-      glDisable(GL_TEXTURE_2D);
-      glEnable(GL_BLEND);
-      glEnable(GL_CULL_FACE);
-      glEnable(GL_DEPTH_TEST);
-  printGLError();
-
-      glBegin(GL_TRIANGLES);
-      long t;
-      for(t=0;t<trinum;t++)
-	{
-	  glColor4fv(tricol[t]);
-	  glVertex3fv(tri[t]);
-	}
-      glEnd();
-  printGLError();
-
-      glMatrixMode(GL_PROJECTION);
-      glPopMatrix();
-      glMatrixMode(GL_MODELVIEW);
-      glPopMatrix();
-      
-    }
-
-  glDisable(GL_DITHER);
-  printGLError();
-  glShadeModel(GL_FLAT);
-  printGLError();
-  glDisable(GL_BLEND);
-  printGLError();
-  glDisable(GL_TEXTURE_2D);
-  printGLError();
-  glDisable(GL_CULL_FACE);
-  printGLError();
-  glDisable(GL_DEPTH_TEST);
-
-  printGLError();
-
-  int tile_count = 0;
-  // Build arrays. Vertex array is separated out, as it can be skipped in standard or VBO mode.
-  long tex_pos;
-  float edge_l=0,edge_r=apletsizex,edge_u,edge_d;
-  long px,py;
-  long d=0;
-  GLfloat *ptr_bg_color_w = ptr_bg_color;
-  GLfloat *ptr_fg_color_w = ptr_fg_color;
-  GLfloat *ptr_tex_w = ptr_tex;
-  const struct gl_texpos *txt = enabler.textures.gl_texpos;
-
-  // Vertex array
-  if (framebuffer || accum_buffer || !vertices_initialized || init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
-    vertices_initialized = true;
-    if (vbo_refs[0]) {
-      glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
-      assert(ptr_vertex=(GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB));
-    }
-    GLfloat *ptr_vertex_w = ptr_vertex;
-    for(px=0;px<dimx;px++,edge_l+=apletsizex,edge_r+=apletsizex)
-      {
-        edge_u=0;
-        edge_d=apletsizey;
-        for(py=0;py<dimy;py++,d++,edge_u+=apletsizey,edge_d+=apletsizey)
-          {
-            tex_pos=buffer_texpos[d];
-            
-            if(tex_pos==-1 && (!exposed)) { // Check whether the tile is dirty
-              continue; // Not dirty
-            } // Don't update dirty buffer here, as this code is not always executed
-            
-            // Set vertex locations
-            *(ptr_vertex_w++) = edge_l; // Upper left
-            *(ptr_vertex_w++) = edge_u;
-            *(ptr_vertex_w++) = edge_r; // Upper right
-            *(ptr_vertex_w++) = edge_u;
-            *(ptr_vertex_w++) = edge_r; // Lower right
-            *(ptr_vertex_w++) = edge_d;
-            
-            *(ptr_vertex_w++) = edge_l; // Upper left
-            *(ptr_vertex_w++) = edge_u;
-            *(ptr_vertex_w++) = edge_r; // Lower right
-            *(ptr_vertex_w++) = edge_d;
-            *(ptr_vertex_w++) = edge_l; // Lower left
-            *(ptr_vertex_w++) = edge_d;
-          }
+      if (accum_buffer) {
+        // Copy the previous frame's buffer back in
+        glAccum(GL_RETURN, 1);
       }
-    if (vbo_refs[0]) {
-      glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
-      glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
-    }
-      
-    // Reset variables
-    edge_l=0; edge_r=apletsizex;
-    d=0;
-  }
+      else if (framebuffer) {
+        // Setup a framebuffer for rendering
+        if (!framebuffer_initialized) {
+          // Allocate FBO texture memory
+          glGenTextures(1, &fb_texture);
+          glEnable(GL_TEXTURE_2D);
+          glBindTexture(GL_TEXTURE_2D, fb_texture);
+          glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                       enabler.window_width, enabler.window_height,
+                       0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+          glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+          GLint param = (init.window.flag.has_flag(INIT_WINDOW_FLAG_TEXTURE_LINEAR) ?
+                         GL_LINEAR : GL_NEAREST);
+          glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,param);
+          glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,param);
 
-  // FG, BG and tex-coord arrays
-  for(px=0;px<dimx;px++,edge_l+=apletsizex,edge_r+=apletsizex)
-    {
-      edge_u=0;
-      edge_d=apletsizey;
-      for(py=0;py<dimy;py++,d++,edge_u+=apletsizey,edge_d+=apletsizey)
-	{
-	  if(trinum>0)
-	    {
-	      if(py>=1&&py<=init.display.grid_y-2&&px>=init.display.grid_x-55&&px<=init.display.grid_x-26)continue;
-	    }
-
-	  tex_pos=buffer_texpos[d];
-          
-          if(tex_pos==-1 && (!exposed)) { // Check whether the tile is dirty
-            continue; // Not dirty
-          } else {
-            // Dirty. Update dirty buffer.
-            s_buffer_texpos[d]=buffer_texpos[d];
-            s_buffer_r[d]=buffer_r[d];
-            s_buffer_g[d]=buffer_g[d];
-            s_buffer_b[d]=buffer_b[d];
-            s_buffer_br[d]=buffer_br[d];
-            s_buffer_bg[d]=buffer_bg[d];
-            s_buffer_bb[d]=buffer_bb[d];
+          // Bind texture to FBO
+          glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
+          glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
+                                    GL_TEXTURE_2D, fb_texture, 0);
+          framebuffer_initialized = true;
+          // Create and attach a depth buffer
+          glGenRenderbuffersEXT(1, &fb_depth);
+          glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fb_depth);
+          glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, enabler.window_width, enabler.window_height);
+          glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fb_depth);
+          if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
+            framebuffer_initialized = true;
+            // Create a display list for blitting the buffer to screen
+            fb_draw_list = glGenLists(1);
+            glNewList(fb_draw_list, GL_COMPILE);
+            glBindTexture(GL_TEXTURE_2D, fb_texture);
+            glBegin(GL_TRIANGLE_STRIP);
+            glTexCoord2f(0,1);
+            glVertex2f(0,0);
+	
+            glTexCoord2f(0,0);
+            glVertex2f(0,enabler.window_height);
+	
+            glTexCoord2f(1,1);
+            glVertex2f(enabler.window_width,0);
+	
+            glTexCoord2f(1,0);
+            glVertex2f(enabler.window_width,enabler.window_height);
+            glEnd();
+            glEndList();
           }
-
-	  // Background colors
-	  for (int i=0; i<6; i++) {
-	    // We need one color component for each vertex, even if
-	    // only one is actually used with flat shading.
-	    //
-	    // Toady: I'm sure you can think of useful ways to use smooth shading..
-	    *(ptr_bg_color_w++) = buffer_br[d];
-	    *(ptr_bg_color_w++) = buffer_bg[d];
-	    *(ptr_bg_color_w++) = buffer_bb[d];
-	    *(ptr_bg_color_w++) = 1.0; // Alpha, but basically padding.
-	  }
-	  // Foreground colors
-	  for (int i=0; i<6; i++) {
-	    // Same story as for the background.
-	    *(ptr_fg_color_w++) = buffer_r[d];
-	    *(ptr_fg_color_w++) = buffer_g[d];
-	    *(ptr_fg_color_w++) = buffer_b[d];
-	    *(ptr_fg_color_w++) = 1.0; // Padding. Or alpha. You decide.
-	  }
-
-	  if (tex_pos<0||tex_pos>=enabler.textures.textureCount())
-            {
-              //         std::cerr << "Assumptions broken!\n";
-              *(ptr_tex_w++) = 0; // Upper left
-              *(ptr_tex_w++) = 0;
-              *(ptr_tex_w++) = 1; // Upper right
-              *(ptr_tex_w++) = 0;
-              *(ptr_tex_w++) = 1; // Lower right
-              *(ptr_tex_w++) = 1;
-
-              *(ptr_tex_w++) = 0; // Upper left
-              *(ptr_tex_w++) = 0;
-              *(ptr_tex_w++) = 1; // Lower right
-              *(ptr_tex_w++) = 1;
-              *(ptr_tex_w++) = 0; // Lower left
-              *(ptr_tex_w++) = 1;
-            }
-	  else
-            {
-              // Textures
-              *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
-              *(ptr_tex_w++) = txt[tex_pos].bottom;
-              *(ptr_tex_w++) = txt[tex_pos].right;  // Upper right
-              *(ptr_tex_w++) = txt[tex_pos].bottom;
-              *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
-              *(ptr_tex_w++) = txt[tex_pos].top;
-
-              *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
-              *(ptr_tex_w++) = txt[tex_pos].bottom;
-              *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
-              *(ptr_tex_w++) = txt[tex_pos].top;
-              *(ptr_tex_w++) = txt[tex_pos].left;   // Lower left
-              *(ptr_tex_w++) = txt[tex_pos].top;
-            }
-          
-
-	  // One tile down.
-	  tile_count++;
+          else {
+            glDeleteRenderbuffersEXT(1, &fb_depth);
+            glDeleteTextures(1, &fb_texture);
+            glDeleteFramebuffersEXT(1, &framebuffer);
+            framebuffer = 0; // Disable framebuffer
+            glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+            std::cout << "Error: Invalid framebuffer configuration, FBO disabled. No action required.\n";
+          }
+          glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         }
-    }
+        // Render to framebuffer
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
+      }
+      
+      if(totalsizex>enabler.window_width||!black_space)apletsizex=(float)enabler.window_width/dimx;
+      else translatex=(enabler.window_width-totalsizex)/2.0f;
+      if(totalsizey>enabler.window_height||!black_space)apletsizey=(float)enabler.window_height/dimy;
+      else translatey=(enabler.window_height-totalsizey)/2.0f;
 
-  printGLError();
 
-  // Make ready for rendering the background
-  // Pass pointers to our local arrays
-  if (vbo_refs[0]) {
-    // We need to unmap the VBOs before use
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
-    glVertexPointer(2, GL_FLOAT, 0, 0);
+//       glMatrixMode(GL_MODELVIEW);
+//       printGLError();
+//       glPushMatrix();
+//       printGLError();
+      // TODO: Complete viewport zoom stuff, combine with black_space, etc.
+      if (!zoom_grid) {
+        translatex = -viewport_x;
+        translatey = -viewport_y;
+        glScalef(viewport_zoom,viewport_zoom,1);
+      }
+
+      glTranslatef(translatex,translatey,0);
+      printGLError();
+
+      if (exposed)
+        glClear(GL_COLOR_BUFFER_BIT | (accum_buffer ? GL_ACCUM_BUFFER_BIT : 0));
+
+
+      // This code looks incredibly slow, but isn't normally used. It should be fine.
+      // Toady: Is it still actually in use? Anywhere?
+      if(trinum>0)
+        {
+          glEnable(GL_FOG);
+          glFogf(GL_FOG_START,0);
+          printGLError();
+          glFogf(GL_FOG_END,1000);
+          glFogf(GL_FOG_MODE,GL_LINEAR);
+          float fcolor[4]={0,0,0,0};
+          glFogfv(GL_FOG_COLOR,fcolor);
+
+          glMatrixMode(GL_PROJECTION);
+          glPushMatrix();
+          glLoadIdentity();
+          printGLError();
+          gluPerspective(54.0f, enabler.window_width/enabler.window_height, 2.0f, 1000.0f);
+          glMatrixMode(GL_MODELVIEW);
+          glPushMatrix();
+          gluLookAt(115+160.0f*(float)sin(view_angle),-115-160.0f*(float)cos(view_angle),view_z,115,-115,150,0,0,1);
+
+          glEnable(GL_DITHER);
+          glShadeModel(GL_SMOOTH);
+          glDisable(GL_TEXTURE_2D);
+          glEnable(GL_BLEND);
+          glEnable(GL_CULL_FACE);
+          glEnable(GL_DEPTH_TEST);
+          printGLError();
+
+          glBegin(GL_TRIANGLES);
+          long t;
+          for(t=0;t<trinum;t++)
+            {
+              glColor4fv(tricol[t]);
+              glVertex3fv(tri[t]);
+            }
+          glEnd();
+          printGLError();
+
+          glMatrixMode(GL_PROJECTION);
+          glPopMatrix();
+          glMatrixMode(GL_MODELVIEW);
+          glPopMatrix();
+      
+        }
+
+      glDisable(GL_DITHER);
+      printGLError();
+      glShadeModel(GL_FLAT);
+      printGLError();
+      glDisable(GL_BLEND);
+      printGLError();
+      glDisable(GL_TEXTURE_2D);
+      printGLError();
+      glDisable(GL_CULL_FACE);
+      printGLError();
+      glDisable(GL_DEPTH_TEST);
+
+      printGLError();
+
+      tile_count = 0;
+      // Build arrays. Vertex array is separated out, as it can be skipped in standard or VBO mode.
+      long tex_pos;
+      float edge_l=0,edge_r=apletsizex,edge_u,edge_d;
+      long px,py;
+      long d=0;
+      GLfloat *ptr_bg_color_w = ptr_bg_color;
+      GLfloat *ptr_fg_color_w = ptr_fg_color;
+      GLfloat *ptr_tex_w = ptr_tex;
+      const struct gl_texpos *txt = enabler.textures.gl_texpos;
+
+      // Vertex array
+      if (framebuffer || accum_buffer || !vertices_initialized || init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
+        vertices_initialized = true;
+        GLfloat *ptr_vertex_w = ptr_vertex;
+        for(px=0;px<dimx;px++,edge_l+=apletsizex,edge_r+=apletsizex)
+          {
+            edge_u=0;
+            edge_d=apletsizey;
+            for(py=0;py<dimy;py++,d++,edge_u+=apletsizey,edge_d+=apletsizey)
+              {
+                tex_pos=buffer_texpos[d];
+            
+                if(tex_pos==-1 && (!exposed)) { // Check whether the tile is dirty
+                  continue; // Not dirty
+                } // Don't update dirty buffer here, as this code is not always executed
+            
+                // Set vertex locations
+                *(ptr_vertex_w++) = edge_l; // Upper left
+                *(ptr_vertex_w++) = edge_u;
+                *(ptr_vertex_w++) = edge_r; // Upper right
+                *(ptr_vertex_w++) = edge_u;
+                *(ptr_vertex_w++) = edge_r; // Lower right
+                *(ptr_vertex_w++) = edge_d;
+            
+                *(ptr_vertex_w++) = edge_l; // Upper left
+                *(ptr_vertex_w++) = edge_u;
+                *(ptr_vertex_w++) = edge_r; // Lower right
+                *(ptr_vertex_w++) = edge_d;
+                *(ptr_vertex_w++) = edge_l; // Lower left
+                *(ptr_vertex_w++) = edge_d;
+              }
+          }
+      
+        // Reset variables
+        edge_l=0; edge_r=apletsizex;
+        d=0;
+      }
+
+      // FG, BG and tex-coord arrays
+      for(px=0;px<dimx;px++,edge_l+=apletsizex,edge_r+=apletsizex)
+        {
+          edge_u=0;
+          edge_d=apletsizey;
+          for(py=0;py<dimy;py++,d++,edge_u+=apletsizey,edge_d+=apletsizey)
+            {
+              if(trinum>0)
+                {
+                  if(py>=1&&py<=init.display.grid_y-2&&px>=init.display.grid_x-55&&px<=init.display.grid_x-26)continue;
+                }
+
+              tex_pos=buffer_texpos[d];
+          
+              if(tex_pos==-1 && (!exposed)) { // Check whether the tile is dirty
+                continue; // Not dirty
+              } else {
+                // Dirty. Update dirty buffer.
+                s_buffer_texpos[d]=buffer_texpos[d];
+                s_buffer_r[d]=buffer_r[d];
+                s_buffer_g[d]=buffer_g[d];
+                s_buffer_b[d]=buffer_b[d];
+                s_buffer_br[d]=buffer_br[d];
+                s_buffer_bg[d]=buffer_bg[d];
+                s_buffer_bb[d]=buffer_bb[d];
+              }
+
+              // Background colors
+              for (int i=0; i<6; i++) {
+                // We need one color component for each vertex, even if
+                // only one is actually used with flat shading.
+                //
+                // Toady: I'm sure you can think of useful ways to use smooth shading..
+                *(ptr_bg_color_w++) = buffer_br[d];
+                *(ptr_bg_color_w++) = buffer_bg[d];
+                *(ptr_bg_color_w++) = buffer_bb[d];
+                *(ptr_bg_color_w++) = 1.0; // Alpha, but basically padding.
+              }
+              // Foreground colors
+              for (int i=0; i<6; i++) {
+                // Same story as for the background.
+                *(ptr_fg_color_w++) = buffer_r[d];
+                *(ptr_fg_color_w++) = buffer_g[d];
+                *(ptr_fg_color_w++) = buffer_b[d];
+                *(ptr_fg_color_w++) = 1.0; // Padding. Or alpha. You decide.
+              }
+
+              if (tex_pos<0||tex_pos>=enabler.textures.textureCount())
+                {
+                  //         std::cerr << "Assumptions broken!\n";
+                  *(ptr_tex_w++) = 0; // Upper left
+                  *(ptr_tex_w++) = 0;
+                  *(ptr_tex_w++) = 1; // Upper right
+                  *(ptr_tex_w++) = 0;
+                  *(ptr_tex_w++) = 1; // Lower right
+                  *(ptr_tex_w++) = 1;
+
+                  *(ptr_tex_w++) = 0; // Upper left
+                  *(ptr_tex_w++) = 0;
+                  *(ptr_tex_w++) = 1; // Lower right
+                  *(ptr_tex_w++) = 1;
+                  *(ptr_tex_w++) = 0; // Lower left
+                  *(ptr_tex_w++) = 1;
+                }
+              else
+                {
+                  // Textures
+                  *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
+                  *(ptr_tex_w++) = txt[tex_pos].bottom;
+                  *(ptr_tex_w++) = txt[tex_pos].right;  // Upper right
+                  *(ptr_tex_w++) = txt[tex_pos].bottom;
+                  *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
+                  *(ptr_tex_w++) = txt[tex_pos].top;
+
+                  *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
+                  *(ptr_tex_w++) = txt[tex_pos].bottom;
+                  *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
+                  *(ptr_tex_w++) = txt[tex_pos].top;
+                  *(ptr_tex_w++) = txt[tex_pos].left;   // Lower left
+                  *(ptr_tex_w++) = txt[tex_pos].top;
+                }
+          
+
+              // One tile down.
+              tile_count++;
+            }
+        }
+
+      printGLError();
+
+      // Upload VBO data to the gpu, if appropriate
+      if (vbo_refs[0]) {
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
+        glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 0, tile_count*sizeof(GLfloat)*6*2, ptr_vertex);
     
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]); // background color
-    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
-    glColorPointer(4, GL_FLOAT, 0, 0);
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]); // background color
+        glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 0, tile_count*sizeof(GLfloat)*6*4, ptr_bg_color);
 
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]); // texture coordinates
-    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
-    glTexCoordPointer(2, GL_FLOAT, 0, 0);
-  } else {
-    glVertexPointer(2, GL_FLOAT, 0, ptr_vertex);
-    glColorPointer(4, GL_FLOAT, 0, ptr_bg_color);
-    glTexCoordPointer(2, GL_FLOAT, 0, ptr_tex);
-  }
-  printGLError();
-  
-  // Draw the background colors
-  glDisable(GL_ALPHA_TEST);
-  printGLError();
-  glDisable(GL_TEXTURE_2D);
-  printGLError();
-  glEnableClientState(GL_COLOR_ARRAY);
-  printGLError();
-  glEnableClientState(GL_VERTEX_ARRAY);
-  printGLError();
-  glDrawArrays(GL_TRIANGLES, 0, tile_count*6);
-  printGLError();
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]); // foreground color
+        glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 0, tile_count*sizeof(GLfloat)*6*4, ptr_fg_color);
 
-  printGLError();
- 
-  // Draw the foreground, textures and color both
-  if (vbo_refs[0]) {
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
-    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
-    glColorPointer(4, GL_FLOAT, 0, 0);
-  } else {
-    glColorPointer(4, GL_FLOAT, 0, ptr_fg_color);
-  }
-  printGLError();
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]); // texture coordinates
+        glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 0, tile_count*sizeof(GLfloat)*6*2, ptr_tex);
+      }
+      printGLError();
 
-  glEnable(GL_ALPHA_TEST);
-  printGLError();
-  glAlphaFunc(GL_NOTEQUAL, 0);
-  printGLError();
-  glEnable(GL_TEXTURE_2D);
-  printGLError();
-  glBindTexture(GL_TEXTURE_2D, enabler.textures.gl_catalog);
-  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-  printGLError();
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-  printGLError();
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glDrawArrays(GL_TRIANGLES, 0, tile_count*6);
-  printGLError();
+    } // case setup
+    break;
+  case complete:
+    {
+      // Bind the appropriate buffers
+      if (vbo_refs[0]) {
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
+        glVertexPointer(2, GL_FLOAT, 0, 0);
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
+        glColorPointer(4, GL_FLOAT, 0, 0);
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
+        glTexCoordPointer(2, GL_FLOAT, 0, 0);
+      } else {
+        glVertexPointer(2, GL_FLOAT, 0, ptr_vertex);
+        glColorPointer(4, GL_FLOAT, 0, ptr_bg_color);
+        glTexCoordPointer(2, GL_FLOAT, 0, ptr_tex);
+      }
+        
+      
+      // Draw the background colors
+      glDisable(GL_ALPHA_TEST);
+      printGLError();
+      glDisable(GL_TEXTURE_2D);
+      printGLError();
+      glEnableClientState(GL_COLOR_ARRAY);
+      printGLError();
+      glEnableClientState(GL_VERTEX_ARRAY);
+      printGLError();
+      glDrawArrays(GL_TRIANGLES, 0, tile_count*6);
+      printGLError();
 
-  // Clean up
-  glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-  printGLError();
-  glDisableClientState(GL_COLOR_ARRAY);
-  printGLError();
-  glDisableClientState(GL_VERTEX_ARRAY);
-  printGLError();
+      printGLError();
 
-  glDisable(GL_BLEND);
+      // Switch out the color pointer
+      if (vbo_refs[0]) {
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
+        glColorPointer(4, GL_FLOAT, 0, 0);
+      } else {
+        glColorPointer(4, GL_FLOAT, 0, ptr_fg_color);
+      }
+      printGLError();
 
-  glDisable(GL_ALPHA_TEST);
-  printGLError();
+      // Draw the foreground, textures and color both
+      glEnable(GL_ALPHA_TEST);
+      printGLError();
+      glAlphaFunc(GL_NOTEQUAL, 0);
+      printGLError();
+      glEnable(GL_TEXTURE_2D);
+      printGLError();
+      glBindTexture(GL_TEXTURE_2D, enabler.textures.gl_catalog);
+      glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+      printGLError();
+      glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+      printGLError();
+      glEnable(GL_BLEND);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glDrawArrays(GL_TRIANGLES, 0, tile_count*6);
+      printGLError();
 
-  glMatrixMode(GL_MODELVIEW);
-  printGLError();
-  glPopMatrix();
-  printGLError();
-  exposed = 0;
+      // Clean up
+      glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+      printGLError();
+      glDisableClientState(GL_COLOR_ARRAY);
+      printGLError();
+      glDisableClientState(GL_VERTEX_ARRAY);
+      printGLError();
+
+      glDisable(GL_BLEND);
+
+      glDisable(GL_ALPHA_TEST);
+      printGLError();
+
+//       glMatrixMode(GL_MODELVIEW);
+//       printGLError();
+//       glPopMatrix();
+//       printGLError();
+      exposed = 0;
 #ifdef DEBUG
-  if (frame < 5) {
-    frame++;
-    std::cout << "Frame " << frame << " complete\n";
-  }
+      if (frame < 5) {
+        frame++;
+        std::cout << "Frame " << frame << " complete\n";
+      }
 #endif
 
-  if (accum_buffer) {
-    // If we use the accumulation buffer, store the screen contents back to the buffer
-    glAccum(GL_LOAD, 1);
-  }
-  // If we used a framebuffer, render that FBO to the screen
-  else if (framebuffer) {
-    // Render to screen
-    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-    // Blit framebuffer
-    glCallList(fb_draw_list);
+      if (accum_buffer) {
+        // If we use the accumulation buffer, store the screen contents back to the buffer
+        glAccum(GL_LOAD, 1);
+      }
+      // If we used a framebuffer, render that FBO to the screen
+      else if (framebuffer) {
+        // Render to screen
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+        // Blit framebuffer
+        glCallList(fb_draw_list);
+      }
+    } // case complete
+    break;
   }
 }
 
@@ -1216,7 +1230,7 @@ void gridrectst::init_gl() {
     // Allocate memory for the server-side arrays
     glGenBuffersARB(4, vbo_refs);
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
-    glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*2*sizeof(GLfloat), NULL, GL_STATIC_DRAW_ARB);
+    glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*2*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
     glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*4*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
@@ -1228,38 +1242,39 @@ void gridrectst::init_gl() {
     if (!shown)
 #endif
       std::cout << "Using OpenGL output path with client-side arrays";
-    if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER) && GLEW_EXT_framebuffer_object) {
-#ifndef DEBUG
-      if (!shown)
-#endif
-        std::cout << " and off-screen framebuffer\n";
-      glGenFramebuffersEXT(1, &framebuffer);
-      framebuffer_initialized = false;
-    } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER)) {
-#ifndef DEBUG
-      if (!shown)
-#endif
-        std::cout << " and accumulation buffer\n";
-      accum_buffer=true;
-    } else {
-#ifndef DEBUG
-      if (!shown)
-#endif
-        std::cout << "\n";
-      framebuffer = 0;
-    }
-    
-    if (accum_buffer)
-      glClearAccum(0,0,0,0);
-    // Allocate memory for the client-side arrays
-#ifdef DEBUG
-    printf("Room for %d vertices allocated\n", dimx*dimy*6);
-#endif
-    ptr_vertex = new GLfloat[dimx*dimy*6*2];   // dimx*dimy tiles,
-    ptr_fg_color = new GLfloat[dimx*dimy*6*4]; // six vertices,
-    ptr_bg_color = new GLfloat[dimx*dimy*6*4]; // two vertex components or
-    ptr_tex = new GLfloat[dimx*dimy*6*2];      // four colors per vertex
   }
+
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER) && GLEW_EXT_framebuffer_object) {
+#ifndef DEBUG
+    if (!shown)
+#endif
+      std::cout << " and off-screen framebuffer\n";
+    glGenFramebuffersEXT(1, &framebuffer);
+    framebuffer_initialized = false;
+  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER)) {
+#ifndef DEBUG
+    if (!shown)
+#endif
+      std::cout << " and accumulation buffer\n";
+    accum_buffer=true;
+  } else {
+#ifndef DEBUG
+    if (!shown)
+#endif
+      std::cout << "\n";
+    framebuffer = 0;
+  }
+    
+  if (accum_buffer)
+    glClearAccum(0,0,0,0);
+  // Allocate memory for the client-side arrays
+#ifdef DEBUG
+  printf("Room for %d vertices allocated\n", dimx*dimy*6);
+#endif
+  ptr_vertex = new GLfloat[dimx*dimy*6*2];   // dimx*dimy tiles,
+  ptr_fg_color = new GLfloat[dimx*dimy*6*4]; // six vertices,
+  ptr_bg_color = new GLfloat[dimx*dimy*6*4]; // two vertex components or
+  ptr_tex = new GLfloat[dimx*dimy*6*2];      // four colors per vertex
   gl_initialized = true;
   shown = true;
 }
@@ -1269,12 +1284,11 @@ void gridrectst::uninit_gl() {
   if (vbo_refs[0]) {
     glDeleteBuffersARB(4, vbo_refs);
     vbo_refs[0] = 0;
-  } else {
-    delete[] ptr_vertex;
-    delete[] ptr_fg_color;
-    delete[] ptr_bg_color;
-    delete[] ptr_tex;
   }
+  delete[] ptr_vertex;
+  delete[] ptr_fg_color;
+  delete[] ptr_bg_color;
+  delete[] ptr_tex;
   if (framebuffer) {
     glDeleteLists(1, fb_draw_list);
     glDeleteRenderbuffersEXT(1, &fb_depth);
@@ -1435,7 +1449,7 @@ void enablerst::set_color(float r,float g,float b,float a)
     }
 }
 
-void enablerst::render_tiles()
+void enablerst::render_tiles(enum render_phase phase)
 {
   //SET UP THE VIEW
   glMatrixMode(GL_MODELVIEW);
@@ -1446,16 +1460,18 @@ void enablerst::render_tiles()
   // Toady: gridrect.size always seems to be 1. Is there any use in it being an array?
   for(int r=0;r<gridrect.size();r++)
     {
-      gridrect[r]->render();
+      gridrect[r]->render(phase);
     }
   // Draw set_tile tiles
-  glColor3f(1,1,1);
-  glEnable(GL_ALPHA_TEST);
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-  glEnableClientState(GL_VERTEX_ARRAY);
-  glVertexPointer(2, GL_FLOAT, 0, tile_vertices);
-  glTexCoordPointer(2, GL_FLOAT, 0, tile_texcoords);
-  glDrawArrays(GL_QUADS, 0, tiles.size() * 4);
+  if (phase == complete) {
+    glColor3f(1,1,1);
+    glEnable(GL_ALPHA_TEST);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, tile_vertices);
+    glTexCoordPointer(2, GL_FLOAT, 0, tile_texcoords);
+    glDrawArrays(GL_QUADS, 0, tiles.size() * 4);
+  }
 }
 
 // Toady: Yep, this had a lot more parameters as add_tile. You weren't using them.

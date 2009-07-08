@@ -585,30 +585,32 @@ void graphicst::add_tile_grayscale(long texp,char cf,char cbr)
 		}
 }
 
-void render_things()
+void render_things(enum render_phase phase)
 {
-	//CLEAR
-	if(gps.force_full_display_count>0||!init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT))
-	//NOTE: NEED TO CLEAR NO MATTER WHAT IN CASE THEY ARE DOING BLACKSPACE, ETC.
-		{
-		glClearColor(0,0,0,0);
-		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-		}
+  if (phase == setup) {
+  //CLEAR
+    if(gps.force_full_display_count>0||!init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT))
+      //NOTE: NEED TO CLEAR NO MATTER WHAT IN CASE THEY ARE DOING BLACKSPACE, ETC.
+      {
+        glClearColor(0,0,0,0);
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+      }
+    
+    //SET UP MATRICES
+    glMatrixMode (GL_MODELVIEW);								// Select The Modelview Matrix
+    glLoadIdentity();											// Reset The Modelview Matrix
+    glTranslatef(0,0,0);
+  }
 
-	//SET UP MATRICES
-	glMatrixMode (GL_MODELVIEW);								// Select The Modelview Matrix
-	glLoadIdentity();											// Reset The Modelview Matrix
-	glTranslatef(0,0,0);
-
-	//GRAB CURRENT SCREEN AT THE END OF THE LIST
-	viewscreenst *currentscreen=&gview.view;
-	while(currentscreen->child!=NULL)currentscreen=currentscreen->child;
-
-	//NO INTERFACE LEFT, LEAVE
-	if(currentscreen==&gview.view)return;
-
-	currentscreen->render();
-
-	//DRAW EVERYTHING TO BACK BUFFER
-	enabler.render_tiles();
+  //GRAB CURRENT SCREEN AT THE END OF THE LIST
+  viewscreenst *currentscreen=&gview.view;
+  while(currentscreen->child!=NULL)currentscreen=currentscreen->child;
+  
+  //NO INTERFACE LEFT, LEAVE
+  if(currentscreen==&gview.view)return;
+  
+  currentscreen->render();
+  
+  //DRAW EVERYTHING TO BACK BUFFER
+  enabler.render_tiles(phase);
 }

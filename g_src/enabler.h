@@ -346,6 +346,15 @@ enum ColorData
 
 #define TRIMAX 9999
 
+enum render_phase {
+  setup, // 0
+  complete,
+  phase_count
+};
+
+// From graphics.cpp
+void render_things(enum render_phase);
+
 class gridrectst
 {
   friend class enablerst;
@@ -355,7 +364,7 @@ class gridrectst
 
   //FUNCTIONS
   static gridrectst *create(long newdimx,long newdimy);
-  void render();
+  void render(enum render_phase);
 
   //THE DIMENSIONS
   long dimx,dimy;
@@ -414,6 +423,8 @@ class gridrectst
   GLuint fb_draw_list;
   // VBO references, vbo_refs[0]=0 if they are unused.
   uint32_t vbo_refs[4];
+  // Number of tiles setup to be rendered
+  int tile_count;
 };
 
 class text_info_elementst
@@ -751,8 +762,8 @@ class enablerst: public enabler_inputst
   char create_full_screen;
   char inactive_mode;
   void reshape_GL(int width,int height);
-  void render(GL_Window &window);
-  void render_tiles();
+  void render(GL_Window &window, enum render_phase);
+  void render_tiles(enum render_phase);
   void graphicsinit();
   long gridrect_create(long dimx,long dimy);
   long cursesrect_create(long font_id,long x,long y,long dimx,long dimy);
