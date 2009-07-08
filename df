@@ -2,5 +2,11 @@
 export SDL_DISABLE_LOCK_KEYS=1 # Work around for bug in Debian/Ubuntu SDL patch.
 #export SDL_VIDEO_CENTERED=1 # Centre the screen.  Messes up resizing.
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"./libs" # Update library search path.
+# Work around bad 32-bit support in Arch64
+if grep -q "Arch Linux" /etc/issue; then
+  if [ -d /opt/lib32 ]; then
+      export GTK_PATH=/opt/lib32/usr/lib/gtk-2.0/
+      export PANGO_RC_FILE=/opt/lib32/config/pango/pangorc
+  fi
+fi
 ./dwarfort.exe $* # Go, go, go! :)
-
