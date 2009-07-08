@@ -665,11 +665,11 @@ char enablerst::create_window_GL(GL_Window* window)
   }
   // Set it up for windowed or fullscreen, depending on what they asked for.
   if (window->init.isFullScreen) { 
-//     flags |= SDL_FULLSCREEN;
+    flags |= SDL_FULLSCREEN;
     window->init.width = desired_fullscreen_width;
     window->init.height = desired_fullscreen_height;
   } else {
-//     flags |= SDL_RESIZABLE;
+    flags |= SDL_RESIZABLE;
     window->init.width = desired_windowed_width;
     window->init.height = desired_windowed_height;
   }
