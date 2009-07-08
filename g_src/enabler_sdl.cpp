@@ -2050,16 +2050,16 @@ void textures::upload_textures() {
   // First, sort the textures by vertical size. We'Ll want to place the large
   // ones first.
   // Since we mustn't alter the raws array, first thing is to create a new one.
-  // We pretend textures are one pixel larger than they actually are, in order
-  // to avoid border scuffles when interpolating.
+  // We pretend textures are one pixel larger than they actually are in either
+  // direction, to avoid border scuffles when interpolating.
   std::vector<vsize_pos> ordered;
   long pos = 0;
   for (std::vector<SDL_Surface *>::iterator it = raws.begin();
        it != raws.end(); ++it) {
     if (*it) {
       vsize_pos item;
-      item.h = (*it)->h+1;
-      item.w = (*it)->w+1;
+      item.h = (*it)->h+2;
+      item.w = (*it)->w+2;
       item.s = *it;
       item.pos = pos;
       ordered.push_back(item);
@@ -2176,24 +2176,33 @@ void textures::upload_textures() {
     SDL_Surface *s = ordered[pos].s;
     SDL_PixelFormat *f = s->format;
     SDL_LockSurface(s);
-    // Make /real/ sure we get the GL format right
-    unsigned char *pixels = new unsigned char[s->w * s->h * 4];
-    for (int x=0; x < s->w; x++)
-      for (int y=0; y < s->h; y++) {
-	// GL textures are loaded upside-down, Y=0 at the bottom
-	unsigned char *pixel_dst = &pixels[(s->h - y - 1)*s->w*4 + x*4];
-	unsigned char *pixel_src = &((unsigned char*)s->pixels)[y*s->w*4 + x*4];
-	// We convert all textures to RGBA format at load-time, further below
-	for (int i=0; i<4; i++) {
-	  pixel_dst[i] = pixel_src[i];
-  }
+    // Make /real/ sure we get the GL format right.
+    unsigned char *pixels = new unsigned char[ordered[pos].w * ordered[pos].h * 4];
+    // Recall, ordered[pos].w is 2 larger than s->w because of the border.
+    for (int bx=0; bx < ordered[pos].w; bx++) {
+      int x = bx - 1;
+      if (x == -1) x++;
+      if (x == s->w) x--;
+      for (int by=0; by < ordered[pos].h; by++) {
+        int y = by - 1;
+        if (y == -1) y++;
+        if (y == s->h) y--;
+        // GL textures are loaded upside-down, Y=0 at the bottom
+        unsigned char *pixel_dst = &pixels[(ordered[pos].h - by - 1)*ordered[pos].w*4 + bx*4];
+        unsigned char *pixel_src = &((unsigned char*)s->pixels)[y*s->w*4 + x*4];
+        assert (pixel_dst < pixels + ordered[pos].w * ordered[pos].h * 4);
+        assert (pixel_src < (unsigned char*)s->pixels + s->w * s->h * 4);
+        // We convert all textures to RGBA format at load-time, further below
+        for (int i=0; i<4; i++) {
+          pixel_dst[i] = pixel_src[i];
+        }
       }
+    }
     // Right. Upload the texture to the catalog.
-//     std::cout << "x " << ordered[pos].x << "  y " << ordered[pos].y << "  w " << s->w << "  h " << s->h << "\n";
     SDL_UnlockSurface(s);
     glBindTexture(GL_TEXTURE_2D, gl_catalog);
     printGLError();
-    glTexSubImage2D(GL_TEXTURE_2D, 0, ordered[pos].x, ordered[pos].y, s->w, s->h,
+    glTexSubImage2D(GL_TEXTURE_2D, 0, ordered[pos].x, ordered[pos].y, ordered[pos].w, ordered[pos].h,
 		    GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     delete[] pixels;
     printGLError();
@@ -2203,16 +2212,12 @@ void textures::upload_textures() {
     //
     // There's no real reason to use double instead of floats here, but
     // no reason not to either, and it just might help with precision.
-	/*
-    gl_texpos[raws_pos].left   = ((double)ordered[pos].x+0.5)      / (double)catalog_width;
-    gl_texpos[raws_pos].right  = ((double)ordered[pos].x+s->w-0.5) / (double)catalog_width;
-    gl_texpos[raws_pos].top    = ((double)ordered[pos].y+0.5)      / (double)catalog_height;
-    gl_texpos[raws_pos].bottom = ((double)ordered[pos].y+s->h-0.5) / (double)catalog_height;
-	*/
-    gl_texpos[raws_pos].left   = ((double)ordered[pos].x)      / (double)catalog_width;
-    gl_texpos[raws_pos].right  = ((double)ordered[pos].x+s->w) / (double)catalog_width;
-    gl_texpos[raws_pos].top    = ((double)ordered[pos].y)      / (double)catalog_height;
-    gl_texpos[raws_pos].bottom = ((double)ordered[pos].y+s->h) / (double)catalog_height;
+    //
+    // There's a one-pixel border around each tile, so we offset by 1
+    gl_texpos[raws_pos].left   = ((double)ordered[pos].x+1)      / (double)catalog_width;
+    gl_texpos[raws_pos].right  = ((double)ordered[pos].x+1+s->w) / (double)catalog_width;
+    gl_texpos[raws_pos].top    = ((double)ordered[pos].y+1)      / (double)catalog_height;
+    gl_texpos[raws_pos].bottom = ((double)ordered[pos].y+1+s->h) / (double)catalog_height;
   }
   // And that's that. Locked, loaded and ready for texturing.
   printGLError();
