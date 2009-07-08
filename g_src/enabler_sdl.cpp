@@ -81,6 +81,11 @@ static int glerrorcount = 0;
 	#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
+// Yes, the profusion of global variables below is a bad thing. The reason they
+// exist is because there is only one, global gridrectst, but it likes to
+// pretend otherwise, and zooming is currently a global action. In other words,
+// bad architecture.
+
 // There are two different kinds of zoom.
 // Grid zoom: The game may use a smaller or larger grid than the "natural" size for the window.
 // Viewport zoom: The window may show just part of the grid.
@@ -91,6 +96,10 @@ static double grid_zoom_req = 1.0;
 static double viewport_x = 0, viewport_y = 0;
 // Whether zoom commands affect grid_zoom or viewport_zoom
 static bool zoom_grid = true;
+// Whether we have just zoomed and need to run the main_loop to reinitialize
+// stuff before rendering.
+static bool just_zoomed = true;
+
 
 static void resize_grid(int width, int height, bool resizing) {
   // The grid must fit inside the window. We ensure this by zooming
@@ -177,6 +186,7 @@ static void zoom_display(enum zoom_commands command) {
   case zoom_reset:
     deputs("Resetting zoom");
     grid_zoom_req = 1.0;
+    just_zoomed = true;
     reset_window();
     break;
   case zoom_in:
@@ -185,6 +195,7 @@ static void zoom_display(enum zoom_commands command) {
       reset_window();
       if (grid_zoom == old_grid_zoom)
         grid_zoom_req = old_req;
+      just_zoomed = true;
     } else {
       viewport_zoom *= zoom_factor;
       exposed = 1;
@@ -199,6 +210,7 @@ static void zoom_display(enum zoom_commands command) {
       reset_window();
       if (grid_zoom == old_grid_zoom)
         grid_zoom_req = old_req;
+      just_zoomed = true;
     } else {
       viewport_zoom = MAX(1.0, viewport_zoom / zoom_factor);
 	  exposed = 1;
@@ -499,10 +511,15 @@ void enablerst::do_frame()
   if (gframes_outstanding < -5) gframes_outstanding = -5;
   if (frames_outstanding < -20) frames_outstanding = -20;
 
-  // Initiate graphics rendering, if appropriate
-  if (gframes_outstanding > 0) {
+  bool do_render=false;
+  if (gframes_outstanding > 0)
+    do_render = true;
+
+  // Hack: Because various enabler values are set by the main loop, we can't
+  // run render-setup before the main loop if we just zoomed or they have
+  // otherwise become uninitialized.
+  if (do_render && !just_zoomed)
     render(window, setup);
-  }
   
   // Run the main loop if appropriate
   if (frames_outstanding > 0||(flag & ENABLERFLAG_MAXFPS)) {
@@ -511,14 +528,20 @@ void enablerst::do_frame()
       is_program_looping = FALSE;
   }
 
-  // Finish rendering graphics, if appropriate
-  if (gframes_outstanding > 0) {
+  // Initiate graphics rendering, if appropriate
+  if (do_render) {
+    if (just_zoomed) {
+      render(window, setup);
+      just_zoomed = false;
+    }
     render(window, complete);
     current_render_count++;
     secondary_render_count++;
     gframes_outstanding--;
   }
-	
+
+  // Finish rendering graphics, if appropriate
+  
 
   // Quit. Toady: Any reason not to set loopvar directly?
   if (!is_program_looping)
@@ -795,16 +818,16 @@ enablerst::enablerst()
 
 void gridrectst::render(enum render_phase phase)
 {
-  printf("%d ", phase);
-  fflush(stdout);
+  if (!gl_initialized) {
+    puts("render called without gl being initialized");
+    return;
+  }
 #ifdef DEBUG
   static int frame = 0;
 #endif
   switch (phase) {
   case setup:
     {
-      if (!gl_initialized)
-        puts("render called without gl being initialized");
       float apletsizex=dispx,apletsizey=dispy;
       float totalsizex=dispx*dimx;
       float totalsizey=dispy*dimy;
@@ -959,7 +982,6 @@ void gridrectst::render(enum render_phase phase)
 
       printGLError();
 
-      tile_count = 0;
       // Build arrays. Vertex array is separated out, as it can be skipped in standard or VBO mode.
       long tex_pos;
       float edge_l=0,edge_r=apletsizex,edge_u,edge_d;
@@ -973,6 +995,7 @@ void gridrectst::render(enum render_phase phase)
       // Vertex array
       if (framebuffer || accum_buffer || !vertices_initialized || init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
         vertices_initialized = true;
+        tile_count = 0;
         GLfloat *ptr_vertex_w = ptr_vertex;
         for(px=0;px<dimx;px++,edge_l+=apletsizex,edge_r+=apletsizex)
           {
@@ -1000,12 +1023,32 @@ void gridrectst::render(enum render_phase phase)
                 *(ptr_vertex_w++) = edge_d;
                 *(ptr_vertex_w++) = edge_l; // Lower left
                 *(ptr_vertex_w++) = edge_d;
+
+                // One tile down
+                ++tile_count;
               }
           }
-      
+        // Upload vertex array. This rarely happens.
+        if (vbo_refs[0]) {
+          glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
+          glBufferDataARB(GL_ARRAY_BUFFER_ARB, tile_count*sizeof(GLfloat)*6*2, ptr_vertex, GL_STATIC_DRAW_ARB);
+        }
+        
         // Reset variables
         edge_l=0; edge_r=apletsizex;
         d=0;
+      }
+
+      // Map VBOs for writing
+      if (vbo_refs[0]) {
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
+        ptr_bg_color_w = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
+
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
+        ptr_fg_color_w = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
+
+        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
+        ptr_tex_w = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
       }
 
       // FG, BG and tex-coord arrays
@@ -1089,10 +1132,6 @@ void gridrectst::render(enum render_phase phase)
                   *(ptr_tex_w++) = txt[tex_pos].left;   // Lower left
                   *(ptr_tex_w++) = txt[tex_pos].top;
                 }
-          
-
-              // One tile down.
-              tile_count++;
             }
         }
 
@@ -1100,17 +1139,14 @@ void gridrectst::render(enum render_phase phase)
 
       // Upload VBO data to the gpu, if appropriate
       if (vbo_refs[0]) {
-        glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
-        glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 0, tile_count*sizeof(GLfloat)*6*2, ptr_vertex);
-    
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]); // background color
-        glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 0, tile_count*sizeof(GLfloat)*6*4, ptr_bg_color);
+        glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
 
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]); // foreground color
-        glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 0, tile_count*sizeof(GLfloat)*6*4, ptr_fg_color);
+        glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
 
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]); // texture coordinates
-        glBufferSubDataARB(GL_ARRAY_BUFFER_ARB, 0, tile_count*sizeof(GLfloat)*6*2, ptr_tex);
+        glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
       }
       printGLError();
 
@@ -1118,6 +1154,7 @@ void gridrectst::render(enum render_phase phase)
     break;
   case complete:
     {
+      printGLError();
       // Bind the appropriate buffers
       if (vbo_refs[0]) {
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
@@ -1164,7 +1201,6 @@ void gridrectst::render(enum render_phase phase)
       glEnable(GL_TEXTURE_2D);
       printGLError();
       glBindTexture(GL_TEXTURE_2D, enabler.textures.gl_catalog);
-      glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
       printGLError();
       glEnableClientState(GL_TEXTURE_COORD_ARRAY);
       printGLError();
@@ -1177,8 +1213,6 @@ void gridrectst::render(enum render_phase phase)
       glDisableClientState(GL_TEXTURE_COORD_ARRAY);
       printGLError();
       glDisableClientState(GL_COLOR_ARRAY);
-      printGLError();
-      glDisableClientState(GL_VERTEX_ARRAY);
       printGLError();
 
       glDisable(GL_BLEND);
@@ -1227,16 +1261,32 @@ void gridrectst::init_gl() {
     if (!shown)
 #endif
       std::cout << "Using OpenGL output path with buffer objects\n";
-    // Allocate memory for the server-side arrays
+    // Allocate memory for the server-side arrays, and test mapping to avoid crashes
+    bool ok = true;
     glGenBuffersARB(4, vbo_refs);
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
-    glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*2*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
+    glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*2*sizeof(GLfloat), NULL, GL_STATIC_DRAW_ARB);
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
     glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*4*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
+    if (!glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB)) ok = false;
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
     glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*4*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
+    if (!glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB)) ok = false;
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
     glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*2*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
+    if (!glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB)) ok = false;
+    // Unmap
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
+    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
+    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
+    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+    if (!ok) {
+      puts("Mapping VBOs failed, falling back to standard mode with client-side arrays");
+      glDeleteBuffersARB(4, vbo_refs);
+      vbo_refs[0]=0;
+    }
   } else {
 #ifndef DEBUG
     if (!shown)
@@ -1272,11 +1322,13 @@ void gridrectst::init_gl() {
   printf("Room for %d vertices allocated\n", dimx*dimy*6);
 #endif
   ptr_vertex = new GLfloat[dimx*dimy*6*2];   // dimx*dimy tiles,
-  ptr_fg_color = new GLfloat[dimx*dimy*6*4]; // six vertices,
-  ptr_bg_color = new GLfloat[dimx*dimy*6*4]; // two vertex components or
-  ptr_tex = new GLfloat[dimx*dimy*6*2];      // four colors per vertex
-  gl_initialized = true;
+  if (!vbo_refs[0]) { // We don't need these in VBO mode
+    ptr_fg_color = new GLfloat[dimx*dimy*6*4]; // six vertices,
+    ptr_bg_color = new GLfloat[dimx*dimy*6*4]; // two vertex components or
+    ptr_tex = new GLfloat[dimx*dimy*6*2];      // four colors per vertex
+  }
   shown = true;
+  gl_initialized = true;
 }
 
 void gridrectst::uninit_gl() {
