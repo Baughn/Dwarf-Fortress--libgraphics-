@@ -103,8 +103,8 @@ static void resize_grid(int width, int height, bool resizing) {
   }
 
   // Figure out how large a grid we're being asked for.
-  const int font_w=init.font.small_font_dispx;
-  const int font_h=init.font.small_font_dispy;
+  const int font_w = enabler.create_full_screen ? init.font.large_font_dispx : init.font.small_font_dispx;
+  const int font_h = enabler.create_full_screen ? init.font.large_font_dispy : init.font.small_font_dispy;
 
   const int desired_grid_x = width / font_w / grid_zoom_req;
   const int desired_grid_y = height / font_h / grid_zoom_req;
@@ -215,6 +215,9 @@ static void zoom_display(enum zoom_commands command) {
 
 static void eventLoop(GL_Window window)
 {
+ // Initialize the zoom
+ reset_window();
+  
  SDL_Event event;
  SDL_Surface *screen = NULL;
  Uint32 mouse_lastused = 0;
@@ -551,8 +554,8 @@ void enablerst::toggle_fullscreen(GL_Window* window)
 	
 
   reset_gl(window);
-   
   render(*window);
+  reset_window();
 }
 
 void enablerst::reset_gl(GL_Window* window) {
@@ -569,8 +572,6 @@ void enablerst::reset_gl(GL_Window* window) {
     }
 
   textures.upload_textures();
-
-  reset_window();
   // ne_toggle_fullscreen();
 }
 
