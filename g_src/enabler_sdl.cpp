@@ -271,10 +271,6 @@ static void eventLoop(GL_Window window)
      if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
 //      enabler.add_input(INTERFACEEVENT_MOUSE_UP,0);
       NewInput.symbol=event.button.button;
-      if (NewInput.symbol<NUM_MOUSE_BUTTONS) {
-       NewInput.symbol+=KEY_MOUSEUP;
-       enabler.add_input(NewInput.Value,0);
-      }
       switch (NewInput.symbol) {
        case SDL_BUTTON_LEFT:
         enabler.mouse_lbut = 0;
@@ -286,6 +282,10 @@ static void eventLoop(GL_Window window)
         enabler.mouse_rbut_down = 0;
         enabler.mouse_rbut_lift = 1;
        break;
+      }
+      if (NewInput.symbol<NUM_MOUSE_BUTTONS) {
+       NewInput.symbol+=KEY_MOUSEUP;
+       enabler.add_input(NewInput.Value,0);
       }
      }
     break;
