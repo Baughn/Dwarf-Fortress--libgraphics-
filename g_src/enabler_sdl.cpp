@@ -1043,12 +1043,15 @@ void gridrectst::render(enum render_phase phase)
       if (vbo_refs[0]) {
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
         ptr_bg_color_w = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
+        assert(ptr_bg_color_w);
 
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
         ptr_fg_color_w = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
+        assert(ptr_fg_color_w);
 
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
         ptr_tex_w = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
+        assert(ptr_tex_w);
       }
 
       // FG, BG and tex-coord arrays
