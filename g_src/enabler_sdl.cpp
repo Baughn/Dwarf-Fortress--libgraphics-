@@ -625,6 +625,12 @@ char enablerst::create_window_GL(GL_Window* window)
   // Set up SDL to give us an OpenGL context.
   flags |= SDL_HWSURFACE;
   flags |= SDL_OPENGL;
+  // Find the current desktop resolution if fullscreen resolution is auto
+  if (desired_fullscreen_width == 0 || desired_fullscreen_height == 0) {
+    const struct SDL_VideoInfo *info = SDL_GetVideoInfo();
+    desired_fullscreen_width = info->current_w;
+    desired_fullscreen_height = info->current_h;
+  }
   // Set it up for windowed or fullscreen, depending on what they asked for.
   if (window->init.isFullScreen) { 
     flags |= SDL_FULLSCREEN;
