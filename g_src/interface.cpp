@@ -779,7 +779,7 @@ void interfacest::insertscreen_as_parent(viewscreenst *scr,viewscreenst *child)
 
 	if(scr->parent!=NULL)scr->parent->child=scr;
 	child->parent=scr;
-// enabler.add_input(INTERFACEEVENT_NEW_VIEW,0);
+ enabler.add_input(INTERFACEEVENT_NEW_VIEW,0);
 }
 
 void interfacest::insertscreen_as_child(viewscreenst *scr,viewscreenst *parent)
@@ -795,7 +795,7 @@ void interfacest::insertscreen_as_child(viewscreenst *scr,viewscreenst *parent)
 
 	if(scr->child!=NULL)scr->child->parent=scr;
 	parent->child=scr;
-// enabler.add_input(INTERFACEEVENT_NEW_VIEW,0);
+ enabler.add_input(INTERFACEEVENT_NEW_VIEW,0);
 }
 
 void interfacest::insertscreen_at_back(viewscreenst *scr)
@@ -843,47 +843,53 @@ char interfacest::loop() {
    if ((flag & INTERFACEFLAG_RETAIN_NONZERO_INPUT)==0) keynext();
    else flag&=~INTERFACEFLAG_RETAIN_NONZERO_INPUT;
 
-   //TOGGLE SCREEN
    if(currentscreen->is_legacy_screen()) currentscreen->view();
    else {
     currentscreen->input();
     if (currentscreen->child==NULL) currentscreen->logic();
    }
-   if(keypress(INTERFACEKEY_TOGGLE_FULLSCREEN)) enabler.toggle_fullscreen();
-   //GAME OPTIONS
-   else if(keypress(INTERFACEKEY_OPTIONS)) {
-    //PEEL BACK ALL SCREENS TO THE CURRENT OPTION SCREEN IF THERE IS ONE
-    //UNLESS THERE IS A BLOCKING SCREEN LIKE THE REGION MAKER
-    viewscreenst *opscreen=&view;
-    while(opscreen!=NULL) {
-     if(opscreen->is_option_screen()) {
-      opscreen->option_key_pressed=1;
-      while(opscreen->child!=NULL) {
-       if(opscreen->child->is_option_screen()==2) {
-        opscreen->child->option_key_pressed=1;
-        opscreen->option_key_pressed=0;
-        break;
+   switch (pressedRange(INTERFACEKEY_OPTIONS,INTERFACEKEY_ZOOM_RESET)) {
+    //TOGGLE SCREEN
+    case INTERFACEKEY_TOGGLE_FULLSCREEN: enabler.toggle_fullscreen();break;
+    //GAME OPTIONS
+    case INTERFACEKEY_OPTIONS: {
+     //PEEL BACK ALL SCREENS TO THE CURRENT OPTION SCREEN IF THERE IS ONE
+     //UNLESS THERE IS A BLOCKING SCREEN LIKE THE REGION MAKER
+     viewscreenst *opscreen=&view;
+     while(opscreen!=NULL) {
+      if(opscreen->is_option_screen()) {
+       opscreen->option_key_pressed=1;
+       while(opscreen->child!=NULL) {
+        if(opscreen->child->is_option_screen()==2) {
+         opscreen->child->option_key_pressed=1;
+         opscreen->option_key_pressed=0;
+         break;
+        }
+        removescreen(opscreen->child);
        }
-       removescreen(opscreen->child);
+       break;
       }
-      break;
+      opscreen=opscreen->child;
      }
-     opscreen=opscreen->child;
-    }
-    //NEED A NEW OPTIONS SCREEN?
-    if(opscreen==NULL) dwarf_option_screen();
-   } //option screen
-   //DO MOVIE COMMANDS
-   else if(keypress(INTERFACEKEY_MOVIES)) {
-    if(currentscreen->movies_okay())use_movie_input();
+     //NEED A NEW OPTIONS SCREEN?
+     if(opscreen==NULL) dwarf_option_screen();
+     break;
+    } //option screen
+    //DO MOVIE COMMANDS
+    case INTERFACEKEY_MOVIES:
+     if(currentscreen->movies_okay())use_movie_input();
+    break;
+    case INTERFACEKEY_HELP: currentscreen->help();break;
+    //HANDLE MOVIE
+    case INTERFACEKEY_ZOOM_IN: zoom_display(zoom_in);break;
+    case INTERFACEKEY_ZOOM_OUT: zoom_display(zoom_out);break;
+    case INTERFACEKEY_ZOOM_TOGGLE: zoom_display(zoom_toggle_gridzoom);break;
+    case INTERFACEKEY_ZOOM_RESET: zoom_display(zoom_reset);break;
+
+    break;
+    default: if(currentscreen->movies_okay()) handlemovie(0);break;
    }
-   //RUN THE INTERFACE AND SEE HOW FAR TO PEEL IT BACK
-   else if(keypress(INTERFACEKEY_HELP)) currentscreen->help();
-   //HANDLE MOVIE
-   else if(currentscreen->movies_okay()) handlemovie(0);
-
    keydone();
-
   break;
 		case INTERFACE_BREAKDOWN_QUIT:
 			{
@@ -1761,4 +1767,3 @@ char secondaryscrolling(long &selection,long min,long max,long jump,unsigned lon
 //To Do
 //get the gview.c references inside the DEBUG_MOVIE defines
 //make scrolling and stringentry use newer pressed functions for better speed
-//add zoom bindings

@@ -37,7 +37,7 @@ enabler_inputst::enabler_inputst() {
  KeyMods=0;
 }
 
-void enabler_inputst::add_input(uint32_t sym,uint32_t unicode) {
+void enabler_inputst::add_input(uint32_t sym, uint32_t unicode) {
  InputRec newn;
  newn.key.Value=sym;
  newn.key2.Value=unicode;
@@ -56,7 +56,7 @@ InputRec* enabler_inputst::getinput(int number) {
  else return 0;
 }
 
-InputRec* enabler_inputst::currentinput(int now) {
+InputRec* enabler_inputst::currentinput(unsigned int now) {
  int i = input.size();
  if (i) { //have something to do
   InputRec* cur=&(input[0]);
@@ -108,7 +108,3 @@ InputRec* enabler_inputst::currentinput(int now) {
  } //if have input
  return 0;
 }
-
-
-//To do
-//in the eventLoop clear inputs when focus lost
