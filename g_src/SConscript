@@ -43,7 +43,7 @@ if profile:
    env['LINKFLAGS'].append("-pg")
 
 if optimize:
-   env["CCFLAGS"].append("-O2")
+   env["CCFLAGS"]+=["-O2","-march=pentium3"]
 
 if debug:
    env["CCFLAGS"].append("-ggdb")
