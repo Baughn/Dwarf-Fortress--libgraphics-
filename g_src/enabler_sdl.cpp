@@ -147,15 +147,21 @@ static void resize_grid(int width, int height, bool resizing) {
   } else {
     init.display.small_grid_x = new_grid_x;
     init.display.small_grid_y = new_grid_y;
-    enabler.desired_windowed_width = resizing ? new_grid_x * font_w * grid_zoom : width;
-    enabler.desired_windowed_height = resizing ? new_grid_y * font_h * grid_zoom : height;
+    enabler.desired_windowed_width = enabler.window_width = width;
+    enabler.desired_windowed_height = enabler.window_height = height;
   }
-  if (resizing)
-    enabler.reset_gl(); // Which calls glClear
-  else {
-    exposed = 1;
-    ne_toggle_fullscreen();
+  gridrectst *rect; int i=0;
+  // FIXME: THere's just one gridrect, and it's time DF accepted this.
+  while (rect = enabler.get_gridrect(i)) {
+    i++;
+    rect->allocate(new_grid_x, new_grid_y);
   }
+  // Reset GL and SDL for the new window size
+  SDL_Surface *screen = SDL_GetVideoSurface();
+  SDL_SetVideoMode(width,height,screen->format->BitsPerPixel,screen->flags);
+  glViewport(0,0,width,height);
+  exposed = 1;
+  ne_toggle_fullscreen();
 }
 
 static void reset_window() {
@@ -193,9 +199,10 @@ static void zoom_display(enum zoom_commands command) {
     if (zoom_grid) {
       grid_zoom_req *= zoom_factor;
       reset_window();
-      if (grid_zoom == old_grid_zoom)
+      if (grid_zoom == old_grid_zoom && grid_zoom < grid_zoom_req) // Can't zoom in this direction right now
         grid_zoom_req = old_req;
-      just_zoomed = true;
+      else
+        just_zoomed = true;
     } else {
       viewport_zoom *= zoom_factor;
       exposed = 1;
@@ -208,7 +215,7 @@ static void zoom_display(enum zoom_commands command) {
     if (zoom_grid) {
       grid_zoom_req /= zoom_factor;
       reset_window();
-      if (grid_zoom == old_grid_zoom)
+      if (grid_zoom == old_grid_zoom && grid_zoom > grid_zoom_req)
         grid_zoom_req = old_req;
       just_zoomed = true;
     } else {
@@ -355,22 +362,28 @@ static void eventLoop(GL_Window window)
          enabler.oldmouse_y = enabler.mouse_y;
          enabler.tracking_on = 1;
          // Set viewport_x/y as appropriate, and fixup mouse position for zoom
-         // We use only the central 80% of the window for setting viewport origin.
-         double center_x = MAX(MIN((((double)event.motion.x / screen->w) - 0.2) * 1.5, 1),0),
-           center_y = MAX(MIN((((double)event.motion.y / screen->h) - 0.2) * 1.5, 1),0);
-         int visible_w = enabler.window_width / viewport_zoom,
-           visible_h = enabler.window_height / viewport_zoom,
-           invis_w = enabler.window_width - visible_w,
-           invis_h = enabler.window_height - visible_h,
-           new_viewport_x = invis_w * center_x,
-           new_viewport_y = invis_h * center_y;
+         // We use only the central 60% of the window for setting viewport origin.
+         double mouse_x = (double)event.motion.x / screen->w,
+           mouse_y = (double)event.motion.y / screen->h;
+         double percentage = 0.60;
+         mouse_x /= percentage;
+         mouse_y /= percentage;
+         mouse_x -= (1-percentage)/2;
+         mouse_y -= (1-percentage)/2;
+         mouse_x = MIN(MAX(mouse_x,0),1);
+         mouse_y = MIN(MAX(mouse_y,0),1);
+         double new_viewport_x = mouse_x, new_viewport_y = mouse_y;
          if (new_viewport_x != viewport_x || new_viewport_y != viewport_y) {
            exposed=1;
            viewport_x = new_viewport_x;
            viewport_y = new_viewport_y;
          }
-         enabler.mouse_x = zoom_grid ? event.motion.x : ((double)event.motion.x / enabler.window_width * visible_w + viewport_x);
-         enabler.mouse_y = zoom_grid ? event.motion.y : ((double)event.motion.y / enabler.window_height * visible_h + viewport_y);
+         double visible = 1/viewport_zoom,
+           invisible = 1 - visible;
+         double visible_w = enabler.window_width * visible,
+           visible_h = enabler.window_height * visible;
+         enabler.mouse_x = zoom_grid ? event.motion.x : ((double)event.motion.x / enabler.window_width) * visible_w + (invisible*viewport_x*enabler.window_width);
+         enabler.mouse_y = zoom_grid ? event.motion.y : ((double)event.motion.y / enabler.window_height) * visible_h + (invisible*viewport_y*enabler.window_height);
          mouse_lastused = enabler.now;
          if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
            //        turn on mouse picture
@@ -822,16 +835,13 @@ void gridrectst::render(enum render_phase phase)
     puts("render called without gl being initialized");
     return;
   }
+
 #ifdef DEBUG
   static int frame = 0;
 #endif
   switch (phase) {
   case setup:
     {
-      float apletsizex=dispx,apletsizey=dispy;
-      float totalsizex=dispx*dimx;
-      float totalsizey=dispy*dimy;
-      float translatex=0,translatey=0;
 
       if (accum_buffer) {
         // Copy the previous frame's buffer back in
@@ -898,25 +908,6 @@ void gridrectst::render(enum render_phase phase)
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
       }
       
-      if(totalsizex>enabler.window_width||!black_space)apletsizex=(float)enabler.window_width/dimx;
-      else translatex=(enabler.window_width-totalsizex)/2.0f;
-      if(totalsizey>enabler.window_height||!black_space)apletsizey=(float)enabler.window_height/dimy;
-      else translatey=(enabler.window_height-totalsizey)/2.0f;
-
-
-//       glMatrixMode(GL_MODELVIEW);
-//       printGLError();
-//       glPushMatrix();
-//       printGLError();
-      // TODO: Complete viewport zoom stuff, combine with black_space, etc.
-      if (!zoom_grid) {
-        translatex = -viewport_x;
-        translatey = -viewport_y;
-        glScalef(viewport_zoom,viewport_zoom,1);
-      }
-
-      glTranslatef(translatex,translatey,0);
-      printGLError();
 
       if (exposed)
         glClear(GL_COLOR_BUFFER_BIT | (accum_buffer ? GL_ACCUM_BUFFER_BIT : 0));
@@ -984,7 +975,7 @@ void gridrectst::render(enum render_phase phase)
 
       // Build arrays. Vertex array is separated out, as it can be skipped in standard or VBO mode.
       long tex_pos;
-      float edge_l=0,edge_r=apletsizex,edge_u,edge_d;
+      int edge_l=0, edge_r=1,edge_u,edge_d;
       long px,py;
       long d=0;
       GLfloat *ptr_bg_color_w = ptr_bg_color;
@@ -997,11 +988,11 @@ void gridrectst::render(enum render_phase phase)
         vertices_initialized = true;
         tile_count = 0;
         GLfloat *ptr_vertex_w = ptr_vertex;
-        for(px=0;px<dimx;px++,edge_l+=apletsizex,edge_r+=apletsizex)
+        for(px=0;px<dimx;px++,edge_l++,edge_r++)
           {
             edge_u=0;
-            edge_d=apletsizey;
-            for(py=0;py<dimy;py++,d++,edge_u+=apletsizey,edge_d+=apletsizey)
+            edge_d=1;
+            for(py=0;py<dimy;py++,d++,edge_u++,edge_d++)
               {
                 tex_pos=buffer_texpos[d];
             
@@ -1035,7 +1026,7 @@ void gridrectst::render(enum render_phase phase)
         }
         
         // Reset variables
-        edge_l=0; edge_r=apletsizex;
+        edge_l=0; edge_r=1;
         d=0;
       }
 
@@ -1055,11 +1046,11 @@ void gridrectst::render(enum render_phase phase)
       }
 
       // FG, BG and tex-coord arrays
-      for(px=0;px<dimx;px++,edge_l+=apletsizex,edge_r+=apletsizex)
+      for(px=0;px<dimx;px++,edge_l++,edge_r++)
         {
           edge_u=0;
-          edge_d=apletsizey;
-          for(py=0;py<dimy;py++,d++,edge_u+=apletsizey,edge_d+=apletsizey)
+          edge_d=1;
+          for(py=0;py<dimy;py++,d++,edge_u++,edge_d++)
             {
               if(trinum>0)
                 {
@@ -1157,7 +1148,39 @@ void gridrectst::render(enum render_phase phase)
     break;
   case complete:
     {
+      // Setup view matrix
+      glMatrixMode(GL_PROJECTION);
+      glLoadIdentity();
+      glMatrixMode(GL_MODELVIEW);
+      glLoadIdentity();
+      
+      // Total size of window, ignoring zoom entirely. Only used to calculate other values.
+      const float totalsizex=dispx*dimx; // dispx is tile width in pixels, dimx is grid size in tiles
+      const float totalsizey=dispy*dimy;
+      // Setup a nicer coordinate system
+      glTranslatef(-1,1,0);
+      glScalef(2,-2,2);
+      // Scale the grid so it fits exactly into the window, making 1 GL unit equal 1 tile
+      glScalef(1.0f / dimx, 1.0f / dimy, 1);
+      // If the desired window size is smaller than the actual window and
+      // black_space is on, then we use only that part. Otherwise we use the
+      // full window.
+      glViewport(totalsizex < enabler.window_width && black_space ? (enabler.window_width - totalsizex) / 2 : 0,
+                 totalsizey < enabler.window_height && black_space ? (enabler.window_height - totalsizey) / 2 : 0,
+                 totalsizex < enabler.window_width && black_space ? totalsizex : enabler.window_width,
+                 totalsizey < enabler.window_height && black_space ? totalsizey : enabler.window_height
+                 );
+      // If viewport scaling is on.. we viewport-scale.
+      if (!zoom_grid) {
+        double visible = 1 / viewport_zoom;
+        double invisible = 1 - visible;
+        double left = invisible * viewport_x,
+          top = invisible * viewport_y;
+        glScalef(viewport_zoom,viewport_zoom,1);
+        glTranslatef(-left*dimx,-top*dimy,0);
+      }
       printGLError();
+
       // Bind the appropriate buffers
       if (vbo_refs[0]) {
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
