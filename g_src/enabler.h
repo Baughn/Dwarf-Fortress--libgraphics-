@@ -5,13 +5,7 @@
 #ifndef ENABLER_H
 #define ENABLER_H
 
-extern "C"{
-#ifndef WIN32
-# include <stdint.h>
-#else
-# include <windows.h>
-#endif
-  
+#include "platform.h"
 #include <SDL/SDL.h>
 #ifdef __APPLE__
 # include <SDL_image/SDL_image.h>
@@ -20,7 +14,6 @@ extern "C"{
 #endif
 
 #include "GL/glew.h"
-}
 
 #include <map>
 #include <vector>
@@ -308,6 +301,9 @@ class flagarrayst
 #define COLOR_MAGENTA 5
 #define COLOR_YELLOW 6
 #define COLOR_WHITE	7
+
+enum zoom_commands { zoom_in, zoom_out, zoom_toggle_gridzoom, zoom_reset };
+void zoom_display(enum zoom_commands command);
 
 enum ColorData
   {
@@ -923,7 +919,6 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
   long next_tile_slot;
   long active_font_id;
 
-  svector<enabler_inputst> input;
   char is_program_looping;
   svector<gridrectst *> gridrect;
   long next_gridrect_id;

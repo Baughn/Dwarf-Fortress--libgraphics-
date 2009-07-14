@@ -2,6 +2,8 @@
 #define _PLATFORM_H_
 
 #ifdef WIN32
+#undef WINDOWS_LEAN_AND_MEAN
+#define WINDOWS_LEAN_AND_MEAN
 # include <windows.h>
 #else
 

@@ -88,12 +88,16 @@ const BindingNames InterfaceNames[INTERFACEKEYNUM]={
 {"LEAVESCREEN_TEXT","Leave text entry screen"},
 {"LEAVESCREEN_ALL","Leave all screens"},
 {"CLOSE_MEGA_ANNOUNCEMENT","Close mega announcement"},
-{"OPTIONS","Main menu"},
 {"OPTION_EXPORT","Options, Export Local Image"},
 {"OPTION_EXPORT_RAW_INFO","Options, Export Raw Info"},
-{"HELP","Help"},
+{"OPTIONS","Main menu"}, //keep to ZOOM_RESET together for pressedRange
+{"HELP","Help"},         //in interface.cpp
 {"TOGGLE_FULLSCREEN","Toggle Fullscreen"},
 {"MOVIES","Movies"},
+{"ZOOM_IN","Zoom Display In"},
+{"ZOOM_OUT","Zoom Display Out"},
+{"ZOOM_TOGGLE","Switch Zoom Modes"},
+{"ZOOM_RESET","Reset Zoom to Standard"},
 {"MOVIE_RECORD","Movie: Record"},
 {"MOVIE_PLAY","Movie: Play"},
 {"MOVIE_SAVE","Movie: Save"},
@@ -1771,7 +1775,7 @@ void interfacekeyst::Load(const char* filename) {
  //make sure things are clear, zeroed, and that the vector has set its size correctly
  while (count<INTERFACEKEYNUM) {
   if (Binding<INTERFACEKEYNUM) {
-   bindings.push_back(0);
+   bindings.push_back(new keybindingst(Binding));
    ++Binding;
   }
   if (bindings[count]) {
@@ -1947,6 +1951,11 @@ void interfacekeyst::Save(const char* filename) {
  } //if isopen
 }
 
+void macrostackst::Reverse() {
+ nextproc=enabler.now;
+ --repeat;
+}
+
 MacroResult macrostackst::DoMacro(unsigned int now) {
  MacroResult Res;
  Res.Value=0;
@@ -1955,24 +1964,29 @@ MacroResult macrostackst::DoMacro(unsigned int now) {
   repeat++;
   if ((int)curCom.Repeat>=repeat) {
    //same command again
-   nextproc=now+init.input.macro_time;
-   if (nextproc<now) overflow=now-1;
-   else overflow=0xFFFFFFFF;
-   Res.bind=curCom.Binding;
    if (!curCom.flags) {
+    nextproc=now+init.input.macro_time;
+    if (nextproc<now) overflow=now-1;
+    else overflow=0xFFFFFFFF;
+    Res.bind=curCom.Binding;
     Res.action=MACROACTION_EXECUTE;
     return Res;
    }
    //else got another macro
    if (curCom.Binding!=macroID) {
+    Res.bind=curCom.Binding;
     Res.action=MACROACTION_NEW;
    } else { //same macro, reset to start
-    position=0;
-    repeat=0;
-    Res.action=MACROACTION_RECALL;
+    if (position) { //protect the silly user from repeating an otherwise empty macro
+     position=0;
+     repeat=0;
+     curCom.Value=0;
+     Res.action=MACROACTION_RECALL;
+    } else Res.action=MACROACTION_DONE;
    }
    return Res;
   }
+  //macro doesn't come off the stack until 1 delay after the last key
   if (position==comCount) {
    //hit the end jump up a level on the macro stack
    Res.action=MACROACTION_DONE;
@@ -1994,6 +2008,7 @@ MacroResult macrostackst::DoMacro(unsigned int now) {
     else overflow=0xFFFFFFFF;
     //time set, max repeat so it will move on
     repeat=255;
+    position++;
     Res.action=MACROACTION_WAIT;
    }
    return Res;
@@ -2004,9 +2019,12 @@ MacroResult macrostackst::DoMacro(unsigned int now) {
    position++;
    Res.action=MACROACTION_NEW;
   } else { //same macro, reset to start
-   position=0;
-   repeat=0;
-   Res.action=MACROACTION_RECALL;
+   if (position) { //protect the silly user from repeating an otherwise empty macro
+    position=0;
+    repeat=0;
+    curCom.Value=0;
+    Res.action=MACROACTION_RECALL;
+   } else Res.action=MACROACTION_DONE;
   }
  } else { //in macro but it is waiting
   Res.action=MACROACTION_WAIT;
@@ -2038,7 +2056,7 @@ int interfacekeyst::RunMacros(int count) {
     }
    break;
    case MACROACTION_RECALL: break;
-   default: {
+   default:
     errorlog_string("Macro attempted illegal action");
     count=macrostack.size();
     while (count) {
@@ -2046,25 +2064,31 @@ int interfacekeyst::RunMacros(int count) {
      delete macrostack[count];
     }
     macrostack.clear();
-    return 0;
-   }
+   return -1;
   }
  } while (count>=0); //still doing the macro
+ return -1; //control never gets here, dumb compiler
+}
 
- return -1;
+void interfacekeyst::StopMacros() {
+ int i=macrostack.size();
+ while (i) {
+  --i;
+  delete macrostack[i];
+ }
+ macrostack.clear();
+ RunningMacro=0;
 }
 
 int interfacekeyst::keynext() {
  //first check for an active macro
  int count=macrostack.size();
- int enCount=enabler.inputcount();
  InputRec* input;
  if (count) {
   //running macro, have to check for the macro break binding before we go with it
   //go from latest to oldest
+  int enCount=enabler.inputcount();
   int i=enCount;
-  currentBinding=0;
-  currentInput=0;
   while (i) {
    --i;
    input=enabler.getinput(i);
@@ -2085,22 +2109,21 @@ int interfacekeyst::keynext() {
    }
   }
   if (enCount) {
-   enabler.clear_input();
-   enCount=0;
-  }
-  if (count) {
    currentKey.flags=0xFF;
    currentAlt.flags=0xFF;
+   enabler.clear_input();
+  }
+  if (count) {
    count=RunMacros(--count);
    if (count>=0) return count;
    else return 0;
   } //if macrostack still has something
+  return 0;
  } //if count of macro stack
  //check for key press
- int i=0;
- if (enCount) input=enabler.currentinput(enabler.now);
- else return 0;
+ input=enabler.currentinput(enabler.now);
  if (input) {
+  int i=0;
   currentInput=input;
   currentKey.Value=input->key.Value;
   currentAlt.Value=input->key2.Value;
@@ -2117,8 +2140,6 @@ int interfacekeyst::keynext() {
       macrostack.push_back(new macrostackst(&(Bind->coms[0]),i,Bind->coms.size()));
       //safe to figure this is the first in the stack
       keydone();
-      currentKey.flags=0xFF;
-      currentAlt.flags=0xFF;
       int j;
       if ((j=RunMacros(0))>=0) { //macro took it
        RunningMacro=1;
@@ -2134,8 +2155,6 @@ int interfacekeyst::keynext() {
        if (currentKey.Value==Bind->keys[j].Value) {
         macrostack.push_back(new macrostackst(&(Bind->coms[0]),i,Bind->coms.size()));
         keydone();
-        currentKey.flags=0xFF;
-        currentAlt.flags=0xFF;
         if ((j=RunMacros(0))>=0) {
          RunningMacro=1;
          return j;
@@ -2150,8 +2169,6 @@ int interfacekeyst::keynext() {
        if (currentAlt.Value==Bind->keys[j].Value) {
         macrostack.push_back(new macrostackst(&(Bind->coms[0]),i,Bind->coms.size()));
         keydone();
-        currentKey.flags=0xFF;
-        currentAlt.flags=0xFF;
         if ((j=RunMacros(0))>=0) {
          RunningMacro=1;
          return j;
@@ -2189,7 +2206,7 @@ int interfacekeyst::keypress(int KeyNo) {
    } else return 0;
   default: break;
  }
- if (KeyNo>INTERFACEKEYNUM) return 0;
+ if (KeyNo>=INTERFACEKEYNUM) return 0;
  keybindingst* Bind=bindings[KeyNo];
  if (Bind==0) return 0;
  int keyCount=Bind->keys.size();
@@ -2197,8 +2214,6 @@ int interfacekeyst::keypress(int KeyNo) {
   case 0: return 0;
   case 1:
    if ((Bind->keys[0].Value==currentKey.Value)||(Bind->keys[0].Value==currentAlt.Value)) {
-    currentKey.flags=0xFF;
-    currentAlt.flags=0xFF;
     return currentBinding=KeyNo;
    }
   return 0;
@@ -2208,8 +2223,6 @@ int interfacekeyst::keypress(int KeyNo) {
     int j=0;
     do {
      if (currentKey.Value==Bind->keys[j].Value) {
-      currentKey.flags=0xFF;
-      currentAlt.flags=0xFF;
       return currentBinding=KeyNo;
      }
      ++j;
@@ -2219,8 +2232,6 @@ int interfacekeyst::keypress(int KeyNo) {
     int j=0;
     do {
      if (currentAlt.Value==Bind->keys[j].Value) {
-      currentKey.flags=0xFF;
-      currentAlt.flags=0xFF;
       return currentBinding=KeyNo;
      }
      ++j;
@@ -2252,8 +2263,6 @@ int interfacekeyst::pressedList(const int* KeyList, int ListSize) {
     case 0: break;
     case 1:
      if ((Bind->keys[0].Value==currentKey.Value)||(Bind->keys[0].Value==currentAlt.Value)) {
-      currentKey.flags=0xFF;
-      currentAlt.flags=0xFF;
       return currentBinding=KeyList[i];
      }
     break;
@@ -2262,8 +2271,6 @@ int interfacekeyst::pressedList(const int* KeyList, int ListSize) {
       int j=0;
       do {
        if (currentKey.Value==Bind->keys[j].Value) {
-        currentKey.flags=0xFF;
-        currentAlt.flags=0xFF;
         return currentBinding=KeyList[i];
        }
        ++j;
@@ -2273,8 +2280,6 @@ int interfacekeyst::pressedList(const int* KeyList, int ListSize) {
       int j=0;
       do {
        if (currentAlt.Value==Bind->keys[j].Value) {
-        currentKey.flags=0xFF;
-        currentAlt.flags=0xFF;
         return currentBinding=KeyList[i];
        }
        ++j;
@@ -2287,30 +2292,106 @@ int interfacekeyst::pressedList(const int* KeyList, int ListSize) {
  return 0;
 }
 
+int interfacekeyst::pressedRange(int FirstKey, int LastKey) {
+ if (currentBinding>=FirstKey) {
+  if (currentBinding<=LastKey) return currentBinding;
+  return 0;
+ }
+ if (currentKey.flags==0xFF) return 0;
+ keybindingst* Bind;
+ int i=FirstKey;
+ while (i<=LastKey) {
+  if (i<INTERFACEKEYNUM) {
+   if (i) Bind=bindings[i];
+   else Bind=0;
+  } else Bind=0;
+  if (Bind) {
+   int keyCount=Bind->keys.size();
+   switch (keyCount) {
+    case 0: break;
+    case 1:
+     if ((Bind->keys[0].Value==currentKey.Value)||(Bind->keys[0].Value==currentAlt.Value)) {
+      return currentBinding=i;
+     }
+    break;
+    default:
+     if (!(Bind->KeyAccum&currentKey.Value)) {
+      int j=0;
+      do {
+       if (currentKey.Value==Bind->keys[j].Value) {
+        return currentBinding=i;
+       }
+       ++j;
+      } while (j<keyCount);
+     }
+     if (!(Bind->KeyAccum&currentAlt.Value)) {
+      int j=0;
+      do {
+       if (currentAlt.Value==Bind->keys[j].Value) {
+        return currentBinding=i;
+       }
+       ++j;
+      } while (j<keyCount);
+     }
+   } //switch keycount
+  } //if Bind
+  ++i;
+ }
+ return 0;
+}
+
+void interfacekeyst::keyrelease() {
+ if (RunningMacro) {
+  //check the currentBinding, the macro might just be in a delay
+  if (currentBinding) {
+   int i=macrostack.size(); //might as well make sure I didn't miss a flag spot
+   if (i) macrostack[i]->Reverse();
+  }
+ }
+ currentBinding=0;
+}
+
+void interfacekeyst::keyforget() {
+ if (currentBinding) {
+  if (RunningMacro) {
+   int i=macrostack.size();
+   if (i) macrostack[i]->Reverse();
+  }
+  currentBinding=0;
+ }
+ currentInput=0;
+ currentKey.flags=0xFF;
+ currentAlt.flags=0xFF;
+}
+
 void interfacekeyst::keydone() {
  if (currentInput==0) {
   currentBinding=0; //macro may have set the binding
   return;
  }
  int i=init.input.repeat_time;
+ unsigned int now=enabler.now;
  InputRec* Input=currentInput;
  currentInput=0;
- if (Input->processed) Input->next_process=enabler.now+i; //already done once
+ if (Input->processed) Input->next_process=now+i; //already done once
  else {
   if (currentBinding==0) { //it was looked at and the view didn't want it
    Input->processed=1;
    Input->next_process=0xFFFFFFFF;
    //process it again never
-   currentBinding=0;
+   currentKey.flags=0xFF;
+   currentAlt.flags=0xFF;
    return;
   }
   i=init.input.hold_time;
   if ((currentBinding<INTERFACEKEY_STANDARDSCROLL_UP)||
    (currentBinding>INTERFACEKEY_CURSOR_DOWN_Z_AUX)) i*=3;
-  Input->next_process=enabler.now+i;
+  Input->next_process=now+i;
  }
- if (Input->next_process<enabler.now) Input->processed=enabler.now-1;
+ if (Input->next_process<now) Input->processed=now-1;
  else Input->processed=0xFFFFFFFF;
+ currentKey.flags=0xFF;
+ currentAlt.flags=0xFF;
  currentBinding=0;
 }
 
@@ -2545,19 +2626,19 @@ void viewscreen_keybindingsst::input() {
    }
   break;
   case INTERFACEKEY_SECONDSCROLL_UP:
-   if ((Mode==2)&&(Commands->selected>0))
+   if (Mode==2)
     ((macrobindingst*)curBind)->AdjustRepeat(Commands->selected-1, -1);
   break;
   case INTERFACEKEY_SECONDSCROLL_DOWN:
-   if ((Mode==2)&&(Commands->selected>0))
+   if (Mode==2)
     ((macrobindingst*)curBind)->AdjustRepeat(Commands->selected-1, 1);
   break;
   case INTERFACEKEY_SECONDSCROLL_PAGEUP:
-   if ((Mode==2)&&(Commands->selected>0))
+   if (Mode==2)
     ((macrobindingst*)curBind)->AdjustRepeat(Commands->selected-1, -10);
   break;
   case INTERFACEKEY_SECONDSCROLL_PAGEDOWN:
-   if ((Mode==2)&&(Commands->selected>0))
+   if (Mode==2)
     ((macrobindingst*)curBind)->AdjustRepeat(Commands->selected-1, 10);
   break;
   case INTERFACEKEY_SELECT:
@@ -2610,7 +2691,7 @@ void viewscreen_keybindingsst::input() {
      i=Bindings->selected;
      Bindings->HasFocus=0;
      Bindings->SetListCount(gview.GetMacroCount()+1);
-     Bindings->Jump(DoBind+1);
+     Bindings->Jump(DoBind-BindCats[Tabs->selected].ofset);
      Commands->HasFocus=1;
      Commands->SetListCount(Commands->GetCount()+1); //adding a command will always succeed
      MacroCommand com;
@@ -2722,7 +2803,6 @@ const char* viewscreen_keybindingsst::ListItem
      if ((com.flags)||(com.Binding)) {//macro or binding
       if (com.flags) com.Binding+=INTERFACEKEYNUM;
       gview.GetBinding(com.Binding)->GetDisplayName(Store);
-//      curBind->GetDisplayName(Store);
       sprintf(strchr(Store,0),": %i",com.Repeat);
      } else sprintf(Store,"Delay: %i",com.Repeat);
      return Store;
@@ -2756,8 +2836,18 @@ const char* viewscreen_keybindingsst::ListItem
 //To Do
 //pare down the includes list
 //must be able to delete macros
-//add pressedRange for string entry
+//adjust string entry to use pressedRange
 //make binding view mouse enabled, clicks for select
 //put in the binding renaming
 
 //Bugs
+//> in adventurer, numbers and !@#$^&*( in notes
+// tracks as a promblem in the keypress testing order
+
+// a_end_travel seem to be conflicting with a_move_down_aux,
+//easy fix is to put keyrelease() when movement check says no
+//better fix is to check for specific modes, then check the keypress
+// similar to how I check focus on different parts of the bindings view
+
+// notes seem to only lose keys attached to movements, same fixes
+

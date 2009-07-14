@@ -1,17 +1,8 @@
 #ifndef ENABLER_INPUT_H
 #define ENABLER_INPUT_H
 
-extern "C"{
-#ifndef WIN32
-# include <stdint.h>
-#else
-# include <windows.h>
-#endif
-
 #include <SDL/SDL.h>
-}
 #include "svector.h"
-#include "SDL/SDL_keysym.h"
 
 #define NUM_MOUSE_BUTTONS 20
 enum MouseActions {
@@ -42,7 +33,11 @@ typedef union {
 } KeyUnion;
 
 enum InterfaceEvents {
+#if SDL_BYTEORDER==SDL_LIL_ENDIAN
+ INTERFACEEVENT_NONE=KEY_EVENTFLAG<<24,
+#else
  INTERFACEEVENT_NONE=KEY_EVENTFLAG,
+#endif
  INTERFACEEVENT_QUIT,
  INTERFACEEVENT_NEW_VIEW,
  INTERFACEEVENT_DEL_VIEW,
@@ -71,7 +66,7 @@ class enabler_inputst {
  public:
  int is_modkey(uint16_t key);
  InputRec* getinput(int number);
- InputRec* currentinput(int now);
+ InputRec* currentinput(unsigned int now);
  void removeinput(int number);
  int inputcount() {return input.size();}
  void clear_input() {input.clear();}

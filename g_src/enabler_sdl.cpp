@@ -174,9 +174,7 @@ static void resize_window(int width, int height) {
   resize_grid(width, height, true);
 }
 
-enum zoom_commands { zoom_in, zoom_out, zoom_toggle_gridzoom, zoom_reset };
-
-static void zoom_display(enum zoom_commands command) {
+void zoom_display(enum zoom_commands command) {
   const int font_w = enabler.create_full_screen ? init.font.large_font_dispx : init.font.small_font_dispx;
   const int font_h = enabler.create_full_screen ? init.font.large_font_dispy : init.font.small_font_dispy;
   const double zoom_factor = 1.05;
@@ -251,9 +249,7 @@ static void eventLoop(GL_Window window)
   while (SDL_PollEvent(&event)) {
    switch (event.type) {
     case SDL_QUIT:
-     NewInput.symbol=INTERFACEEVENT_QUIT;
-     NewInput.flags=KEY_EVENTFLAG;
-     enabler.add_input(NewInput.Value,0);
+     enabler.add_input(INTERFACEEVENT_QUIT,0);
      NewInput.flags=KEY_KEYSYMFLAG;
     break;
     case SDL_MOUSEBUTTONDOWN:
@@ -269,15 +265,6 @@ static void eventLoop(GL_Window window)
         enabler.mouse_rbut = 1;
         enabler.mouse_rbut_down = 1;
         break;
-      case SDL_BUTTON_WHEELDOWN:
-        zoom_display(zoom_in);
-        break;
-      case SDL_BUTTON_WHEELUP:
-        zoom_display(zoom_out);
-        break;
-      case SDL_BUTTON_MIDDLE:
-        zoom_display(zoom_toggle_gridzoom);
-        break;
       default:
         if (NewInput.symbol<NUM_MOUSE_BUTTONS) {
          NewInput.symbol+=KEY_MOUSEDOWN;
@@ -291,10 +278,6 @@ static void eventLoop(GL_Window window)
      if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
 //      enabler.add_input(INTERFACEEVENT_MOUSE_UP,0);
       NewInput.symbol=event.button.button;
-      if (NewInput.symbol<NUM_MOUSE_BUTTONS) {
-       NewInput.symbol+=KEY_MOUSEUP;
-       enabler.add_input(NewInput.Value,0);
-      }
       switch (NewInput.symbol) {
        case SDL_BUTTON_LEFT:
         enabler.mouse_lbut = 0;
@@ -305,6 +288,12 @@ static void eventLoop(GL_Window window)
         enabler.mouse_rbut = 0;
         enabler.mouse_rbut_down = 0;
         enabler.mouse_rbut_lift = 1;
+       break;
+       default:
+        if (NewInput.symbol<NUM_MOUSE_BUTTONS) {
+         NewInput.symbol+=KEY_MOUSEUP;
+         enabler.add_input(NewInput.Value,0);
+        }
        break;
       }
      }

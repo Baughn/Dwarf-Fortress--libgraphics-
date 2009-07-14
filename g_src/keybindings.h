@@ -113,6 +113,7 @@ class macrostackst {
  public:
  macrostackst(MacroCommand* Commands, uint16_t ID, int count);
  MacroResult DoMacro(unsigned int now);
+ void Reverse();
 };
 
 class interfacekeyst {
@@ -142,8 +143,15 @@ class interfacekeyst {
  //returns value set to current
  int pressedList(const int* BindingList, int ListSize);
  //checks all keys in the list for a match returning the matched binding or 0
+ int pressedRange(int FirstKey, int LastKey);
+ //check all keys in the range including First and Last, returns binding on match
+ void keyrelease();
+ //detaches a binding for the current keypress so it can be matched to another binding
+ void keyforget();
+ //forgets the current key putting it back in the queue
  void keydone();
  //clears the current key stroke and updates the processing time for repeat
+ void StopMacros();
  //Load/Save/Display functions
  void Load(const char* filename);
  void Save(const char* filename);
@@ -209,12 +217,16 @@ enum InterfaceKey {
  INTERFACEKEY_LEAVESCREEN_TEXT,
  INTERFACEKEY_LEAVESCREEN_ALL,
  INTERFACEKEY_CLOSE_MEGA_ANNOUNCEMENT,
- INTERFACEKEY_OPTIONS,
  INTERFACEKEY_OPTION_EXPORT,
  INTERFACEKEY_OPTION_EXPORT_RAW_INFO,
- INTERFACEKEY_HELP,
+ INTERFACEKEY_OPTIONS,  //keep to ZOOM_RESET together for pressedRange
+ INTERFACEKEY_HELP,     //in interface.cpp
  INTERFACEKEY_TOGGLE_FULLSCREEN,
  INTERFACEKEY_MOVIES,
+ INTERFACEKEY_ZOOM_IN,
+ INTERFACEKEY_ZOOM_OUT,
+ INTERFACEKEY_ZOOM_TOGGLE,
+ INTERFACEKEY_ZOOM_RESET,
  INTERFACEKEY_MOVIE_RECORD,
  INTERFACEKEY_MOVIE_PLAY,
  INTERFACEKEY_MOVIE_SAVE,
