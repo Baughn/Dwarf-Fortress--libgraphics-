@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <map>
 #include <set>
+#include <queue>
 
 extern "C" {
 #include <zlib.h>
@@ -96,9 +97,8 @@ static double grid_zoom_req = 1.0;
 static double viewport_x = 0, viewport_y = 0;
 // Whether zoom commands affect grid_zoom or viewport_zoom
 static bool zoom_grid = true;
-// Whether we have just zoomed and need to run the main_loop to reinitialize
-// stuff before rendering.
-static bool just_zoomed = true;
+// A list of zoom commands to execute at the end of this frame
+static std::queue<enum zoom_commands> zoom_command_buffer;
 
 
 static void resize_grid(int width, int height, bool resizing) {
@@ -175,6 +175,11 @@ static void resize_window(int width, int height) {
 }
 
 void zoom_display(enum zoom_commands command) {
+  zoom_command_buffer.push(command);
+}
+
+// Delayed because it's /called/ delayed, not because it delays
+static void zoom_display_delayed(enum zoom_commands command) {
   const int font_w = enabler.create_full_screen ? init.font.large_font_dispx : init.font.small_font_dispx;
   const int font_h = enabler.create_full_screen ? init.font.large_font_dispy : init.font.small_font_dispy;
   const double zoom_factor = 1.05;
@@ -189,7 +194,6 @@ void zoom_display(enum zoom_commands command) {
   case zoom_reset:
     deputs("Resetting zoom");
     grid_zoom_req = 1.0;
-    just_zoomed = true;
     reset_window();
     break;
   case zoom_in:
@@ -198,8 +202,6 @@ void zoom_display(enum zoom_commands command) {
       reset_window();
       if (grid_zoom == old_grid_zoom && grid_zoom < grid_zoom_req) // Can't zoom in this direction right now
         grid_zoom_req = old_req;
-      else
-        just_zoomed = true;
     } else {
       viewport_zoom *= zoom_factor;
       gps.force_full_display_count++;
@@ -214,7 +216,6 @@ void zoom_display(enum zoom_commands command) {
       reset_window();
       if (grid_zoom == old_grid_zoom && grid_zoom > grid_zoom_req)
         grid_zoom_req = old_req;
-      just_zoomed = true;
     } else {
       viewport_zoom = MAX(1.0, viewport_zoom / zoom_factor);
       gps.force_full_display_count++;
@@ -246,6 +247,12 @@ static void eventLoop(GL_Window window)
  NewUnicode.flags=KEY_UNICODEFLAG;
  while (loopvar) {
   enabler.now = SDL_GetTicks();
+  // Handle buffered zoom events
+  while (!zoom_command_buffer.empty()) {
+    zoom_display_delayed(zoom_command_buffer.front());
+    zoom_command_buffer.pop();
+  }
+  // Handle SDL events
   while (SDL_PollEvent(&event)) {
    switch (event.type) {
     case SDL_QUIT:
@@ -519,7 +526,7 @@ void enablerst::do_frame()
   // Hack: Because various enabler values are set by the main loop, we can't
   // run render-setup before the main loop if we just zoomed or they have
   // otherwise become uninitialized.
-  if (do_render && !just_zoomed)
+  if (do_render)
     render(window, setup);
   
   // Run the main loop if appropriate
@@ -531,10 +538,6 @@ void enablerst::do_frame()
 
   // Initiate graphics rendering, if appropriate
   if (do_render) {
-    if (just_zoomed) {
-      render(window, setup);
-      just_zoomed = false;
-    }
     render(window, complete);
     current_render_count++;
     secondary_render_count++;
