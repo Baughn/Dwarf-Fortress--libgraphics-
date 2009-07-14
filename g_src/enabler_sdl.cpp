@@ -978,16 +978,16 @@ void gridrectst::render(enum render_phase phase)
       int edge_l=0, edge_r=1,edge_u,edge_d;
       long px,py;
       long d=0;
-      GLfloat *ptr_bg_color_w = ptr_bg_color;
-      GLfloat *ptr_fg_color_w = ptr_fg_color;
-      GLfloat *ptr_tex_w = ptr_tex;
+      GLfloat *ptr_bg_color_w  = &ptr_bg_color[0];
+      GLfloat *ptr_fg_color_w = &ptr_fg_color[0];
+      GLfloat *ptr_tex_w = &ptr_tex[0];
       const struct gl_texpos *txt = enabler.textures.gl_texpos;
 
       // Vertex array
       if (framebuffer || accum_buffer || !vertices_initialized || init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
         vertices_initialized = true;
         tile_count = 0;
-        GLfloat *ptr_vertex_w = ptr_vertex;
+        GLfloat *ptr_vertex_w = &ptr_vertex[0];
         for(px=0;px<dimx;px++,edge_l++,edge_r++)
           {
             edge_u=0;
@@ -1022,7 +1022,7 @@ void gridrectst::render(enum render_phase phase)
         // Upload vertex array. This rarely happens.
         if (vbo_refs[0]) {
           glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
-          glBufferDataARB(GL_ARRAY_BUFFER_ARB, tile_count*sizeof(GLfloat)*6*2, ptr_vertex, GL_STATIC_DRAW_ARB);
+          glBufferDataARB(GL_ARRAY_BUFFER_ARB, tile_count*sizeof(GLfloat)*6*2, &ptr_vertex[0], GL_STATIC_DRAW_ARB);
         }
         
         // Reset variables
@@ -1190,9 +1190,9 @@ void gridrectst::render(enum render_phase phase)
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
         glTexCoordPointer(2, GL_FLOAT, 0, 0);
       } else {
-        glVertexPointer(2, GL_FLOAT, 0, ptr_vertex);
-        glColorPointer(4, GL_FLOAT, 0, ptr_bg_color);
-        glTexCoordPointer(2, GL_FLOAT, 0, ptr_tex);
+        glVertexPointer(2, GL_FLOAT, 0, &ptr_vertex[0]);
+        glColorPointer(4, GL_FLOAT, 0, &ptr_bg_color[0]);
+        glTexCoordPointer(2, GL_FLOAT, 0, &ptr_tex[0]);
       }
         
       
@@ -1215,7 +1215,7 @@ void gridrectst::render(enum render_phase phase)
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
         glColorPointer(4, GL_FLOAT, 0, 0);
       } else {
-        glColorPointer(4, GL_FLOAT, 0, ptr_fg_color);
+        glColorPointer(4, GL_FLOAT, 0, &ptr_fg_color[0]);
       }
       printGLError();
 
@@ -1347,11 +1347,11 @@ void gridrectst::init_gl() {
 #ifdef DEBUG
   printf("Room for %d vertices allocated\n", dimx*dimy*6);
 #endif
-  ptr_vertex = new GLfloat[dimx*dimy*6*2];   // dimx*dimy tiles,
+  ptr_vertex.resize(dimx*dimy*6*2);   // dimx*dimy tiles,
   if (!vbo_refs[0]) { // We don't need these in VBO mode
-    ptr_fg_color = new GLfloat[dimx*dimy*6*4]; // six vertices,
-    ptr_bg_color = new GLfloat[dimx*dimy*6*4]; // two vertex components or
-    ptr_tex = new GLfloat[dimx*dimy*6*2];      // four colors per vertex
+    ptr_fg_color.resize(dimx*dimy*6*4); // six vertices,
+    ptr_bg_color.resize(dimx*dimy*6*4+8); // two vertex components or
+    ptr_tex.resize(dimx*dimy*6*2+4);      // four colors per vertex
   }
   shown = true;
   gl_initialized = true;
@@ -1363,10 +1363,6 @@ void gridrectst::uninit_gl() {
     glDeleteBuffersARB(4, vbo_refs);
     vbo_refs[0] = 0;
   }
-  delete[] ptr_vertex;
-  delete[] ptr_fg_color;
-  delete[] ptr_bg_color;
-  delete[] ptr_tex;
   if (framebuffer) {
     glDeleteLists(1, fb_draw_list);
     glDeleteRenderbuffersEXT(1, &fb_depth);
@@ -1402,22 +1398,9 @@ gridrectst::~gridrectst()
 
 gridrectst::gridrectst(long newdimx,long newdimy)
 {
-  buffer_texpos=NULL;
-  buffer_r=NULL;
-  buffer_g=NULL;
-  buffer_b=NULL;
-  buffer_br=NULL;
-  buffer_bg=NULL;
-  buffer_bb=NULL;
-  s_buffer_texpos=NULL;
-  s_buffer_r=NULL;
-  s_buffer_g=NULL;
-  s_buffer_b=NULL;
-  s_buffer_br=NULL;
-  s_buffer_bg=NULL;
-  s_buffer_bb=NULL;
-  s_buffer_count=NULL;
   gl_initialized = false;
+  vbo_refs[0] = 0;
+  accum_buffer = 0;
 
   allocate(newdimx,newdimy);
   trinum=0;
@@ -1425,33 +1408,27 @@ gridrectst::gridrectst(long newdimx,long newdimy)
 
 void gridrectst::allocate(long newdimx,long newdimy)
 {
-  if(buffer_texpos==NULL||dimx!=newdimx||dimy!=newdimy)
+  if(buffer_texpos.size() == 0 || dimx!=newdimx || dimy!=newdimy)
     {
-      clean();
-
       dimx=newdimx;
       dimy=newdimy;
-      buffer_texpos=new long[dimx*dimy];
-      buffer_r=new float[dimx*dimy];
-      buffer_g=new float[dimx*dimy];
-      buffer_b=new float[dimx*dimy];
-      buffer_br=new float[dimx*dimy];
-      buffer_bg=new float[dimx*dimy];
-      buffer_bb=new float[dimx*dimy];
-      long dm=dimx*dimy,d;
-      s_buffer_texpos=new long[dimx*dimy];
-      s_buffer_r=new float[dimx*dimy];
-      s_buffer_g=new float[dimx*dimy];
-      s_buffer_b=new float[dimx*dimy];
-      s_buffer_br=new float[dimx*dimy];
-      s_buffer_bg=new float[dimx*dimy];
-      s_buffer_bb=new float[dimx*dimy];
-      s_buffer_count=new char[dimx*dimy];
-      for(d=0;d<dm;d++)
-	{
-	  s_buffer_texpos[d]=-1;
-	  s_buffer_count[d]=0;
-	}
+      buffer_texpos.resize(dimx*dimy);
+      buffer_r.resize(dimx*dimy);
+      buffer_g.resize(dimx*dimy);
+      buffer_b.resize(dimx*dimy);
+      buffer_br.resize(dimx*dimy);
+      buffer_bg.resize(dimx*dimy);
+      buffer_bb.resize(dimx*dimy);
+      s_buffer_texpos.resize(dimx*dimy);
+      s_buffer_r.resize(dimx*dimy);
+      s_buffer_g.resize(dimx*dimy);
+      s_buffer_b.resize(dimx*dimy);
+      s_buffer_br.resize(dimx*dimy);
+      s_buffer_bg.resize(dimx*dimy);
+      s_buffer_bb.resize(dimx*dimy);
+      s_buffer_count.resize(dimx*dimy);
+      std::fill(s_buffer_texpos.begin(), s_buffer_texpos.end(), -1);
+      std::fill(s_buffer_count.begin(), s_buffer_count.end(), 0);
     }
   // Make sure to reallocate GL buffers if it's running
   if (gl_initialized)
@@ -1460,36 +1437,7 @@ void gridrectst::allocate(long newdimx,long newdimy)
 
 void gridrectst::clean()
 {
-  if(buffer_texpos!=NULL)delete[] buffer_texpos;
-  if(buffer_r!=NULL)delete[] buffer_r;
-  if(buffer_g!=NULL)delete[] buffer_g;
-  if(buffer_b!=NULL)delete[] buffer_b;
-  if(buffer_br!=NULL)delete[] buffer_br;
-  if(buffer_bg!=NULL)delete[] buffer_bg;
-  if(buffer_bb!=NULL)delete[] buffer_bb;
-  if(s_buffer_texpos!=NULL)delete[] s_buffer_texpos;
-  if(s_buffer_r!=NULL)delete[] s_buffer_r;
-  if(s_buffer_g!=NULL)delete[] s_buffer_g;
-  if(s_buffer_b!=NULL)delete[] s_buffer_b;
-  if(s_buffer_br!=NULL)delete[] s_buffer_br;
-  if(s_buffer_bg!=NULL)delete[] s_buffer_bg;
-  if(s_buffer_bb!=NULL)delete[] s_buffer_bb;
-  if(s_buffer_count!=NULL)delete[] s_buffer_count;
-  buffer_texpos=NULL;
-  buffer_r=NULL;
-  buffer_g=NULL;
-  buffer_b=NULL;
-  buffer_br=NULL;
-  buffer_bg=NULL;
-  buffer_bb=NULL;
-  s_buffer_texpos=NULL;
-  s_buffer_r=NULL;
-  s_buffer_g=NULL;
-  s_buffer_b=NULL;
-  s_buffer_br=NULL;
-  s_buffer_bg=NULL;
-  s_buffer_bb=NULL;
-  s_buffer_count=NULL;
+  allocate(0,0);
 }
 
 long enablerst::gridrect_create(long dimx,long dimy)

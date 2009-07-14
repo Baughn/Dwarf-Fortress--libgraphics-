@@ -23,6 +23,10 @@ extern "C"{
 }
 
 #include <map>
+#include <vector>
+#include <algorithm>
+
+using std::vector;
 
 #include "svector.h"
 #include "endian.h"
@@ -370,21 +374,21 @@ class gridrectst
   long dimx,dimy;
 
   //THE BUFFER
-  long *buffer_texpos;
-  float *buffer_r;
-  float *buffer_g;
-  float *buffer_b;
-  float *buffer_br;
-  float *buffer_bg;
-  float *buffer_bb;
-  long *s_buffer_texpos;
-  float *s_buffer_r;
-  float *s_buffer_g;
-  float *s_buffer_b;
-  float *s_buffer_br;
-  float *s_buffer_bg;
-  float *s_buffer_bb;
-  char *s_buffer_count;
+  vector<long> buffer_texpos;
+  vector<float> buffer_r;
+  vector<float> buffer_g;
+  vector<float> buffer_b;
+  vector<float> buffer_br;
+  vector<float> buffer_bg;
+  vector<float> buffer_bb;
+  vector<long> s_buffer_texpos;
+  vector<float> s_buffer_r;
+  vector<float> s_buffer_g;
+  vector<float> s_buffer_b;
+  vector<float> s_buffer_br;
+  vector<float> s_buffer_bg;
+  vector<float> s_buffer_bb;
+  vector<char> s_buffer_count;
 
   long dispx,dispy;
   char black_space;
@@ -412,8 +416,8 @@ class gridrectst
   bool gl_initialized;
   // Arrays for vertex, texture and color data, overloaded as VBO mapping pointers in VBO mode
   bool vertices_initialized; // Used to skip rewriting them in standard and VBO mode
-  GLfloat *ptr_vertex, *ptr_tex;
-  GLfloat *ptr_bg_color, *ptr_fg_color;
+  vector<GLfloat> ptr_vertex, ptr_tex;
+  vector<GLfloat> ptr_bg_color, ptr_fg_color;
   // True if accumulation buffer is used
   bool accum_buffer;
   // Framebuffer reference for partial-printing, or 0 if there is none
@@ -671,7 +675,7 @@ class textures
   friend class gridrectst;
   friend class enablerst;
  private:
-  std::vector<SDL_Surface *> raws;
+  vector<SDL_Surface *> raws;
   bool uploaded;
   long add_texture(SDL_Surface*);
  protected:
