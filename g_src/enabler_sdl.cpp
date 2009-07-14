@@ -51,6 +51,7 @@ extern initst init;
 // For musicsound.update();
 #include "music_and_sound_fmodex.h"
 extern musicsoundst musicsound;
+extern graphicst gps;
 #endif
 
 // Function prototypes.
@@ -60,7 +61,6 @@ void endroutine(void);
 void ne_toggle_fullscreen(void);
 
 static int loopvar = 1;
-static int exposed = 0;
 
 static int glerrorcount = 0;
 
@@ -160,7 +160,6 @@ static void resize_grid(int width, int height, bool resizing) {
   SDL_Surface *screen = SDL_GetVideoSurface();
   SDL_SetVideoMode(width,height,screen->format->BitsPerPixel,screen->flags);
   glViewport(0,0,width,height);
-  exposed = 1;
   ne_toggle_fullscreen();
 }
 
@@ -205,7 +204,7 @@ static void zoom_display(enum zoom_commands command) {
         just_zoomed = true;
     } else {
       viewport_zoom *= zoom_factor;
-      exposed = 1;
+      gps.force_full_display_count++;
 #ifdef DEBUG
       printf("Viewport_zoom = %f\n", viewport_zoom);
 #endif
@@ -220,7 +219,7 @@ static void zoom_display(enum zoom_commands command) {
       just_zoomed = true;
     } else {
       viewport_zoom = MAX(1.0, viewport_zoom / zoom_factor);
-	  exposed = 1;
+      gps.force_full_display_count++;
 #ifdef DEBUG
       printf("Viewport_zoom = %f\n", viewport_zoom);
 #endif
@@ -338,8 +337,8 @@ static void eventLoop(GL_Window window)
     case SDL_ACTIVEEVENT:
      if (event.active.state & SDL_APPACTIVE) {
       if (event.active.gain) {
-       exposed = 1;
-       std::cout << "Gained focus\n";
+        gps.force_full_display_count++;
+        std::cout << "Gained focus\n";
       } else {
        enabler.clear_input();
        // TODO: Disable rendering when nobody would see it anyway
@@ -347,7 +346,7 @@ static void eventLoop(GL_Window window)
       }
      }
     break;
-    case SDL_VIDEOEXPOSE: exposed = 1; break;
+    case SDL_VIDEOEXPOSE:   gps.force_full_display_count++; break;
     case SDL_MOUSEMOTION:
      /* Certain things (e.g. switching to fullscreen tears down the original
      * OpenGL context and initializes a new one) change the screen surface,
@@ -374,9 +373,9 @@ static void eventLoop(GL_Window window)
          mouse_y = MIN(MAX(mouse_y,0),1);
          double new_viewport_x = mouse_x, new_viewport_y = mouse_y;
          if (new_viewport_x != viewport_x || new_viewport_y != viewport_y) {
-           exposed=1;
            viewport_x = new_viewport_x;
            viewport_y = new_viewport_y;
+           gps.force_full_display_count++;
          }
          double visible = 1/viewport_zoom,
            invisible = 1 - visible;
@@ -829,7 +828,7 @@ enablerst::enablerst()
 }
 
 
-void gridrectst::render(enum render_phase phase)
+void gridrectst::render(enum render_phase phase, bool clear)
 {
   if (!gl_initialized) {
     puts("render called without gl being initialized");
@@ -904,15 +903,18 @@ void gridrectst::render(enum render_phase phase)
           }
           glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         }
-        // Render to framebuffer
+      }
+
+      // Render to framebuffer
+      if (framebuffer)
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
+
+      // Clear the screen as appropriate
+      if (clear) {
+        glViewport(0,0,enabler.window_width,enabler.window_height);
+        glClear(GL_COLOR_BUFFER_BIT | (accum_buffer ? GL_ACCUM_BUFFER_BIT : 0));
       }
       
-
-      if (exposed)
-        glClear(GL_COLOR_BUFFER_BIT | (accum_buffer ? GL_ACCUM_BUFFER_BIT : 0));
-
-
       // This code looks incredibly slow, but isn't normally used. It should be fine.
       // Toady: Is it still actually in use? Anywhere?
       if(trinum>0)
@@ -996,7 +998,7 @@ void gridrectst::render(enum render_phase phase)
               {
                 tex_pos=buffer_texpos[d];
             
-                if(tex_pos==-1 && (!exposed)) { // Check whether the tile is dirty
+                if(tex_pos==-1) { // Check whether the tile is dirty
                   continue; // Not dirty
                 } // Don't update dirty buffer here, as this code is not always executed
             
@@ -1059,7 +1061,7 @@ void gridrectst::render(enum render_phase phase)
 
               tex_pos=buffer_texpos[d];
           
-              if(tex_pos==-1 && (!exposed)) { // Check whether the tile is dirty
+              if(tex_pos==-1) { // Check whether the tile is dirty
                 continue; // Not dirty
               } else {
                 // Dirty. Update dirty buffer.
@@ -1144,10 +1146,18 @@ void gridrectst::render(enum render_phase phase)
       }
       printGLError();
 
+      // Unbind framebuffer
+      if (framebuffer)
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
     } // case setup
     break;
   case complete:
     {
+      // Render to framebuffer
+      if (framebuffer)
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
+      
       // Setup view matrix
       glMatrixMode(GL_PROJECTION);
       glLoadIdentity();
@@ -1170,6 +1180,7 @@ void gridrectst::render(enum render_phase phase)
                  totalsizex < enabler.window_width && black_space ? totalsizex : enabler.window_width,
                  totalsizey < enabler.window_height && black_space ? totalsizey : enabler.window_height
                  );
+      
       // If viewport scaling is on.. we viewport-scale.
       if (!zoom_grid) {
         double visible = 1 / viewport_zoom;
@@ -1250,7 +1261,6 @@ void gridrectst::render(enum render_phase phase)
 //       printGLError();
 //       glPopMatrix();
 //       printGLError();
-      exposed = 0;
 #ifdef DEBUG
       if (frame < 5) {
         frame++;
@@ -1400,7 +1410,10 @@ gridrectst::gridrectst(long newdimx,long newdimy)
 {
   gl_initialized = false;
   vbo_refs[0] = 0;
-  accum_buffer = 0;
+  accum_buffer = false;
+  framebuffer_initialized = false;
+  framebuffer = 0;
+  vertices_initialized = false;
 
   allocate(newdimx,newdimy);
   trinum=0;
@@ -1475,7 +1488,7 @@ void enablerst::set_color(float r,float g,float b,float a)
     }
 }
 
-void enablerst::render_tiles(enum render_phase phase)
+void enablerst::render_tiles(enum render_phase phase, bool clear)
 {
   //SET UP THE VIEW
   glMatrixMode(GL_MODELVIEW);
@@ -1486,7 +1499,8 @@ void enablerst::render_tiles(enum render_phase phase)
   // Toady: gridrect.size always seems to be 1. Is there any use in it being an array?
   for(int r=0;r<gridrect.size();r++)
     {
-      gridrect[r]->render(phase);
+      assert(r < 2);
+      gridrect[r]->render(phase, clear);
     }
   // Draw set_tile tiles
   if (phase == complete) {

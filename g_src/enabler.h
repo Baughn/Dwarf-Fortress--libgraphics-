@@ -368,7 +368,7 @@ class gridrectst
 
   //FUNCTIONS
   static gridrectst *create(long newdimx,long newdimy);
-  void render(enum render_phase);
+  void render(enum render_phase, bool clear);
 
   //THE DIMENSIONS
   long dimx,dimy;
@@ -767,7 +767,7 @@ class enablerst: public enabler_inputst
   char inactive_mode;
   void reshape_GL(int width,int height);
   void render(GL_Window &window, enum render_phase);
-  void render_tiles(enum render_phase);
+  void render_tiles(enum render_phase, bool clear);
   void graphicsinit();
   long gridrect_create(long dimx,long dimy);
   long cursesrect_create(long font_id,long x,long y,long dimx,long dimy);
