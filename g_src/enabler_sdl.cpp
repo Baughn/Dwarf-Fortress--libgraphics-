@@ -99,9 +99,12 @@ static double viewport_x = 0, viewport_y = 0;
 static bool zoom_grid = true;
 // A list of zoom commands to execute at the end of this frame
 static std::queue<enum zoom_commands> zoom_command_buffer;
+// A general "buffers dirty, don't render this frame" flag
+static bool skip_gframe = true;
 
 
 static void resize_grid(int width, int height, bool resizing) {
+  skip_gframe = true;
   // The grid must fit inside the window. We ensure this by zooming
   // out if it'd otherwise become smaller than 80x25, or in if it'd
   // become larger than 200x200.
@@ -519,13 +522,15 @@ void enablerst::do_frame()
   if (gframes_outstanding < -5) gframes_outstanding = -5;
   if (frames_outstanding < -20) frames_outstanding = -20;
 
-  bool do_render=false;
-  if (gframes_outstanding > 0)
-    do_render = true;
-
   // Hack: Because various enabler values are set by the main loop, we can't
   // run render-setup before the main loop if we just zoomed or they have
   // otherwise become uninitialized.
+  bool do_render=false;
+  if (gframes_outstanding > 0 && !skip_gframe)
+    do_render = true;
+  skip_gframe = false;
+
+  // Initiate graphics rendering, if appropriate
   if (do_render)
     render(window, setup);
   
@@ -536,16 +541,13 @@ void enablerst::do_frame()
       is_program_looping = FALSE;
   }
 
-  // Initiate graphics rendering, if appropriate
+  // Finish rendering graphics, if appropriate
   if (do_render) {
     render(window, complete);
     current_render_count++;
     secondary_render_count++;
     gframes_outstanding--;
   }
-
-  // Finish rendering graphics, if appropriate
-  
 
   // Quit. Toady: Any reason not to set loopvar directly?
   if (!is_program_looping)
