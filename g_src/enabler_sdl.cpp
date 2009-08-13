@@ -1166,13 +1166,14 @@ void gridrectst::render(enum render_phase phase, bool clear)
       glScalef(2,-2,2);
       // Scale the grid so it fits exactly into the window, making 1 GL unit equal 1 tile
       glScalef(1.0f / dimx, 1.0f / dimy, 1);
-      // If the desired window size is smaller than the actual window and
-      // black_space is on, then we use only that part. Otherwise we use the
+      // If the desired window size is smaller than the actual window,
+      // black_space is on, and we're not zooming, then we use only that part. Otherwise we use the
       // full window.
-      glViewport(totalsizex < enabler.window_width && black_space ? (enabler.window_width - totalsizex) / 2 : 0,
-                 totalsizey < enabler.window_height && black_space ? (enabler.window_height - totalsizey) / 2 : 0,
-                 totalsizex < enabler.window_width && black_space ? totalsizex : enabler.window_width,
-                 totalsizey < enabler.window_height && black_space ? totalsizey : enabler.window_height
+      const bool use_black_space = black_space && grid_zoom == 1.0;
+      glViewport(totalsizex < enabler.window_width && use_black_space ? (enabler.window_width - totalsizex) / 2 : 0,
+                 totalsizey < enabler.window_height && use_black_space ? (enabler.window_height - totalsizey) / 2 : 0,
+                 totalsizex < enabler.window_width && use_black_space ? totalsizex : enabler.window_width,
+                 totalsizey < enabler.window_height && use_black_space ? totalsizey : enabler.window_height
                  );
       
       // If viewport scaling is on.. we viewport-scale.

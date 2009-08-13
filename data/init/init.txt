@@ -22,8 +22,8 @@ This is the size and font for windowed mode.  Changing to 800x600 and the 800x60
 
 Full screen info.
 
-[FULLSCREENX:800]
-[FULLSCREENY:600]
+[FULLSCREENX:0]
+[FULLSCREENY:0]
 [FULLFONT:curses_800x600.png]
 
 If this is set to NO, tiles will be stretched to fit the screen if there is a resolution mismatch.
