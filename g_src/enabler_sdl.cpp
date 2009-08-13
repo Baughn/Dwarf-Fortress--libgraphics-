@@ -67,7 +67,7 @@ static int glerrorcount = 0;
 
 // GL error macro
 #ifdef DEBUG
-# define printGLError() do { GLenum err; do { err = glGetError(); if (err && glerrorcount < 40) { std::cerr << "GL error: " << err << " in " << __FILE__ << ":" << __LINE__ << "\n"; glerrorcount++; } } while(err); } while(0);
+# define printGLError() do { GLenum err; do { err = glGetError(); if (err && glerrorcount < 40) { printf("GL error: 0x%x in %s:%d\n", err, __FILE__ , __LINE__); glerrorcount++; } } while(err); } while(0);
 # define deputs(str) puts(str)
 #else
 # define printGLError()
@@ -526,12 +526,11 @@ void enablerst::do_frame()
   // run render-setup before the main loop if we just zoomed or they have
   // otherwise become uninitialized.
   bool do_render=false;
-  if (gframes_outstanding > 0 && !skip_gframe)
+  if (gframes_outstanding > 0)
     do_render = true;
-  skip_gframe = false;
 
   // Initiate graphics rendering, if appropriate
-  if (do_render)
+  if (do_render && !skip_gframe)
     render(window, setup);
   
   // Run the main loop if appropriate
@@ -542,12 +541,13 @@ void enablerst::do_frame()
   }
 
   // Finish rendering graphics, if appropriate
-  if (do_render) {
+  if (do_render && !skip_gframe) {
     render(window, complete);
     current_render_count++;
     secondary_render_count++;
     gframes_outstanding--;
   }
+  skip_gframe = false;
 
   // Quit. Toady: Any reason not to set loopvar directly?
   if (!is_program_looping)
@@ -842,66 +842,8 @@ void gridrectst::render(enum render_phase phase, bool clear)
       }
       else if (framebuffer) {
         // Setup a framebuffer for rendering
-        if (!framebuffer_initialized) {
-          // Allocate FBO texture memory
-          glGenTextures(1, &fb_texture);
-          glEnable(GL_TEXTURE_2D);
-          glBindTexture(GL_TEXTURE_2D, fb_texture);
-          glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                       enabler.window_width, enabler.window_height,
-                       0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-          glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-          GLint param = (init.window.flag.has_flag(INIT_WINDOW_FLAG_TEXTURE_LINEAR) ?
-                         GL_LINEAR : GL_NEAREST);
-          glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,param);
-          glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,param);
-
-          // Bind texture to FBO
-          glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
-          glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-                                    GL_TEXTURE_2D, fb_texture, 0);
-          framebuffer_initialized = true;
-          // Create and attach a depth buffer
-          glGenRenderbuffersEXT(1, &fb_depth);
-          glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fb_depth);
-          glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, enabler.window_width, enabler.window_height);
-          glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fb_depth);
-          if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
-            framebuffer_initialized = true;
-            // Create a display list for blitting the buffer to screen
-            fb_draw_list = glGenLists(1);
-            glNewList(fb_draw_list, GL_COMPILE);
-            glBindTexture(GL_TEXTURE_2D, fb_texture);
-            glBegin(GL_TRIANGLE_STRIP);
-            glTexCoord2f(0,1);
-            glVertex2f(0,0);
-	
-            glTexCoord2f(0,0);
-            glVertex2f(0,enabler.window_height);
-	
-            glTexCoord2f(1,1);
-            glVertex2f(enabler.window_width,0);
-	
-            glTexCoord2f(1,0);
-            glVertex2f(enabler.window_width,enabler.window_height);
-            glEnd();
-            glEndList();
-          }
-          else {
-            glDeleteRenderbuffersEXT(1, &fb_depth);
-            glDeleteTextures(1, &fb_texture);
-            glDeleteFramebuffersEXT(1, &framebuffer);
-            framebuffer = 0; // Disable framebuffer
-            glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-            std::cout << "Error: Invalid framebuffer configuration, FBO disabled. No action required.\n";
-          }
-          glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-        }
+        glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, framebuffer);
       }
-
-      // Render to framebuffer
-      if (framebuffer)
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
 
       // Clear the screen as appropriate
       if (clear) {
@@ -1149,8 +1091,9 @@ void gridrectst::render(enum render_phase phase, bool clear)
   case complete:
     {
       // Render to framebuffer
-      if (framebuffer)
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
+      if (framebuffer) {
+        glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, framebuffer);
+      }
       
       // Setup view matrix
       glMatrixMode(GL_PROJECTION);
@@ -1211,6 +1154,7 @@ void gridrectst::render(enum render_phase phase, bool clear)
       printGLError();
       glEnableClientState(GL_VERTEX_ARRAY);
       printGLError();
+      // printf("%x\n", glCheckFramebufferStatus(GL_FRAMEBUFFER));
       glDrawArrays(GL_TRIANGLES, 0, tile_count*6);
       printGLError();
 
@@ -1270,9 +1214,12 @@ void gridrectst::render(enum render_phase phase, bool clear)
       // If we used a framebuffer, render that FBO to the screen
       else if (framebuffer) {
         // Render to screen
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+        glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, 0);
+        glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, framebuffer);
         // Blit framebuffer
-        glCallList(fb_draw_list);
+        glBlitFramebufferEXT(0,0,enabler.window_width,enabler.window_height,
+                             0,0,enabler.window_width,enabler.window_height,
+                             GL_COLOR_BUFFER_BIT, GL_LINEAR);
       }
     } // case complete
     break;
@@ -1283,10 +1230,6 @@ void gridrectst::init_gl() {
   static bool shown=false; // It's a bit hacky, but we want to only show the message once
   if (gl_initialized) uninit_gl();
   vertices_initialized = false;
-  // Toady: As things stand, the only reasonable approach for me is to
-  // allocate the maximum amount of memory that could possibly be used.
-  // Better would be to notify gridrectst when the grid size is supposed
-  // to change, or.. something, but this works.
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO) && GLEW_ARB_vertex_buffer_object) {
 #ifndef DEBUG
     if (!shown)
@@ -1331,7 +1274,42 @@ void gridrectst::init_gl() {
 #endif
       std::cout << " and off-screen framebuffer\n";
     glGenFramebuffersEXT(1, &framebuffer);
-    framebuffer_initialized = false;
+    // Allocate FBO texture memory
+    glGenTextures(1, &fb_texture);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, fb_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                 enabler.window_width, enabler.window_height,
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    GLint param = (init.window.flag.has_flag(INIT_WINDOW_FLAG_TEXTURE_LINEAR) ?
+                   GL_LINEAR : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,param);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,param);
+    
+    // Bind texture to FBO
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebuffer);
+    glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
+                              GL_TEXTURE_2D, fb_texture, 0);
+    // Create and attach a depth buffer
+    // glGenRenderbuffersEXT(1, &fb_depth);
+    // glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fb_depth);
+    // glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, enabler.window_width, enabler.window_height);
+    // glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fb_depth);
+    if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) {
+      framebuffer_initialized = true;
+    } else {
+      // glDeleteRenderbuffersEXT(1, &fb_depth);
+      glDeleteTextures(1, &fb_texture);
+      glDeleteFramebuffersEXT(1, &framebuffer);
+      framebuffer = 0; // Disable framebuffer
+      glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+#ifndef DEBUG
+      if (!shown)
+        std::cout << "Error: Invalid framebuffer configuration, FBO disabled; using standard mode. No action required.\n";
+#endif
+    }
+    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+    framebuffer_initialized = true;
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER)) {
 #ifndef DEBUG
     if (!shown)
@@ -1374,6 +1352,7 @@ void gridrectst::uninit_gl() {
     glDeleteTextures(1, &fb_texture);
     glDeleteFramebuffersEXT(1, &framebuffer);
     framebuffer = 0;
+    framebuffer_initialized = false;
   }
   gl_initialized = false;
   accum_buffer = false;
