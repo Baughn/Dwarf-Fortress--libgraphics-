@@ -1,12 +1,13 @@
 #!/bin/sh
+DF_DIR=$(dirname "$0")
+cd "${DF_DIR}"
 export SDL_DISABLE_LOCK_KEYS=1 # Work around for bug in Debian/Ubuntu SDL patch.
 #export SDL_VIDEO_CENTERED=1 # Centre the screen.  Messes up resizing.
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"./libs" # Update library search path.
-# Work around bad 32-bit support in Arch64
-if grep -q "Arch Linux" /etc/issue; then
-  if [ -d /opt/lib32 ]; then
-      export GTK_PATH=/opt/lib32/usr/lib/gtk-2.0/
-      export PANGO_RC_FILE=/opt/lib32/config/pango/pangorc
-  fi
+ldd dwarfort.exe | grep SDL_image | grep -qv "not found$"
+if [ $? -eq 0 ]; then
+ mkdir unused_libs
+ mv libs/libSDL* unused_libs/
 fi
 ./dwarfort.exe $* # Go, go, go! :)
+

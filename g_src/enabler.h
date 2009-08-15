@@ -960,6 +960,9 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
   {
     reset_gl(&window);
   }
+
+	bool prep_for_image_export();
+	void post_image_export();
 };
 
 void convert_to_rgb(float &r,float &g,float &b,char col,char bright);

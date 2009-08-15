@@ -36,6 +36,22 @@ IF YOUR KEYBOARD ISN'T WORKING:
 
 If you can get to the ESC keybindings menu (from the start screen, press ESC and then 2/8 to scroll to Key Bindings), you can set your key bindings.  If your "?" key on your keyboard doesn't work for help, you can set the keybinding properly here.  It might not display as a "*".  You can set the display up properly in "data/init/interface.txt" using the display strings at the top of the file.
 
+******************************************************
+
+Release notes for 0.28.181.40d14 (August 15, 2009):
+
+Zooming and graphics changes which I don't have in a list but which were numerous (Baughn)
+Corrected some macro bugs (Veroule)
+Corrected mouse misbehavior (Veroule)
+Corrected binding a key leaving some data around (Veroule)
+Corrected some minor visual items in the bindings view (Veroule)
+Added the zoom bindings (Veroule)
+Retained adventure mode keys and corrected the note problem (mostly Veroule)
+Maked macro stop on shutdown_interface (Veroule)
+Cleaned up the misplaced menu keys
+Allowed the adventure to end travel again (mostly Veroule)
+Updated map export to properly ignore zoom settings (Baughn)
+Fixed init load bug for key hold/repeat MS
 
 ******************************************************
 

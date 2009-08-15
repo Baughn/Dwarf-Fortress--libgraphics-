@@ -52,8 +52,8 @@ extern initst init;
 // For musicsound.update();
 #include "music_and_sound_fmodex.h"
 extern musicsoundst musicsound;
-extern graphicst gps;
 #endif
+extern graphicst gps;
 
 // Function prototypes.
 char beginroutine(void);
@@ -101,6 +101,10 @@ static bool zoom_grid = true;
 static std::queue<enum zoom_commands> zoom_command_buffer;
 // A general "buffers dirty, don't render this frame" flag
 static bool skip_gframe = true;
+
+//Used during image export
+double old_grid_zoom_req;
+bool old_zoom_grid;
 
 
 static void resize_grid(int width, int height, bool resizing) {
@@ -160,10 +164,9 @@ static void resize_grid(int width, int height, bool resizing) {
     rect->allocate(new_grid_x, new_grid_y);
   }
   // Reset GL and SDL for the new window size
-  SDL_Surface *screen = SDL_GetVideoSurface();
-  SDL_SetVideoMode(width,height,screen->format->BitsPerPixel,screen->flags);
-  glViewport(0,0,width,height);
-  ne_toggle_fullscreen();
+ if (resizing)
+   enabler.reset_gl();
+ ne_toggle_fullscreen();
 }
 
 static void reset_window() {
@@ -2757,4 +2760,31 @@ void enablerst::save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,lo
   fclose(filePtr);
 #endif
   */
+}
+
+bool enablerst::prep_for_image_export()
+{
+	old_grid_zoom_req=grid_zoom_req;
+	grid_zoom_req=1;
+	reset_window();
+	if(grid_zoom!=1)
+		{
+		grid_zoom_req=old_grid_zoom_req;
+		reset_window();
+
+		errorlog_string("Image export not possible because of zoom/window settings");
+		return false;
+		}
+
+	old_zoom_grid=zoom_grid;
+	zoom_grid=false;
+
+	return true;
+}
+
+void enablerst::post_image_export()
+{
+	zoom_grid=old_zoom_grid;
+	grid_zoom_req=old_grid_zoom_req;
+	reset_window();
 }
