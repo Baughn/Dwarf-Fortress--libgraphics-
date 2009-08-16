@@ -567,18 +567,21 @@ void enablerst::do_frame()
 
 void enablerst::render(GL_Window &window, enum render_phase phase)
 {
-  if(flag & ENABLERFLAG_RENDER)
-    {
-      // Draw everything to the front buffer.
-      // TODO: Pass phase through render_things
-      render_things(phase);
-      // Make sure OpenGL starts rendering.. it'll finish at... some point.
-      if (phase == complete) {
+  switch (phase) {
+  case setup:
+    render_things(phase);
+    break;
+  case complete:
+    if(flag & ENABLERFLAG_RENDER)
+      {
+        // Draw everything to the front buffer.
+        render_things(phase);
+        // Make sure OpenGL starts rendering.. it'll finish at... some point.
         SDL_GL_SwapBuffers();
-		
+          
         flag&=~ENABLERFLAG_RENDER;
       }
-    }		
+  }
 }
 
 void enablerst::terminate_application(GL_Window* window)
