@@ -529,12 +529,14 @@ void enablerst::do_frame()
   // run render-setup before the main loop if we just zoomed or they have
   // otherwise become uninitialized.
   bool do_render=false;
-  if (gframes_outstanding > 0)
+  if (gframes_outstanding > 0 && (flag & ENABLERFLAG_RENDER)) {
     do_render = true;
-
-  // Initiate graphics rendering, if appropriate
-  if (do_render && !skip_gframe)
-    render(window, setup);
+    // Initiate graphics rendering, if appropriate
+    if (!skip_gframe)
+      render(window, setup);
+    // Mark this rendering as complete. It isn't really, but we'll complete it later.
+    flag &= ~ENABLERFLAG_RENDER;
+  }
   
   // Run the main loop if appropriate
   if (frames_outstanding > 0||(flag & ENABLERFLAG_MAXFPS)) {
@@ -567,21 +569,9 @@ void enablerst::do_frame()
 
 void enablerst::render(GL_Window &window, enum render_phase phase)
 {
-  switch (phase) {
-  case setup:
-    render_things(phase);
-    break;
-  case complete:
-    if(flag & ENABLERFLAG_RENDER)
-      {
-        // Draw everything to the front buffer.
-        render_things(phase);
-        // Make sure OpenGL starts rendering.. it'll finish at... some point.
-        SDL_GL_SwapBuffers();
-          
-        flag&=~ENABLERFLAG_RENDER;
-      }
-  }
+  render_things(phase);
+  if (phase == complete)
+    SDL_GL_SwapBuffers();
 }
 
 void enablerst::terminate_application(GL_Window* window)
