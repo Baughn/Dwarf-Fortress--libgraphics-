@@ -388,27 +388,32 @@ static void eventLoop(GL_Window window)
          enabler.tracking_on = 1;
          // Set viewport_x/y as appropriate, and fixup mouse position for zoom
          // We use only the central 60% of the window for setting viewport origin.
-         double mouse_x = (double)event.motion.x / size_x,
-           mouse_y = (double)event.motion.y / size_y;
-         double percentage = 0.60;
-         mouse_x /= percentage;
-         mouse_y /= percentage;
-         mouse_x -= (1-percentage)/2;
-         mouse_y -= (1-percentage)/2;
-         mouse_x = MIN(MAX(mouse_x,0),1);
-         mouse_y = MIN(MAX(mouse_y,0),1);
-         double new_viewport_x = mouse_x, new_viewport_y = mouse_y;
-         if (new_viewport_x != viewport_x || new_viewport_y != viewport_y) {
-           viewport_x = new_viewport_x;
-           viewport_y = new_viewport_y;
-           gps.force_full_display_count++;
+         if (!zoom_grid) {
+           double mouse_x = (double)event.motion.x / size_x,
+             mouse_y = (double)event.motion.y / size_y;
+           double percentage = 0.60;
+           mouse_x /= percentage;
+           mouse_y /= percentage;
+           mouse_x -= (1-percentage)/2;
+           mouse_y -= (1-percentage)/2;
+           mouse_x = MIN(MAX(mouse_x,0),1);
+           mouse_y = MIN(MAX(mouse_y,0),1);
+           double new_viewport_x = mouse_x, new_viewport_y = mouse_y;
+           if (new_viewport_x != viewport_x || new_viewport_y != viewport_y) {
+             viewport_x = new_viewport_x;
+             viewport_y = new_viewport_y;
+             gps.force_full_display_count++;
+           }
+           double visible = 1/viewport_zoom,
+             invisible = 1 - visible;
+           double visible_w = enabler.window_width * visible,
+             visible_h = enabler.window_height * visible;
+           enabler.mouse_x = ((double)event.motion.x / enabler.window_width) * visible_w + (invisible*viewport_x*enabler.window_width);
+           enabler.mouse_y = ((double)event.motion.y / enabler.window_height) * visible_h + (invisible*viewport_y*enabler.window_height);
+         } else {
+           enabler.mouse_x = event.motion.x;
+           enabler.mouse_y = event.motion.y;
          }
-         double visible = 1/viewport_zoom,
-           invisible = 1 - visible;
-         double visible_w = enabler.window_width * visible,
-           visible_h = enabler.window_height * visible;
-         enabler.mouse_x = zoom_grid ? event.motion.x : ((double)event.motion.x / enabler.window_width) * visible_w + (invisible*viewport_x*enabler.window_width);
-         enabler.mouse_y = zoom_grid ? event.motion.y : ((double)event.motion.y / enabler.window_height) * visible_h + (invisible*viewport_y*enabler.window_height);
          mouse_lastused = enabler.now;
          if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
            //        turn on mouse picture
