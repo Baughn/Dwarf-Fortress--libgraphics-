@@ -18,8 +18,10 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <utility>
 
 using std::vector;
+using std::pair;
 
 #include "svector.h"
 #include "endian.h"
@@ -967,5 +969,7 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
 
 void convert_to_rgb(float &r,float &g,float &b,char col,char bright);
 #endif
+
+pair<int,int> window_to_grid(int x, int y);
 
 #endif //ENABLER_H

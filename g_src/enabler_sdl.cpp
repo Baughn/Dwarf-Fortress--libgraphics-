@@ -90,6 +90,8 @@ static int glerrorcount = 0;
 // There are two different kinds of zoom.
 // Grid zoom: The game may use a smaller or larger grid than the "natural" size for the window.
 // Viewport zoom: The window may show just part of the grid.
+// Grid zoom is calculated from zoom_steps.
+static int zoom_steps = 0;
 static double grid_zoom = 1.0, viewport_zoom = 1.0;
 // Further, there's a distinction between forced grid zoom and requested zoom.
 static double grid_zoom_req = 1.0;
@@ -105,6 +107,21 @@ static bool skip_gframe = true;
 //Used during image export
 double old_grid_zoom_req;
 bool old_zoom_grid;
+
+// GL viewport used for rendering, for mouse calculations
+static int origin_x, origin_y, size_x, size_y;
+
+// Translates a window position to a grid location. Returns -1 for
+// window locations outside the grid.
+pair<int,int> window_to_grid(int x, int y) {
+  // Translate to grid coordinates
+  if (x < origin_x || y < origin_y || x >= origin_x + size_x || y >= origin_y + size_y)
+    return std::make_pair(-1,-1);
+  double rel_x = (x - origin_x) / (double)size_x;
+  double rel_y = (y - origin_y) / (double)size_y;
+  return std::make_pair(rel_x * init.display.grid_x,
+                        rel_y * init.display.grid_y);
+}
 
 
 static void resize_grid(int width, int height, bool resizing) {
@@ -189,6 +206,7 @@ static void zoom_display_delayed(enum zoom_commands command) {
   const int font_w = enabler.create_full_screen ? init.font.large_font_dispx : init.font.small_font_dispx;
   const int font_h = enabler.create_full_screen ? init.font.large_font_dispy : init.font.small_font_dispy;
   const double zoom_factor = 1.05;
+  const int old_zoom_steps = zoom_steps;
   const double old_req = grid_zoom_req, old_grid_zoom = grid_zoom;
 
   switch (command) {
@@ -200,14 +218,19 @@ static void zoom_display_delayed(enum zoom_commands command) {
   case zoom_reset:
     deputs("Resetting zoom");
     grid_zoom_req = 1.0;
+    zoom_steps = 0;
     reset_window();
     break;
   case zoom_in:
     if (zoom_grid) {
-      grid_zoom_req *= zoom_factor;
+      grid_zoom_req *= zoom_factor; zoom_steps++;
+      if (0 == zoom_steps) // Avoid perturbations
+        grid_zoom_req = 1.0;
       reset_window();
-      if (grid_zoom == old_grid_zoom && grid_zoom < grid_zoom_req) // Can't zoom in this direction right now
+      if (grid_zoom == old_grid_zoom && grid_zoom < grid_zoom_req) { // Can't zoom in this direction right now
         grid_zoom_req = old_req;
+        zoom_steps = old_zoom_steps;
+      }
     } else {
       viewport_zoom *= zoom_factor;
       gps.force_full_display_count++;
@@ -219,9 +242,14 @@ static void zoom_display_delayed(enum zoom_commands command) {
   case zoom_out:
     if (zoom_grid) {
       grid_zoom_req /= zoom_factor;
+      zoom_steps--;
+      if (0 == zoom_steps)
+        grid_zoom_req = 1.0;
       reset_window();
-      if (grid_zoom == old_grid_zoom && grid_zoom > grid_zoom_req)
+      if (grid_zoom == old_grid_zoom && grid_zoom > grid_zoom_req) {
         grid_zoom_req = old_req;
+        zoom_steps = old_zoom_steps;
+      }
     } else {
       viewport_zoom = MAX(1.0, viewport_zoom / zoom_factor);
       gps.force_full_display_count++;
@@ -350,22 +378,18 @@ static void eventLoop(GL_Window window)
     break;
     case SDL_VIDEOEXPOSE:   gps.force_full_display_count++; break;
     case SDL_MOUSEMOTION:
-     /* Certain things (e.g. switching to fullscreen tears down the original
-     * OpenGL context and initializes a new one) change the screen surface,
-     * so we ask SDL for the surface everytime, instead of storing it.*/
-     screen = SDL_GetVideoSurface();
-     if (screen == NULL) return;
      // Is the mouse over the screen surface?
      if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
-       if (event.motion.x < screen->w && event.motion.y < screen->h) {
-//         enabler.add_input(INTERFACEEVENT_MOUSE_MOTION,0);
+       if (event.motion.x >= origin_x && event.motion.x < origin_x + size_x &&
+           event.motion.y >= origin_y && event.motion.y < origin_y + size_y) {
+         // Store last position
          enabler.oldmouse_x = enabler.mouse_x;
          enabler.oldmouse_y = enabler.mouse_y;
          enabler.tracking_on = 1;
          // Set viewport_x/y as appropriate, and fixup mouse position for zoom
          // We use only the central 60% of the window for setting viewport origin.
-         double mouse_x = (double)event.motion.x / screen->w,
-           mouse_y = (double)event.motion.y / screen->h;
+         double mouse_x = (double)event.motion.x / size_x,
+           mouse_y = (double)event.motion.y / size_y;
          double percentage = 0.60;
          mouse_x /= percentage;
          mouse_y /= percentage;
@@ -392,9 +416,6 @@ static void eventLoop(GL_Window window)
            SDL_ShowCursor(SDL_DISABLE);
          } else SDL_ShowCursor(SDL_ENABLE);
        } else {
-#ifdef DEBUG
-         std::cout << "Mouse reset; this should not happen\n";
-#endif
          enabler.oldmouse_x = -1;
          enabler.oldmouse_y = -1;
          enabler.mouse_x = -1;
@@ -1103,17 +1124,35 @@ void gridrectst::render(enum render_phase phase, bool clear)
       // Setup a nicer coordinate system
       glTranslatef(-1,1,0);
       glScalef(2,-2,2);
-      // Scale the grid so it fits exactly into the window, making 1 GL unit equal 1 tile
+      // Scale the grid so it fits exactly into the GL viewport, making 1 GL unit equal 1 tile
       glScalef(1.0f / dimx, 1.0f / dimy, 1);
-      // If the desired window size is smaller than the actual window,
-      // black_space is on, and we're not zooming, then we use only that part. Otherwise we use the
-      // full window.
-      const bool use_black_space = black_space && grid_zoom == 1.0;
-      glViewport(totalsizex < enabler.window_width && use_black_space ? (enabler.window_width - totalsizex) / 2 : 0,
-                 totalsizey < enabler.window_height && use_black_space ? (enabler.window_height - totalsizey) / 2 : 0,
-                 totalsizex < enabler.window_width && use_black_space ? totalsizex : enabler.window_width,
-                 totalsizey < enabler.window_height && use_black_space ? totalsizey : enabler.window_height
-                 );
+      // Figure out what part of the window we actually use for said viewport, to get the aspect ratio and zoom right
+      // We always use the entire window is black_space is off.
+      origin_x = 0; origin_y = 0; size_x = enabler.window_width; size_y = enabler.window_height;
+      if (black_space) { // Otherwise...
+        if (totalsizex > enabler.window_width || totalsizey > enabler.window_height) {
+          // Insufficient space; we must compress the grid while maintaining aspect ratio.
+          const double aspect = totalsizex / totalsizey;
+          // Figure out which axis is most compressed, use the entire window in that axis and
+          // calculate the other from that.
+          const double compressx = totalsizex / enabler.window_width,
+            compressy = totalsizey / enabler.window_height;
+          if (compressx > compressy) {
+            size_y = size_y / (compressx / compressy);
+            origin_y = (enabler.window_height - size_y) / 2;
+          } else {
+            size_x = size_x / (compressy / compressx);
+            origin_x = (enabler.window_width - size_x) / 2;
+          }
+        } else {
+          // Sufficient space, so we just stick ourselves in the middle.
+          size_x = totalsizex; size_y = totalsizey;
+          origin_x = (enabler.window_width - size_x) / 2;
+          origin_y = (enabler.window_height - size_y) / 2;
+        }
+      }
+      glViewport(origin_x, origin_y, size_x, size_y);
+
       
       // If viewport scaling is on.. we viewport-scale.
       if (!zoom_grid) {

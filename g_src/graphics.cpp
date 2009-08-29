@@ -470,35 +470,14 @@ void graphicst::color_square(long x,long y,unsigned char f,unsigned char b,unsig
 
 void graphicst::get_mouse_text_coords(long &mx,long &my)
 {
-	if(enabler.tracking_on)
-		{
-		float dispx,dispy;
-		if(enabler.create_full_screen)
-			{
-			dispx=init.font.large_font_dispx;
-			dispy=init.font.large_font_dispy;
-			}
-		else
-			{
-			dispx=init.font.small_font_dispx;
-			dispy=init.font.small_font_dispy;
-			}
-		float totalsizex=dispx*init.display.grid_x;
-		float totalsizey=dispy*init.display.grid_y;
-		float translatex=0,translatey=0;
-		if(init.display.flag.has_flag(INIT_DISPLAY_FLAG_BLACK_SPACE))
-			{
-			if(totalsizex<=enabler.window_width)translatex=(enabler.window_width-totalsizex)/2.0f;
-			if(totalsizey<=enabler.window_height)translatey=(enabler.window_height-totalsizey)/2.0f;
-			}
-
-		if(enabler.mouse_x>=translatex&&enabler.mouse_x<enabler.window_width-translatex&&
-			enabler.mouse_y>=translatey&&enabler.mouse_y<enabler.window_height-translatey)
-			{
-			mx=(enabler.mouse_x-translatex)*init.display.grid_x/(enabler.window_width-translatex*2.0f);
-			my=(enabler.mouse_y-translatey)*init.display.grid_y/(enabler.window_height-translatey*2.0f);
-			}
-		}
+  if(enabler.tracking_on)
+    {
+      pair<int,int> pos = window_to_grid(enabler.mouse_x, enabler.mouse_y);
+      if (pos.first != -1 && pos.second != -1) {
+        mx = pos.first;
+        my = pos.second;
+      }
+    }
 }
 
 void graphicst::prepare_rect(char n_orig)
