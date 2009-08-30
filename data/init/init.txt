@@ -18,9 +18,9 @@ This is the size and font for windowed mode.  Changing to 800x600 and the 800x60
 
 [WINDOWEDX:640]
 [WINDOWEDY:300]
-[FONT:curses_640x300.png]
+[FONT:curses_800x600.png]
 
-Full screen info.
+Full screen info.  The 0s below mean that the game will choose a resolution for you, but you can set it yourself as well.
 
 [FULLSCREENX:0]
 [FULLSCREENY:0]
@@ -75,6 +75,10 @@ Change this to LINEAR if you want the texture values to be averaged over the adj
 Change this to make the dwarfort.exe process have a different priority.  From highest to lowest, the options are REALTIME, HIGH, ABOVE_NORMAL, NORMAL, BELOW_NORMAL and IDLE.
 
 [PRIORITY:NORMAL]
+
+Use this to set how fast the game zooms.  The default corresponds to multiplying by a factor of 1.1 each time the zoom action occurs.  You can set it anywhere from 1.001 to 1.999.
+
+[ZOOM_FACTOR:1.100]
 
 Change this to NO if you don't want to have the mouse involved at all.
 

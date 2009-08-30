@@ -205,7 +205,7 @@ void zoom_display(enum zoom_commands command) {
 static void zoom_display_delayed(enum zoom_commands command) {
   const int font_w = enabler.create_full_screen ? init.font.large_font_dispx : init.font.small_font_dispx;
   const int font_h = enabler.create_full_screen ? init.font.large_font_dispy : init.font.small_font_dispy;
-  const double zoom_factor = 1.05;
+  const double zoom_factor = init.input.zoom_factor;
   const int old_zoom_steps = zoom_steps;
   const double old_req = grid_zoom_req, old_grid_zoom = grid_zoom;
 

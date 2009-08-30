@@ -89,6 +89,7 @@ class init_inputst
         long macro_time;
 		long pause_zoom_no_interface_ms;
 		flagarrayst flag;
+		double zoom_factor;
 
 		init_inputst()
 			{
@@ -97,6 +98,7 @@ class init_inputst
             macro_time=75;
 			pause_zoom_no_interface_ms=0;
 			flag.set_size_on_flag_num(INIT_INPUT_FLAGNUM);
+			zoom_factor=1.1;
 			}
 };
 
