@@ -3,13 +3,13 @@ import os
 
 src_dll = ["basics.cpp","command_line.cpp","enabler_sdl.cpp","files.cpp",
            "find_files_posix.cpp","graphics.cpp","init.cpp","interface.cpp",
-           "keybindings.cpp","music_and_sound_fmodex.cpp","random.cpp",
+           "keybindings.cpp","music_and_sound_openal.cpp", "random.cpp",
            "textlines.cpp","glew.c","ViewBase.cpp","enabler_input.cpp"]
 
 dll  = '#libs/libgraphics.so'
 
 optimize = True
-debug = True
+debug = False
 profile = False
    
 # Propagate PATH. We'll just take our chances with non-repeatable builds.
@@ -31,11 +31,16 @@ env["CPPPATH"].append('#g_src/glext')
 env["CCFLAGS"].append('-DGLEW_STATIC') # Should only be needed on windows, but can't hurt.
 
 # Generic unix, including Linux
-env["LIBS"] += ['SDL', 'SDL_image', 'GL', 'GLU', 'fmodex', 'z',]
+env["LIBS"] += ['SDL_image']
 env['ASFLAGS']="--32"
 env['LINKFLAGS'].append("-m32")
 env["CCFLAGS"].append("-m32")
 env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
+env.ParseConfig('pkg-config openal --cflags --libs')
+env.ParseConfig('pkg-config sndfile --cflags --libs')
+env.ParseConfig('pkg-config sdl --cflags --libs')
+env.ParseConfig('pkg-config zlib --cflags --libs')
+env.ParseConfig('pkg-config glu --cflags --libs')
 
 
 if profile:

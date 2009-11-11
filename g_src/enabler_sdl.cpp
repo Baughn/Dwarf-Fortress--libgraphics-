@@ -50,7 +50,7 @@ extern initst init;
 
 #ifndef NO_FMOD
 // For musicsound.update();
-#include "music_and_sound_fmodex.h"
+#include "music_and_sound_g.h"
 extern musicsoundst musicsound;
 #endif
 extern graphicst gps;
@@ -1816,6 +1816,12 @@ int main (int argc, char* argv[])
   gtk_init(&argc, &argv);
 #endif
 
+#ifdef linux
+  // Initialize OpenAL
+  if (!musicsound.initsound())
+    puts("Initializing OpenAL failed, no sound will be played");
+#endif
+  
   // Initialise relevant SDL subsystems.
   int retval = SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO);
   // Turn on keyboard translation, from raw keycodes to letters
@@ -1829,28 +1835,6 @@ int main (int argc, char* argv[])
   string cmdLine;
   for (int i = 1; i < argc; ++i) { 
     char *option = argv[i];
-#if !defined(NO_FMOD) && defined(linux)
-    /*
-     * The sound_output switch allows users to switch the sound system used. 
-     * Possible values are ALSA, OSS, ESD. musicsoundst.initsound cannot be called 
-     * before this point or this will have no effect.
-     */
-    if (strcmp(option, "-sound_output") == 0) {
-      if (++i >= argc) {
-	std::cerr << "sound_output switch given, but no sound system specified. Default is ALSA.\n";
-	continue; // Break out of the for loop.
-      }
-      char *argument = argv[i];
-      if (strcmp(argument, "ALSA") == 0) {
-	musicsound.set_sound_system(musicsoundst::ALSA);
-      } else if (strcmp(argument, "OSS") == 0) {
-	musicsound.set_sound_system(musicsoundst::OSS);
-      } else if (strcmp(argument, "ESD") == 0) {
-	musicsound.set_sound_system(musicsoundst::ESD);
-      }
-      continue;
-    }
-#endif
     cmdLine += option;
     cmdLine += " ";
   }

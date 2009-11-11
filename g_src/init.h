@@ -1,3 +1,6 @@
+#ifndef INIT_H
+#define INIT_H
+
 class init_fontst
 {
 	public:
@@ -131,3 +134,5 @@ class initst
 		init_fontst font;
 		init_windowst window;
 };
+
+#endif

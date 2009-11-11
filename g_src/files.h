@@ -6,6 +6,9 @@
 #define FILE_IN_BUFF 1000000
 #define FILE_OUT_BUFF 2000000
 
+#include <string>
+using std::string;
+
 #include <fstream>
 #include "endian.h"
 #include "svector.h"
