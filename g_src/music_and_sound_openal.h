@@ -30,12 +30,12 @@ class musicsoundst
 
   void startbackgroundmusic(int slot);
   void stopbackgroundmusic();
+  void stop_sound();
 
   // Deprecated:
   void forcebackgroundmusic(int slot, unsigned long time);
   void playsound(int s,int channel);
   void stop_sound(int channel);
-  void stop_sound();
   void set_sound(std::string &filename,int slot,int pan=-1,int priority=0);
   void playsound(int s,int min_channel,int max_channel,int force_channel);
   void deinitsound();

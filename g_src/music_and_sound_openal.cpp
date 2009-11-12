@@ -184,7 +184,16 @@ void musicsoundst::stopbackgroundmusic() {
 
   alSourceStop(slot_source[background_slot]);
 }
-  
+
+void musicsoundst::stop_sound() {
+  if (!functional) return;
+  // Stop all playing sounds. Does this include background music?
+  std::map<std::string,ALuint>::iterator it;
+  for (it = sources.begin(); it != sources.end(); ++it)
+    alSourceStop(it->second);
+}
+
+
 
 // Deprecated stuff below
 
