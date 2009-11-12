@@ -6,9 +6,10 @@ mkdir df_linux
 mkdir df_linux/libs
 schroot -- scons -j2
 cp libs/libgraphics.so df_linux/libs/
+cp libs/libfmodex.so df_linux/libs/
 schroot cp /usr/lib/libstdc++.so.6 df_linux/libs/
-tar cjf df-40d15-head.tar.bz2 df_linux
-scp df-40d15-head.tar.bz2 brage.info:public_html/
-rm df-40d15-head.tar.bz2
+tar cjf df-40d16-head.tar.bz2 df_linux
+scp df-40d16-head.tar.bz2 brage.info:public_html/
+rm df-40d16-head.tar.bz2
 )
 rm -r df_linux
