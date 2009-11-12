@@ -70,7 +70,7 @@ bool musicsoundst::initsound() {
 
 // int main() {
 //   musicsound.initsound();
-//   string str = "../data/sound/song_game.ogg";
+//   string str = "data/sound/song_game.ogg";
 //   musicsound.set_song(str, 14);
 //   musicsound.playsound(14);
 //   sleep(9999);
@@ -142,8 +142,8 @@ void musicsoundst::set_song(string &filename, int slot) {
 
 void musicsoundst::set_master_volume(long newvol) {
   if (!functional) return;
-  puts("musicsoundst::set_master_volume called");
-  // TOOD: Set volume
+  printf("Setting master volume to %d\n", newvol);
+  alListenerf(AL_GAIN, newvol / 255.0f);
 }
 
 void musicsoundst::playsound(int slot) {
@@ -193,16 +193,35 @@ void musicsoundst::stop_sound() {
     alSourceStop(it->second);
 }
 
+void musicsoundst::deinitsound() {
+  std::map<std::string,ALuint>::iterator it;
+  // Free all sources
+  for (it = sources.begin(); it != sources.end(); ++it) {
+    ALuint source = it->second;
+    alDeleteSources(1, &source);
+  }
+  // Free all sample memory
+  for (it = buffers.begin(); it != buffers.end(); ++it) {
+    ALuint buffer = it->second;
+    alDeleteBuffers(1, &buffer);
+  }
+  // Deinit OpenAL
+  alcMakeContextCurrent(NULL);
+  alcDestroyContext(context);
+  alcCloseDevice(device);
+  alPrintErrors();
 
+  functional=false;
+}
 
 // Deprecated stuff below
 
 void musicsoundst::set_sound(string &filename, int slot, int pan, int priority) {
   if (!functional) return;
-  puts("musicsoundst::set_sound called");
+  set_song(filename, slot);
 }
 
 void musicsoundst::playsound(int s, int channel) {
   if (!functional) return;
-  puts("musicsoundst::playsound called");
+  playsound(s);
 }

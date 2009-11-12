@@ -31,12 +31,12 @@ class musicsoundst
   void startbackgroundmusic(int slot);
   void stopbackgroundmusic();
   void stop_sound();
-
+  void playsound(int s,int channel);
+  void set_sound(std::string &filename,int slot,int pan=-1,int priority=0);
+                 
   // Deprecated:
   void forcebackgroundmusic(int slot, unsigned long time);
-  void playsound(int s,int channel);
   void stop_sound(int channel);
-  void set_sound(std::string &filename,int slot,int pan=-1,int priority=0);
   void playsound(int s,int min_channel,int max_channel,int force_channel);
   void deinitsound();
   void set_sound_params(int slot,int p1,int vol,int pan,int priority);
@@ -46,6 +46,10 @@ class musicsoundst
     background_slot = -1;
   }
 
+  ~musicsoundst() {
+    deinitsound();
+  }
+  
  private:
   bool functional;
   ALCdevice *device;
