@@ -77,10 +77,10 @@ bool musicsoundst::initsound() {
 //   exit(1);
 // }
 
-void musicsoundst::set_song(string &filename, int slot) {
+void musicsoundst::set_song(string &filename, slot slot) {
   if (!functional) return;
 
-  // printf("%s requested in %d\n", filename.c_str(), slot);
+  // printf("%s requested in %d-%d\n", filename.c_str(), (int)slot.first, slot.second);
   if (!buffers.count(filename)) {
     // Song not already loaded. Load it.
     SF_INFO sfinfo;
@@ -141,32 +141,40 @@ void musicsoundst::set_song(string &filename, int slot) {
     alPrintErrors();
 }
 
+void musicsoundst::set_song(string &filename, int slot) {
+  set_song(filename, slot::pair(true, slot));
+}
+
 void musicsoundst::set_master_volume(long newvol) {
   if (!functional) return;
   alListenerf(AL_GAIN, newvol / 255.0f);
 }
 
-void musicsoundst::playsound(int slot) {
+void musicsoundst::playsound(slot slot) {
   if (!functional) return;
   // printf("%d requested\n", slot);
   if (!slot_source.count(slot)) {
-    printf("Slot %d requested, but no song loaded\n", slot);
+    printf("Slot %d-%d requested, but no song loaded\n", (int)slot.first, slot.second);
     return;
   }
   if (background_slot == slot) {
     puts("playsound called on background song, background song cancelled!?");
-    background_slot = -1;
+    background_slot = slot::pair(false,-1);
   }
   alSourcei(slot_source[slot], AL_LOOPING, AL_FALSE);
   alSourcePlay(slot_source[slot]);
   alPrintErrors();
 }
 
-void musicsoundst::startbackgroundmusic(int slot) {
+void musicsoundst::playsound(int slot) {
+  playsound(slot::pair(false,slot));
+}
+
+void musicsoundst::startbackgroundmusic(slot slot) {
   if (!functional) return;
 
   if (!slot_source.count(slot)) {
-    printf("Slot %d requested, but no song loaded\n", slot);
+    printf("Slot %d-%d requested, but no song loaded\n", (int)slot.first, slot.second);
     return;
   }
 
@@ -181,9 +189,13 @@ void musicsoundst::startbackgroundmusic(int slot) {
   alPrintErrors();
 }
 
+void musicsoundst::startbackgroundmusic(int slot) {
+  startbackgroundmusic(slot::pair(true,slot));
+}
+
 void musicsoundst::stopbackgroundmusic() {
   if (!functional) return;
-  if (background_slot == -1) return;
+  if (background_slot == slot::pair(false,-1)) return;
 
   alSourceStop(slot_source[background_slot]);
 }
@@ -196,7 +208,7 @@ void musicsoundst::stop_sound() {
     alSourceStop(it->second);
 }
 
-void musicsoundst::stop_sound(int slot) {
+void musicsoundst::stop_sound(slot slot) {
   if (!functional) return;
   if (slot_source.count(slot) == 0) return;
   ALuint source = slot_source[slot];
@@ -223,12 +235,12 @@ void musicsoundst::deinitsound() {
   functional=false;
 }
 
-// Deprecated stuff below
-
 void musicsoundst::set_sound(string &filename, int slot, int pan, int priority) {
   if (!functional) return;
-  set_song(filename, slot);
+  set_song(filename, slot::pair(false,slot));
 }
+
+// Deprecated stuff below
 
 void musicsoundst::playsound(int s, int channel) {
   if (!functional) return;

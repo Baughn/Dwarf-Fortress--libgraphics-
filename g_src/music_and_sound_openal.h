@@ -10,6 +10,7 @@
 #include <list>
 #include <map>
 #include <algorithm>
+#include <utility>
 
 #define SOUND_CHANNELNUM 16
 
@@ -17,6 +18,8 @@
 // use, to avoid resampling.
 #define SOUND_FREQUENCY 44100
 
+// If the bool is false, a sound; otherwise a song
+typedef std::pair<bool,int> slot;
 
 class musicsoundst
 {
@@ -25,25 +28,28 @@ class musicsoundst
   void update() {}
   void set_master_volume(long newvol);
 
+  void set_song(std::string &filename, slot slot);
   void set_song(std::string &filename, int slot);
-  void playsound(int slot);
+  void playsound(slot slot);
+  void playsound(int slot); // Assumes sound
 
-  void startbackgroundmusic(int slot);
+  void startbackgroundmusic(slot slot);
+  void startbackgroundmusic(int slot); // Assumes song
   void stopbackgroundmusic();
   void stop_sound();
+  void stop_sound(slot slot);
   void playsound(int s,int channel);
   void set_sound(std::string &filename,int slot,int pan=-1,int priority=0);
   void deinitsound();
                  
   // Deprecated:
   void forcebackgroundmusic(int slot, unsigned long time);
-  void stop_sound(int channel);
   void playsound(int s,int min_channel,int max_channel,int force_channel);
   void set_sound_params(int slot,int p1,int vol,int pan,int priority);
 
   musicsoundst() {
     functional = false;
-    background_slot = -1;
+    background_slot = slot::pair(false,-1);
   }
 
   ~musicsoundst() {
@@ -57,10 +63,10 @@ class musicsoundst
 
   std::map<std::string,ALuint> buffers; // OpenAL buffers
   std::map<std::string,ALuint> sources; // And sources
-  std::map<int, ALuint> slot_buffer; // Mappings from DF slots to openal
-  std::map<int, ALuint> slot_source;
+  std::map<slot, ALuint> slot_buffer; // Mappings from DF slots to openal
+  std::map<slot, ALuint> slot_source;
 
-  int background_slot; // Currently playing background music, or -1
+  slot background_slot; // Currently playing background music, or -1
 };
 
 
