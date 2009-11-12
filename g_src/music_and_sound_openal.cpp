@@ -70,9 +70,9 @@ bool musicsoundst::initsound() {
 
 // int main() {
 //   musicsound.initsound();
-//   string str = "data/sound/song_game.ogg";
+//   string str = "data/sound/song_title.ogg";
 //   musicsound.set_song(str, 14);
-//   musicsound.playsound(14);
+//   musicsound.startbackgroundmusic(14);
 //   sleep(9999);
 //   exit(1);
 // }
@@ -80,6 +80,7 @@ bool musicsoundst::initsound() {
 void musicsoundst::set_song(string &filename, int slot) {
   if (!functional) return;
 
+  // printf("%s requested in %d\n", filename.c_str(), slot);
   if (!buffers.count(filename)) {
     // Song not already loaded. Load it.
     SF_INFO sfinfo;
@@ -88,7 +89,7 @@ void musicsoundst::set_song(string &filename, int slot) {
     if (!sf) {
       printf("%s not found, sound not loaded\n", filename.c_str());
       goto end;
-    }
+    } 
     short *buffer = new short[sfinfo.channels * sfinfo.frames];
     sf_count_t frames_read = sf_readf_short(sf, buffer, sfinfo.frames);
     if (frames_read != sfinfo.frames)
@@ -142,12 +143,12 @@ void musicsoundst::set_song(string &filename, int slot) {
 
 void musicsoundst::set_master_volume(long newvol) {
   if (!functional) return;
-  printf("Setting master volume to %d\n", newvol);
   alListenerf(AL_GAIN, newvol / 255.0f);
 }
 
 void musicsoundst::playsound(int slot) {
   if (!functional) return;
+  // printf("%d requested\n", slot);
   if (!slot_source.count(slot)) {
     printf("Slot %d requested, but no song loaded\n", slot);
     return;
@@ -171,7 +172,9 @@ void musicsoundst::startbackgroundmusic(int slot) {
 
   if (background_slot == slot)
     return; // Verily, it is already playing
+  stop_sound(background_slot);
   background_slot = slot;
+  // printf("%d backgrounded\n", slot);
 
   alSourcei(slot_source[slot], AL_LOOPING, AL_TRUE);
   alSourcePlay(slot_source[slot]);
@@ -193,6 +196,13 @@ void musicsoundst::stop_sound() {
     alSourceStop(it->second);
 }
 
+void musicsoundst::stop_sound(int slot) {
+  if (!functional) return;
+  if (slot_source.count(slot) == 0) return;
+  ALuint source = slot_source[slot];
+  alSourceStop(source);
+}
+
 void musicsoundst::deinitsound() {
   std::map<std::string,ALuint>::iterator it;
   // Free all sources
@@ -209,7 +219,6 @@ void musicsoundst::deinitsound() {
   alcMakeContextCurrent(NULL);
   alcDestroyContext(context);
   alcCloseDevice(device);
-  alPrintErrors();
 
   functional=false;
 }
