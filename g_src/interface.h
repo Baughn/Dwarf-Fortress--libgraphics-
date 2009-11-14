@@ -115,8 +115,6 @@ class interfacest : public interfacekeyst
 
 		long write_movie_chunk();
 		void read_movie_chunk(long &maxmoviepos,char &is_playing);
- private:
-                void local_input(viewscreenst *currentscreen);
 };
 
 #define SCROLLING_NOSELECT BIT1
