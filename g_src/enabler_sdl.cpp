@@ -1281,27 +1281,43 @@ void gridrectst::init_gl() {
       std::cout << "Using OpenGL output path with buffer objects\n";
     // Allocate memory for the server-side arrays, and test mapping to avoid crashes
     bool ok = true;
+    GLenum err = glGetError(); // Clear any errors
+    
     glGenBuffersARB(4, vbo_refs);
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]);
     glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*2*sizeof(GLfloat), NULL, GL_STATIC_DRAW_ARB);
+    if (err=glGetError()) { ok = false; goto unmap0; }
+
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
     glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*4*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
     if (!glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB)) ok = false;
+    if (err=glGetError()) ok = false;
+    if (!ok)  goto unmap0;
+    
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
     glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*4*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
     if (!glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB)) ok = false;
+    if (err=glGetError()) ok = false;
+    if (!ok)  goto unmap1;
+
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
     glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*6*2*sizeof(GLfloat), NULL, GL_STREAM_DRAW_ARB);
     if (!glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB)) ok = false;
+    if (err=glGetError()) ok = false;
+    if (!ok) goto unmap2;
     // Unmap
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
-    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
-    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
-    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
     glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+  unmap2:
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
+    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+  unmap1:
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
+    glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+  unmap0:
     if (!ok) {
       puts("Mapping VBOs failed, falling back to standard mode with client-side arrays");
+      printf("(GL error: %x\n", err);
       glDeleteBuffersARB(4, vbo_refs);
       vbo_refs[0]=0;
     }
