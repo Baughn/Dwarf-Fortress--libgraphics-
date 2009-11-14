@@ -573,6 +573,10 @@ void enablerst::do_frame()
 
   // Finish rendering graphics, if appropriate
   if (do_render && !skip_gframe) {
+    // If we're supposed to clear the window, then the data from before this mainloop
+    // is not out of date; redo the setup
+    if (gps.force_full_display_count > 0)
+      render(window, setup);
     render(window, complete);
     current_render_count++;
     secondary_render_count++;
@@ -866,12 +870,6 @@ void gridrectst::render(enum render_phase phase, bool clear)
         // Setup a framebuffer for rendering
         glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, framebuffer);
       }
-
-      // Clear the screen as appropriate
-      if (clear) {
-        glViewport(0,0,enabler.window_width,enabler.window_height);
-        glClear(GL_COLOR_BUFFER_BIT | (accum_buffer ? GL_ACCUM_BUFFER_BIT : 0));
-      }
       
       // This code looks incredibly slow, but isn't normally used. It should be fine.
       // Toady: Is it still actually in use? Anywhere?
@@ -1112,6 +1110,12 @@ void gridrectst::render(enum render_phase phase, bool clear)
     break;
   case complete:
     {
+      // Clear the screen as appropriate
+      if (clear) {
+        glViewport(0,0,enabler.window_width,enabler.window_height);
+        glClear(GL_COLOR_BUFFER_BIT | (accum_buffer ? GL_ACCUM_BUFFER_BIT : 0));
+      }
+
       // Render to framebuffer
       if (framebuffer) {
         glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, framebuffer);
