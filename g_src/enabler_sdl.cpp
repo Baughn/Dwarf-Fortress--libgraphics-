@@ -730,24 +730,24 @@ char enablerst::create_window_GL(GL_Window* window)
   // It's the default anyway, so it's not realy needed.
 //   SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
   screen = SDL_SetVideoMode(window->init.width, window->init.height, window->init.bitsPerPixel, flags);
+  if (screen == NULL) {
+    destroy_window_GL(window);
+    if (window->init.isFullScreen) {
+      window->init.isFullScreen = 0;
+      enabler.create_full_screen = 0;
+      report_error("SDL initialization failure, trying windowed mode", SDL_GetError());
+      return create_window_GL(window);
+    } else {
+      report_error("SDL initialization failure", SDL_GetError());
+      return false;
+    }
+  }
   glewInit();
   // Make sure we actually got what we asked for
   int test=0;
   SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &test);
   if (test != ((init.display.flag.has_flag(INIT_DISPLAY_FLAG_SINGLE_BUFFER)) ? 0 : 1))
     std::cerr << "SDL_GL_DOUBLEBUFFER failed\n";
-//   SDL_GL_GetAttribute(SDL_GL_ACCELERATED_VISUAL, &test);
-//   // Report failure.
-//   if (test != 1) {
-//     report_error("Failed to switch to hardware-accelerated opengl mode", "");
-//     destroy_window_GL(window);
-//     return false;
-//   }
-  if (screen == NULL) {
-    report_error("SDL initialization failure", SDL_GetError());
-    destroy_window_GL(window);
-    return false;
-  }
 	
   reshape_GL(window->init.width, window->init.height);
   glClear(GL_COLOR_BUFFER_BIT);
