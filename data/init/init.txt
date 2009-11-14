@@ -1,3 +1,7 @@
+WARNING: Do NOT copy over the init.txt from an earlier version of DF.
+Always read the file carefully, including the comments.
+
+
 Change this to turn sound off.
 
 [SOUND:ON]
