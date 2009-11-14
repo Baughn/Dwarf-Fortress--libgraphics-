@@ -5,24 +5,24 @@
 #include "svector.h"
 #include "enabler_input.h"
 
+//the BIND is used to allow the keybindings view to intercept all keys
 #define KEY_BIND_UNICODE 0x10000
 #define KEY_BIND_SCAN 0x10001
-//the BIND is used to allow the keybindings view to intercept all keys
 
-char* ConvertKeyToDisplay(char* Str, KeyUnion Key);
  //sets Str to display string for an SDL_Key with mods, returns pointer to end of string
-char* ConvertKeyToSave(char* Str, KeyUnion Key);
+char* ConvertKeyToDisplay(char* Str, KeyUnion Key);
  //sets Str to save string for an SDL_Key with mods, returns pointer to end of string
-void ConvertSaveToKey(char* Str, KeyUnion* Key);
+char* ConvertKeyToSave(char* Str, KeyUnion Key);
  //set flags byte of key before calling to indicate unicode or keysym limits
+void ConvertSaveToKey(char* Str, KeyUnion* Key);
 
 typedef union {
  struct {
-  uint16_t Binding;
   //key binding 0 used for macro delay
+  uint16_t Binding;
   uint8_t Repeat;
-  uint8_t flags;
   //Bit0: 0 key binding, 1 macro binding
+  uint8_t flags;
  };
  uint32_t Value;
 } MacroCommand;
@@ -38,26 +38,26 @@ class keybindingst {
  keybindingst(int32_t ID);
  ~keybindingst() {keys.clear();}
  void Clear();
- int GetKeyCount();
  //returns count of keys, excluding events
+ int GetKeyCount();
  KeyUnion* GetKeyArray();
  virtual int GetComCount() {return 0;}
  virtual MacroCommand* GetComArray() {return 0;}
- int AddKey(KeyUnion key);
  //puts the key into the binding key list, maintaining events at the end of the list
  //returns count of keys, excluding events
- int RemoveKey(KeyUnion key);
+ int AddKey(KeyUnion key);
  //scans the binding/macro key list for matching key and removes it
- int RemoveKeyPos(int pos);
+ int RemoveKey(KeyUnion key);
  //removes the key at pos from binding/macro key list
- int GetKeyDisplay(char* Display, int Limit=3);
+ int RemoveKeyPos(int pos);
  //sets Display to ',' seperated list of keys, returns length of string
  //Limit 0 produces only the first key, >0 causes ... to be appeneded when there
  //are more keys than the the Limit value
- virtual char* GetDisplayName(char* Name);
+ int GetKeyDisplay(char* Display, int Limit=3);
  //gets Name to display text for the binding returns pointer to Name
- char* ChangeDisplayName(char* DisplayName);
+ virtual char* GetDisplayName(char* Name);
  //sets the name for the binding to DisplayName, returns pointer to DisplayName
+ char* ChangeDisplayName(char* DisplayName);
 };
 
 class macrobindingst:public keybindingst {
@@ -67,19 +67,19 @@ class macrobindingst:public keybindingst {
  public:
  macrobindingst(int32_t ID):keybindingst(ID) {}
  ~macrobindingst() {coms.clear();}
- virtual int GetComCount();
  //returns count of commands
- virtual MacroCommand* GetComArray();
+ virtual int GetComCount();
  //returns pointer to coms vector
- int AddCommand(MacroCommand com);
+ virtual MacroCommand* GetComArray();
  //puts the com into the macro coms list, com should be a binding number with repeat value
  //INTERFACEKEY_EVENTFLAG indicates macro
- int RemoveCommand(int pos);
+ int AddCommand(MacroCommand com);
  //removes the com at pos from the macro coms list
  //returns count of commands
+ int RemoveCommand(int pos);
  int AdjustRepeat(int pos, int Add);
- virtual char* GetDisplayName(char* Name);
  //gets Name to display text for the macro returns pointer to Name
+ virtual char* GetDisplayName(char* Name);
 };
 
 enum {
@@ -117,6 +117,9 @@ class macrostackst {
 };
 
 class interfacekeyst {
+
+
+
  protected:
  svector<keybindingst*> bindings;
  svector<macrobindingst*> macros;
@@ -126,39 +129,39 @@ class interfacekeyst {
  InputRec* currentInput;
 
  int MatchBindingName(const char* Name);
- int MatchMacroName(const char* Name);
  //returns binding number for that token or -1 on no match
- int RunMacros(int count);
+ int MatchMacroName(const char* Name);
  //passed count of macros in stack, returns binding result of macro step
+ int RunMacros(int count);
  public:
  unsigned int currentBinding;
  int RunningMacro;
  interfacekeyst();
  ~interfacekeyst();
  // Work functions
- int keynext();
  //returns 0 when there is no key to be processed
- int keypress(int Binding);
+ int keynext();
  //checks the keystroke for match, sets current when a match is found
  //returns value set to current
- int pressedList(const int* BindingList, int ListSize);
+ int keypress(int Binding);
  //checks all keys in the list for a match returning the matched binding or 0
- int pressedRange(int FirstKey, int LastKey);
+ int pressedList(const int* BindingList, int ListSize);
  //check all keys in the range including First and Last, returns binding on match
- void keyrelease();
+ int pressedRange(int FirstKey, int LastKey);
  //detaches a binding for the current keypress so it can be matched to another binding
- void keyforget();
+ void keyrelease();
  //forgets the current key putting it back in the queue
- void keydone();
+ void keyforget();
  //clears the current key stroke and updates the processing time for repeat
- void StopMacros();
+ void keydone();
  //Load/Save/Display functions
+ void StopMacros();
  void Load(const char* filename);
  void Save(const char* filename);
- macrobindingst* AddMacro(char* DisplayName=0);
  //creates a new macro, defaults the name to macro %i, return pointer to new macro
- keybindingst* GetBinding(int Binding);
+ macrobindingst* AddMacro(char* DisplayName=0);
  //passed number to get with macros at INTERFACEKEYNUM+, returns appropiate pointer
+ keybindingst* GetBinding(int Binding);
  int GetMacroCount() {return macros.size();}
 };
 
