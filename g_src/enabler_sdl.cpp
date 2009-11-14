@@ -1136,11 +1136,18 @@ void gridrectst::render(enum render_phase phase, bool clear)
       // Scale the grid so it fits exactly into the GL viewport, making 1 GL unit equal 1 tile
       glScalef(1.0f / dimx, 1.0f / dimy, 1);
       // Figure out what part of the window we actually use for said viewport, to get the aspect ratio and zoom right
-      // We always use the entire window is black_space is off.
+      // We always use the entire window is black_space is off. If it is on, we still use the entire window rather than leaving black fringes in *both* directions.
       origin_x = 0; origin_y = 0; size_x = enabler.window_width; size_y = enabler.window_height;
-      if (black_space) { // Otherwise...
-        if (totalsizex > enabler.window_width || totalsizey > enabler.window_height) {
-          // Insufficient space; we must compress the grid while maintaining aspect ratio.
+      if (black_space) { // black_space? maintain_aspect, more like.
+        if ((totalsizex + dispx >= enabler.window_width ||
+             totalsizey + dispy >= enabler.window_height)
+            && totalsizex <= enabler.window_width
+            && totalsizey <= enabler.window_height) {
+          // We're right on the edge, but still no noticable fringes.
+          size_x = totalsizex; size_y = totalsizey;
+          origin_x = (enabler.window_width - size_x) / 2;
+          origin_y = (enabler.window_height - size_y) / 2;
+        } else {
           const double aspect = totalsizex / totalsizey;
           // Figure out which axis is most compressed, use the entire window in that axis and
           // calculate the other from that.
@@ -1153,12 +1160,7 @@ void gridrectst::render(enum render_phase phase, bool clear)
             size_x = size_x / (compressy / compressx);
             origin_x = (enabler.window_width - size_x) / 2;
           }
-        } else {
-          // Sufficient space, so we just stick ourselves in the middle.
-          size_x = totalsizex; size_y = totalsizey;
-          origin_x = (enabler.window_width - size_x) / 2;
-          origin_y = (enabler.window_height - size_y) / 2;
-        }
+        } 
       }
       glViewport(origin_x, origin_y, size_x, size_y);
 
