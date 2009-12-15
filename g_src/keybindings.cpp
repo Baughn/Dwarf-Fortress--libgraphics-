@@ -2080,167 +2080,6 @@ void interfacekeyst::StopMacros() {
  RunningMacro=0;
 }
 
-int interfacekeyst::keynext() {
- //first check for an active macro
- int count=macrostack.size();
- InputRec* input;
- if (count) {
-  //running macro, have to check for the macro break binding before we go with it
-  //go from latest to oldest
-  int enCount=enabler.inputcount();
-  int i=enCount;
-  while (i) {
-   --i;
-   input=enabler.getinput(i);
-   currentKey.Value=input->key.Value;
-   currentAlt.Value=input->key2.Value;
-   if (keypress(INTERFACEKEY_MACRO_BREAK)) {
-    currentKey.flags=0xFF;
-    currentAlt.flags=0xFF;
-    currentBinding=0;
-    RunningMacro=0;
-    while (count) {
-     --count;
-     delete macrostack[count];
-    }
-    macrostack.clear();
-    enabler.clear_input();
-    return 0;
-   }
-  }
-  if (enCount) {
-   currentKey.flags=0xFF;
-   currentAlt.flags=0xFF;
-   enabler.clear_input();
-  }
-  if (count) {
-   count=RunMacros(--count);
-   if (count>=0) return count;
-   else return 0;
-  } //if macrostack still has something
-  return 0;
- } //if count of macro stack
- //check for key press
- input=enabler.currentinput(enabler.now);
- if (input) {
-  int i=0;
-  currentInput=input;
-  currentKey.Value=input->key.Value;
-  currentAlt.Value=input->key2.Value;
-  //check to see if this is a macro
-  i=0;
-  count=macros.size();
-  while (i<count) {
-   macrobindingst* Bind=macros[i];
-   int keyCount=Bind->keys.size();
-   switch (keyCount) {
-    case 0: break; //no keys, no check
-    case 1:
-     if ((Bind->keys[0].Value==currentKey.Value)||(Bind->keys[0].Value==currentAlt.Value)) {
-      macrostack.push_back(new macrostackst(&(Bind->coms[0]),i,Bind->coms.size()));
-      //safe to figure this is the first in the stack
-      keydone();
-      int j;
-      if ((j=RunMacros(0))>=0) { //macro took it
-       RunningMacro=1;
-       return j;
-      } else return 0;
-     }
-    break;
-    default:
-     if (!(Bind->KeyAccum&currentKey.Value)) {
-      //don't have any bits that aren't amongst the keys do loop checking
-      int j=0;
-      do {
-       if (currentKey.Value==Bind->keys[j].Value) {
-        macrostack.push_back(new macrostackst(&(Bind->coms[0]),i,Bind->coms.size()));
-        keydone();
-        if ((j=RunMacros(0))>=0) {
-         RunningMacro=1;
-         return j;
-        } else return 0;
-       }
-       ++j;
-      } while (j<keyCount);
-     }
-     if (!(Bind->KeyAccum&currentAlt.Value)) {
-      int j=0;
-      do {
-       if (currentAlt.Value==Bind->keys[j].Value) {
-        macrostack.push_back(new macrostackst(&(Bind->coms[0]),i,Bind->coms.size()));
-        keydone();
-        if ((j=RunMacros(0))>=0) {
-         RunningMacro=1;
-         return j;
-        } else return 0;
-       }
-       ++j;
-      } while (j<keyCount);
-     }
-    break;
-   } //switch keycount
-   ++i;
-  } //while macros
-  return currentKey.Value;
- } //if had a key waiting
- return 0;
-}
-
-int interfacekeyst::keypress(int KeyNo) {
- if (currentBinding) {
-  if (currentBinding!=KeyNo) return 0;
-  else return KeyNo;
- }
- if (currentKey.flags==0xFF) return 0;
- //this is for the key bindings view so it can claim keypresses away from everything
- switch (KeyNo) {
-  case KEY_BIND_SCAN:
-   if (!(currentKey.flags&KEY_EVENTFLAG)) {
-    currentBinding=KEY_BIND_SCAN;
-    return currentKey.Value;
-   } else return 0;
-  case KEY_BIND_UNICODE:
-   if (currentAlt.Value) {
-    currentBinding=KEY_BIND_UNICODE;
-    return currentAlt.Value;
-   } else return 0;
-  default: break;
- }
- if (KeyNo>=INTERFACEKEYNUM) return 0;
- keybindingst* Bind=bindings[KeyNo];
- if (Bind==0) return 0;
- int keyCount=Bind->keys.size();
- switch (keyCount) {
-  case 0: return 0;
-  case 1:
-   if ((Bind->keys[0].Value==currentKey.Value)||(Bind->keys[0].Value==currentAlt.Value)) {
-    return currentBinding=KeyNo;
-   }
-  return 0;
-  default:
-   if (!(Bind->KeyAccum&currentKey.Value)) {
-    //don't have any bits that aren't amongst the keys do loop checking
-    int j=0;
-    do {
-     if (currentKey.Value==Bind->keys[j].Value) {
-      return currentBinding=KeyNo;
-     }
-     ++j;
-    } while (j<keyCount);
-   }
-   if (!(Bind->KeyAccum&currentAlt.Value)) {
-    int j=0;
-    do {
-     if (currentAlt.Value==Bind->keys[j].Value) {
-      return currentBinding=KeyNo;
-     }
-     ++j;
-    } while (j<keyCount);
-   }
-  return 0;
- } //switch keycount
-}
-
 int interfacekeyst::pressedList(const int* KeyList, int ListSize) {
  int i=0;
  if (currentBinding) {
@@ -2338,61 +2177,6 @@ int interfacekeyst::pressedRange(int FirstKey, int LastKey) {
   ++i;
  }
  return 0;
-}
-
-void interfacekeyst::keyrelease() {
- if (RunningMacro) {
-  //check the currentBinding, the macro might just be in a delay
-  if (currentBinding) {
-   int i=macrostack.size(); //might as well make sure I didn't miss a flag spot
-   if (i) macrostack[i]->Reverse();
-  }
- }
- currentBinding=0;
-}
-
-void interfacekeyst::keyforget() {
- if (currentBinding) {
-  if (RunningMacro) {
-   int i=macrostack.size();
-   if (i) macrostack[i]->Reverse();
-  }
-  currentBinding=0;
- }
- currentInput=0;
- currentKey.flags=0xFF;
- currentAlt.flags=0xFF;
-}
-
-void interfacekeyst::keydone() {
- if (currentInput==0) {
-  currentBinding=0; //macro may have set the binding
-  return;
- }
- int i=init.input.repeat_time;
- unsigned int now=enabler.now;
- InputRec* Input=currentInput;
- currentInput=0;
- if (Input->processed) Input->next_process=now+i; //already done once
- else {
-  if (currentBinding==0) { //it was looked at and the view didn't want it
-   Input->processed=1;
-   Input->next_process=0xFFFFFFFF;
-   //process it again never
-   currentKey.flags=0xFF;
-   currentAlt.flags=0xFF;
-   return;
-  }
-  i=init.input.hold_time;
-  if ((currentBinding<INTERFACEKEY_STANDARDSCROLL_UP)||
-   (currentBinding>INTERFACEKEY_CURSOR_DOWN_Z_AUX)) i*=3;
-  Input->next_process=now+i;
- }
- if (Input->next_process<now) Input->processed=now-1;
- else Input->processed=0xFFFFFFFF;
- currentKey.flags=0xFF;
- currentAlt.flags=0xFF;
- currentBinding=0;
 }
 
 keybindingst* interfacekeyst::GetBinding(int Binding) {
@@ -2493,7 +2277,7 @@ viewscreen_keybindingsst* viewscreen_keybindingsst::create(char pushtype,viewscr
  return newv;
 }
 
-void viewscreen_keybindingsst::input() {
+void viewscreen_keybindingsst::feed(std::set<InterfaceKey> &events){
  const int KeyList[]={
   INTERFACEKEY_SECONDSCROLL_UP,
   INTERFACEKEY_SECONDSCROLL_DOWN,
@@ -2516,8 +2300,8 @@ void viewscreen_keybindingsst::input() {
  int i;
  if (Mode==1) {
   KeyUnion keyval;
-  if (Keys->selected==0) keyval.Value=gview.keypress(KEY_BIND_UNICODE);
-  else keyval.Value=gview.keypress(KEY_BIND_SCAN);
+  if (Keys->selected==0) keyval.Value=events.count(KEY_BIND_UNICODE);
+  else keyval.Value=events.count(KEY_BIND_SCAN);
   if (keyval.symbol) {
    i=curBind->AddKey(keyval);
    UpdateBinding(); //have to call this incase of realloc of the key vector

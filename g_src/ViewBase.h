@@ -1,6 +1,9 @@
 #ifndef VIEWBASE_H
 #define VIEWBASE_H
 
+#include <set>
+typedef long InterfaceKey;
+
 enum InterfaceBreakdownTypes
 {
 	INTERFACE_BREAKDOWN_NONE,
@@ -18,10 +21,8 @@ class viewscreenst
 		char breakdownlevel;
 
 		char option_key_pressed;
-		virtual char is_legacy_screen(){return 1;}
-		virtual void input(){}
+		virtual void feed(std::set<InterfaceKey> &events){}
 		virtual void logic(){}
-		virtual void view(){}
 		virtual void render(){}
 
 		virtual void help();

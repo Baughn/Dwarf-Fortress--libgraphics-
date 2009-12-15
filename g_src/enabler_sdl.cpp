@@ -870,7 +870,7 @@ void gridrectst::render(enum render_phase phase, bool clear)
         // Setup a framebuffer for rendering
         glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, framebuffer);
       }
-      
+
       // This code looks incredibly slow, but isn't normally used. It should be fine.
       // Toady: Is it still actually in use? Anywhere?
       if(trinum>0)
@@ -1843,7 +1843,7 @@ int main (int argc, char* argv[])
   if (!musicsound.initsound())
     puts("Initializing OpenAL failed, no sound will be played");
 #endif
-  
+
   // Initialise relevant SDL subsystems.
   int retval = SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO);
   // Turn on keyboard translation, from raw keycodes to letters

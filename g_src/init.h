@@ -133,6 +133,8 @@ class initst
 		init_inputst input;
 		init_fontst font;
 		init_windowst window;
+
+		void begin();
 };
 
 #endif

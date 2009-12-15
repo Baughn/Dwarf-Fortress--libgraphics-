@@ -1,11 +1,3 @@
-WARNING: Do NOT copy over the init.txt from an earlier version of DF.
-Always read the file carefully, including the comments.
-
-In general, you can copy savegames and tilesets from older DF
-versions, but should not copy anything else. You should not, under an
-circumstances, unpack a new DF on top of an older one.
-
-
 Change this to turn sound off.
 
 [SOUND:ON]
@@ -16,107 +8,44 @@ The sound volume runs from 0 (off) to 255 (full).  You can set the volume from t
 
 Change this to skip the wonderful intro movies.
 
-[INTRO:ON]
+[INTRO:OFF]
 
 This lets you set the starting windowed/fullscreen setting.  Can be YES, NO or PROMPT.
 
-[WINDOWED:PROMPT]
+[WINDOWED:YES]
 
-This is the initial size and font for windowed mode. You may prefer
-the curses_square_16x16.png tileset.
+This is the size and font for windowed mode.  Changing to 800x600 and the 800x600 font might make you happier.
 
-[WINDOWEDX:800]
-[WINDOWEDY:600]
-[FONT:curses_800x600.png]
+[WINDOWEDX:640]
+[WINDOWEDY:300]
+[FONT:curses_640x300.png]
 
-Full screen info.  The 0s below mean that the game will choose a
-resolution for you, but you can set it yourself as well.
+Full screen info.  The 0s below mean that the game will choose a resolution for you, but you can set it yourself as well.
 
 [FULLSCREENX:0]
 [FULLSCREENY:0]
 [FULLFONT:curses_800x600.png]
 
-If this is set to NO, tiles will be stretched to fit the screen if
-there is a resolution mismatch.  If this is set to YES, the tiles will
-not be stretched, but rather the game view will be centralized,
-surrounded by black space.  Tiles that are too large will always be
-compressed rather than running off the screen. As the grid size will
-change dynamically to fit, YES is usually best.
+If this is set to NO, tiles will be stretched to fit the screen if there is a resolution mismatch.
+If this is set to YES, the tiles will not be stretched, but rather the game view will be centralized, surrounded by black space.  Tiles that are too large will always be compressed rather than running off the screen.
 
 [BLACK_SPACE:YES]
 
-Graphics info, most of it as above.  Set GRAPHICS to YES to turn it
-all on.  This will use the "raw/graphics" folder for tile information.
-Currently this is limited to whatever creature graphics you have
-downloaded.  The game comes with a few pictures to demonstrate.  As of
-September 2008, the Dwarf Fortress Wiki has graphical tilesets
-available at
-http://www.dwarffortresswiki.net/index.php/List_of_user_graphics_sets.
+Graphics info, most of it as above.  Set GRAPHICS to YES to turn it all on.  This will use the "raw/graphics" folder for tile information.  Currently this is limited to whatever creature graphics you have downloaded.  The game comes with a few pictures to demonstrate.  As of September 2008, the Dwarf Fortress Wiki has graphical tilesets available at http://www.dwarffortresswiki.net/index.php/List_of_user_graphics_sets.
 
 [GRAPHICS:NO]
-[GRAPHICS_WINDOWEDX:640]
+[GRAPHICS_WINDOWEDX:1280]
 [GRAPHICS_WINDOWEDY:400]
 [GRAPHICS_FONT:curses_square_16x16.png]
-[GRAPHICS_FULLSCREENX:0]
-[GRAPHICS_FULLSCREENY:0]
+[GRAPHICS_FULLSCREENX:1280]
+[GRAPHICS_FULLSCREENY:800]
 [GRAPHICS_FULLFONT:curses_square_16x16.png]
 [GRAPHICS_BLACK_SPACE:YES]
 
-These settings can have a significant impact on frame rate, especially
-for people that have slow frame rates on the title screen.  Available
-modes are STANDARD, PARTIAL:<number>, ACCUM_BUFFER, FRAME_BUFFER and
-VBO.  The number after PARTIAL refers to how many frames it will redo
-a printed tile before skipping it, so you might try increasing it a
-bit if you have flickering when PARTIAL is set.  Please note that any
-of these combinations might cause frame rates to drop significantly or
-cause unpleasant side effects like flickering.
+These settings can have a significant impact on frame rate, especially for people that have slow frame rates on the title screen.  Available modes are STANDARD, PARTIAL:<number>, ACCUM_BUFFER, FRAME_BUFFER and VBO.  The number after PARTIAL refers to how many frames it will redo a printed tile before skipping it, so you might try increasing it a bit if you have flickering when PARTIAL is set.  Please note that any of these combinations might cause frame rates to drop significantly or cause unpleasant side effects like flickering.
 
 [PRINT_MODE:STANDARD]
-
-Single buffered mode should only be useful for partial mode, not the
-four others. It is quite likely to not work at all.
-
 [SINGLE_BUFFER:NO]
-
-Detailed explanation of print_mode settings:
-
-In all modes, there are four arrays involved.
-- Vertex array: Tells OpenGL where on the screen the tiles are
-- Texture coordinate array: Tells it what to draw in a given tile
-- Foreground/background color arrays: Which color to blend into the tiles
-
-Each of the print modes handle these arrays differently.
-
-Standard mode: All arrays start in system memory, are copied through
-the PCI bus, and are fully rewritten every frame. The entire window is
-redrawn every frame. This is faster than you'd think, and very
-reliable.
-
-Partial mode: Unless there is reason to think the whole window must be
-redrawn (detecting this is slightly buggy), only the tiles that have
-changed are drawn. It otherwise acts as standard mode. The higher the
-partial-print number, the slower.
-
-Accum mode: A GL extension is used to copy the entire window to GPU
-memory after it's been drawn, and copy it back at the start of each
-frame. This makes partial printing more reliable, but is unfortunately
-usually pretty slow; your card (or PCI bus) needs to be *really* slow
-for this to be a win. Partial printing is on, and locked to 0 redraws.
-
-Frame-buffer mode: A (newer) GL extension is used to draw to an
-off-screen texture instead of the window; that whole texture is then
-drawn to the window every frame. Partial printing is on, and locked to
-0. This is usually slower than actual PARTIAL:0 mode, but more
-reliable.
-
-VBO mode: This acts like standard mode, except that a GL extension is
-used to keep the (never-changing) vertex array in GPU memory. Partial
-printing is off. A lot of cards, particularily older cards or ATI
-cards, implement this badly. It is in theory slightly faster than
-standard mode, but in practice anything that can use it runs either
-code path in approximately zero time.
-
-
 
 Change this to YES to keep the DF window on top of your other windows.
 
@@ -126,42 +55,28 @@ Change this to YES if you want to see an FPS counter at the top left.
 
 [FPS:NO]
 
-Use this to set the maximum frame rate during play.  The movies are
-always capped at 100.  A frame in this case is not graphical but
-related to the movement speed of a creature.  A healthy, unencumbered
-dwarven peasant takes one step every 10 frames.
+Use this to set the maximum frame rate during play.  The movies are always capped at 100.  A frame in this case is not graphical but related to the movement speed of a creature.  A healthy, unencumbered dwarven peasant takes one step every 10 frames.
 
 [FPS_CAP:100]
 
 Use this to set the maximum graphical frame refresh rate during play.
-Do not, under any circumstances, set above 50. For G_FPS, higher
-produces a slower (but smoother?) game.
 
 [G_FPS_CAP:20]
 
-This sets the applications vertical synchronization behavior.
-Changing this to ON can impact your FPS if your G_FPS is high.  The
-other options are ON and DEFAULT.  DEFAULT uses whatever settings you
-have your system at in general.
+This sets the applications vertical synchronization behavior.  Changing this to ON can impact your FPS if your G_FPS is high.  The other options are ON and DEFAULT.  DEFAULT uses whatever settings you have your system at in general.
 
 [VSYNC:OFF]
 
-Change this to NEAREST if you want the texture values to use the
-nearest pixel without averaging.  Change this to LINEAR if you want
-the texture values to be averaged over the adjacent pixels.
+Change this to NEAREST if you want the texture values to use the nearest pixel without averaging.
+Change this to LINEAR if you want the texture values to be averaged over the adjacent pixels.
 
 [TEXTURE_PARAM:LINEAR]
 
-Change this to make the dwarfort.exe process have a different
-priority.  From highest to lowest, the options are REALTIME, HIGH,
-ABOVE_NORMAL, NORMAL, BELOW_NORMAL and IDLE.
+Change this to make the dwarfort.exe process have a different priority.  From highest to lowest, the options are REALTIME, HIGH, ABOVE_NORMAL, NORMAL, BELOW_NORMAL and IDLE.
 
 [PRIORITY:NORMAL]
 
-Use this to set how fast the game zooms.  The default corresponds to
-multiplying by a factor of 1.1 each time the zoom action occurs.  You
-can set it anywhere from 1.001 to 1.999. You may find that 2 looks
-nice.
+Use this to set how fast the game zooms.  The default corresponds to multiplying by a factor of 1.1 each time the zoom action occurs.  You can set it anywhere from 1.001 to 1.999.
 
 [ZOOM_FACTOR:1.100]
 
@@ -169,182 +84,15 @@ Change this to NO if you don't want to have the mouse involved at all.
 
 [MOUSE:YES]
 
-Change this to YES if you'd like to use a BMP for the mouse cursor.
-The image currently lags when the game is lagging however.
+Change this to YES if you'd like to use a BMP for the mouse cursor.  The image currently lags when the game is lagging however.
 
 [MOUSE_PICTURE:NO]
 
-Use these to control the automatic saving behavior in the dwarf
-fortress mode of game.  AUTOSAVE can be set to NONE, SEASONAL or
-YEARLY.  This updates your save at these intervals, so that some of
-your progress will be saved in case of system instability.  You can
-set AUTOBACKUP to YES if you want the updated save to be copied to
-another folder so that you'll have several copies of your world at
-different times.  Set AUTOSAVE_PAUSE to YES if you want the game to
-pause every time it autosaves.
-
-[AUTOSAVE:NONE]
-[AUTOBACKUP:NO]
-[AUTOSAVE_PAUSE:NO]
-
-Set this to YES if you want it to save the game when you start a new
-fortress.  If AUTOBACKUP above is set to YES, it will also create a
-copy of this new save.
-
-[INITIAL_SAVE:NO]
-
-Set this to YES to make Dwarf Fortress start paused whenever you load
-an active game.
-
-[PAUSE_ON_LOAD:NO]
-
-Set this to YES if you want Dwarf Fortress to show the warning window
-on embark as a confirmation even if there are no issues.
-
-[EMBARK_WARNING_ALWAYS:NO]
-
-You can change these to ALWAYS and NO.  More restrictive world
-parameter settings override these.  ALWAYS lets you see the features
-in the Local view during embark, and NO stops you from looking for
-features in the site finder (though if you really want to stop the
-finder, it might be better for you to generate worlds that restrict
-the use of this feature completely, in which case you don't need to
-change the settings here).
-
-[SHOW_EMBARK_RIVER:FINDER]
-[SHOW_EMBARK_POOL:FINDER]
-[SHOW_EMBARK_M_PIPE:FINDER]
-[SHOW_EMBARK_M_POOL:FINDER]
-[SHOW_EMBARK_CHASM:FINDER]
-[SHOW_EMBARK_PIT:FINDER]
-[SHOW_EMBARK_OTHER:FINDER]
-[SHOW_EMBARK_TUNNEL:FINDER]
-
-Use these options to remove features from the game.  Permitted values
-are YES and NO.  Removal might speed the game up in the case of
-temperature and weather.
-
-[TEMPERATURE:YES]
-[WEATHER:YES]
-[ECONOMY:YES]
-[INVADERS:YES]
-[CAVEINS:YES]
-[ARTIFACTS:YES]
-[ZERO_RENT:NO]
-
-Change this to YES to output the reasons for world map rejection into
-a file.
-
-[LOG_MAP_REJECTS:NO]
-
-Change these numbers to make the embark rectangle start at a different
-size.  The format is (EMBARK_RECTANGLE:<width>:<height>).  Numbers may
-run from 2 to 16.  The map size warning message will go by these
-numbers.
-
-[EMBARK_RECTANGLE:6:6]
-
-Change these numbers to set the default weights for traffic
-designations.  If you make the last numbers too large, pathfinding
-might lag.  The format is
-(PATH_COST:<high>:<normal>:<low>:<restricted>).
-
-[PATH_COST:1:2:5:25]
-
-Alter these options to control how aggressively your dwarves place
-objects in a container with like items (rather than an empty
-container).  The default options are very aggressive.
-STORE_DIST_ITEM_DECREASE controls the cap on objects it will consider
--- for each object it finds in a container, one tile is removed from
-its apparent distance to the dwarf, up to this cap.  The others
-control how many tiles are removed for each combination type for any
-match at all.  For instance, if ITEM_DECREASE is set to 20, and
-SEED_COMBINE is set to 100, a dwarf carrying seeds will see a seed bag
-with 15 seeds as 115 tiles closer than it actually is (and thus pass
-up any empties within that distance), whereas a seed bag with 30 seeds
-would be treated as 120 tiles closer (because it hits the
-ITEM_DECREASE cap).  Values from 2 to 1000 are permitted.  Before
-these init options, the behavior was roughly ITEM_DECREASE 2,
-SEED_COMBINE 2 and the rest at 1000.
-
-[STORE_DIST_ITEM_DECREASE:20]
-[STORE_DIST_SEED_COMBINE:1000]
-[STORE_DIST_BUCKET_COMBINE:1000]
-[STORE_DIST_BARREL_COMBINE:1000]
-[STORE_DIST_BIN_COMBINE:1000]
-
-Change this to YES to disallow pets from coffin burial as the default
-option.
-
-[COFFIN_NO_PETS_DEFAULT:NO]
-
-This controls the display of areas that are far below outside.  The format is
-SKY:<character>:<foreground color>:<background color>:<brightness>.
-The <character> can be either an ASCII tile number or a character in
-quotes, like '#'.
-
-[SKY:178:3:0:0]
-
-As above, for inside/subterranean areas.
-
-[CHASM:250:0:0:1]
-
-This controls the "IDLERS: <number>" that is displayed in dwarf mode.
-You can set it to TOP, BOTTOM or OFF.
-
-[IDLERS:TOP]
-
-You can set the maximum population of your fortress here.  Keep in
-mind that your population must be at least 80 to get a king and 100 to
-obtain the current game features.
-
-[POPULATION_CAP:200]
-
-This allows you to control the number of babies+children in your
-fortress.  The first number is an absolute cap on the number of
-babies+children.  The second is a percentage of the current number of
-adults in your fortress (the default is the essentially meaningless
-1000% here).  The lower number is used as the cap.  The cap only
-prevents further pregancies, so migrant children, multiple births and
-existing pregnancies from old saves can still push you over the cap.
-Setting either number to zero will disallow pregnancies in the
-fortress.
-
-[BABY_CHILD_CAP:100:1000]
-
-If you don't like the ,.`' ground, try setting this to NO.  The ground
-will turn into periods only.
-
-[VARIED_GROUND_TILES:YES]
-
-If you'd like your engravings to start off looking the same (you can
-toggle them on individual later), set this to YES.
-
-[ENGRAVINGS_START_OBSCURED:NO]
-
-If you get annoyed by seeing items like *<*sword*>* you can get rid of
-the outside ** by setting this to NO.
-
-[SHOW_IMP_QUALITY:YES]
-
-Set this to YES to display fluids as numbers indicating depth.
-
-[SHOW_FLOW_AMOUNTS:NO]
-
-If you'd prefer to have it show the history behind every engraving you
-view in dwarf mode, etc., then set this to YES.
-
-[SHOW_ALL_HISTORY_IN_DWARF_MODE:NO]
-
-This controls the number of milliseconds that must pass before a held
-key sends an initial repeat press to the game.  You might need to
-adjust this.
+This controls the number of milliseconds that must pass before a held key sends an initial repeat press to the game.  You might need to adjust this.
 
 [KEY_HOLD_MS:150]
 
-This controls the number of milliseconds that must pass before a held
-key sends a repeat press to the game after the repeat process has
-begun.
+This controls the number of milliseconds that must pass before a held key sends a repeat press to the game after the repeat process has begun.
 
 [KEY_REPEAT_MS:150]
 
@@ -352,93 +100,6 @@ This controls the number of milliseconds between macro instructions.
 
 [MACRO_MS:150]
 
-This controls the number of milliseconds that must pass before input
-works again after the view recenters on an event in dwarf mode.
+This controls the number of milliseconds that must pass before input works again after the view recenters on an event in dwarf mode.
 
 [RECENTER_INTERFACE_SHUTDOWN_MS:0]
-
-This controls "more" in adventure mode.  If MORE is set to NO, all
-announcements will be skipped.  DISPLAY_LENGTH controls how many lines
-are printed before it gives you the "more" prompt.
-
-[MORE:YES]
-[DISPLAY_LENGTH:23]
-
-Set this to YES if you want traps to affect you in adventure mode.
-This is not recommended -- there are lockup issues with cage traps,
-and you cannot disarm any of the traps yet, so they effectively stops
-you from exploring your old fortresses.
-
-[ADVENTURER_TRAPS:NO]
-
-Set this to NO if you want the game to recenter on your adventurer
-only when you've gotten close to the edge of the view.
-
-[ADVENTURER_ALWAYS_CENTER:YES]
-
-This controls the up/down views in adventure mode.  The first
-parameter can be OFF, UNHIDDEN, CREATURE or ON.  UNHIDDEN makes the
-view appear when it contains any unhidden square.  CREATURE makes the
-view appear when it contains a creature.  The second parameter is the
-size of the view.  It can be 3, 5, 7 or 9.  A smaller view lets it
-stack more of them in the column (3 at size 5, and 5 at size 3).
-
-[ADVENTURER_Z_VIEWS:UNHIDDEN:9]
-
-You can use these to say how nicknames are displayed in each mode
-Options are REPLACE_FIRST, CENTRALIZE (between first and last), REPLACE_ALL
-[NICKNAME_DWARF:REPLACE_FIRST]
-[NICKNAME_ADVENTURE:REPLACE_FIRST]
-[NICKNAME_LEGENDS:REPLACE_FIRST]
-
-These are the display colors in RGB.  The game is actually displaying
-extended ASCII characters in OpenGL, so you can modify the colors.
-
-[BLACK_R:0]
-[BLACK_G:0]
-[BLACK_B:0]
-[BLUE_R:0]
-[BLUE_G:0]
-[BLUE_B:128]
-[GREEN_R:0]
-[GREEN_G:128]
-[GREEN_B:0]
-[CYAN_R:0]
-[CYAN_G:128]
-[CYAN_B:128]
-[RED_R:128]
-[RED_G:0]
-[RED_B:0]
-[MAGENTA_R:128]
-[MAGENTA_G:0]
-[MAGENTA_B:128]
-[BROWN_R:128]
-[BROWN_G:128]
-[BROWN_B:0]
-[LGRAY_R:192]
-[LGRAY_G:192]
-[LGRAY_B:192]
-[DGRAY_R:128]
-[DGRAY_G:128]
-[DGRAY_B:128]
-[LBLUE_R:0]
-[LBLUE_G:0]
-[LBLUE_B:255]
-[LGREEN_R:0]
-[LGREEN_G:255]
-[LGREEN_B:0]
-[LCYAN_R:0]
-[LCYAN_G:255]
-[LCYAN_B:255]
-[LRED_R:255]
-[LRED_G:0]
-[LRED_B:0]
-[LMAGENTA_R:255]
-[LMAGENTA_G:0]
-[LMAGENTA_B:255]
-[YELLOW_R:255]
-[YELLOW_G:255]
-[YELLOW_B:0]
-[WHITE_R:255]
-[WHITE_G:255]
-[WHITE_B:255]

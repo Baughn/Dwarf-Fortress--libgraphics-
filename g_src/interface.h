@@ -1,6 +1,7 @@
 #ifndef INTERFACE_H
 #define INTERFACE_H
 
+#include <set>
 #include "ViewBase.h"
 #include "keybindings.h"
 
@@ -15,7 +16,9 @@ class viewscreen_movieplayerst : viewscreenst
 	public:
 		static viewscreen_movieplayerst *create(char pushtype,viewscreenst *scr=NULL);
 		virtual void help();
-		virtual void view();
+		virtual void feed(std::set<InterfaceKey> &events);
+		virtual void logic();
+		virtual void render();
 		virtual char movies_okay(){return 0;}
 		void clearfilelist();
 		void force_play(string &file);
@@ -121,17 +124,17 @@ class interfacest : public interfacekeyst
 #define SCROLLING_NO_WRAP BIT2
 #define SCROLLING_REVERSE BIT3
 void finishscrolling(long &selection,long min,long max,long jump,unsigned long flag,char littlekey);
-char standardscrolling(short &selection,long min,long max,long jump,unsigned long flag=0);
-char standardscrolling(long &selection,long min,long max,long jump,unsigned long flag=0);
-char secondaryscrolling(short &scroll,long min,long max,long jump,unsigned long flag=0);
-char secondaryscrolling(long &scroll,long min,long max,long jump,unsigned long flag=0);
+char standardscrolling(std::set<InterfaceKey> &events,short &selection,long min,long max,long jump,unsigned long flag=0);
+char standardscrolling(std::set<InterfaceKey> &events,long &selection,long min,long max,long jump,unsigned long flag=0);
+char secondaryscrolling(std::set<InterfaceKey> &events,short &scroll,long min,long max,long jump,unsigned long flag=0);
+char secondaryscrolling(std::set<InterfaceKey> &events,long &scroll,long min,long max,long jump,unsigned long flag=0);
 #define STRINGENTRY_LETTERS BIT1
 #define STRINGENTRY_SPACE BIT2
 #define STRINGENTRY_NUMBERS BIT3
 #define STRINGENTRY_CAPS BIT4
 #define STRINGENTRY_SYMBOLS BIT5
-char standardstringentry(char *str,int maxlen,unsigned long flag);
-char standardstringentry(string &str,int maxlen,unsigned long flag);
+char standardstringentry(std::set<InterfaceKey> &events,char *str,int maxlen,unsigned long flag);
+char standardstringentry(std::set<InterfaceKey> &events,string &str,int maxlen,unsigned long flag);
 
 void drawborder(const char *str,char style=0,const char *colorstr=NULL);
 
