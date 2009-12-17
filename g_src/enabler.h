@@ -957,6 +957,12 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
 /*   } */
 
  public:
+    void load_keybindings(const string &file){}
+    void save_keybindings(const string &file){}
+    string GetKeyDisplay(int binding){return "I DO NOT EXIST";}
+    string GetBindingDisplay(int binding){return "I DO NOT EXIST EITHER";}
+bool RunningMacro;
+
   void reset_gl(GL_Window* window);
   void reset_gl()
   {

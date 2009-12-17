@@ -1,3 +1,4 @@
+/*
 #include "platform.h"
 #include <string.h>
 
@@ -209,3 +210,4 @@ void ScrollListWidget::render(void* param) {
 //left click for select, needs seperate binding or something
 //border option for regions
 //string entry widget
+*/

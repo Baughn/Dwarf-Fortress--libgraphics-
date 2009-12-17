@@ -273,12 +273,6 @@ static void eventLoop(GL_Window window)
  Uint32 mouse_lastused = 0;
  SDL_ShowCursor(SDL_DISABLE);
 
- KeyUnion NewInput;
- KeyUnion NewUnicode;
- NewInput.Value=0;
- NewInput.flags=KEY_KEYSYMFLAG;
- NewUnicode.Value=0;
- NewUnicode.flags=KEY_UNICODEFLAG;
  while (loopvar) {
   enabler.now = SDL_GetTicks();
   // Handle buffered zoom events
@@ -288,57 +282,13 @@ static void eventLoop(GL_Window window)
   }
   // Handle SDL events
   while (SDL_PollEvent(&event)) {
-   switch (event.type) {
+    switch (event.type) {
     case SDL_QUIT:
-     enabler.add_input(INTERFACEEVENT_QUIT,0);
-     NewInput.flags=KEY_KEYSYMFLAG;
-    break;
+      break;
     case SDL_MOUSEBUTTONDOWN:
-     if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
-//      enabler.add_input(INTERFACEEVENT_MOUSE_DOWN,0);
-      NewInput.symbol=event.button.button;
-      switch (NewInput.symbol) {
-       case SDL_BUTTON_LEFT:
-        enabler.mouse_lbut = 1;
-        enabler.mouse_lbut_down = 1;
-       break;
-       case SDL_BUTTON_RIGHT:
-        enabler.mouse_rbut = 1;
-        enabler.mouse_rbut_down = 1;
-        break;
-      default:
-        if (NewInput.symbol<NUM_MOUSE_BUTTONS) {
-         NewInput.symbol+=KEY_MOUSEDOWN;
-         enabler.add_input(NewInput.Value,0);
-        }
-        break;
-      }
-     }
-    break;
+      break;
     case SDL_MOUSEBUTTONUP:
-     if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
-//      enabler.add_input(INTERFACEEVENT_MOUSE_UP,0);
-      NewInput.symbol=event.button.button;
-      switch (NewInput.symbol) {
-       case SDL_BUTTON_LEFT:
-        enabler.mouse_lbut = 0;
-        enabler.mouse_lbut_down = 0;
-        enabler.mouse_lbut_lift = 1;
-       break;
-       case SDL_BUTTON_RIGHT:
-        enabler.mouse_rbut = 0;
-        enabler.mouse_rbut_down = 0;
-        enabler.mouse_rbut_lift = 1;
-       break;
-       default:
-        if (NewInput.symbol<NUM_MOUSE_BUTTONS) {
-         NewInput.symbol+=KEY_MOUSEUP;
-         enabler.add_input(NewInput.Value,0);
-        }
-       break;
-      }
-     }
-    break;
+      break;
     case SDL_KEYDOWN:
      // Disable mouse if it's been long enough
      if (mouse_lastused + 5000 < enabler.now) {
@@ -348,21 +298,6 @@ static void eventLoop(GL_Window window)
        }
        SDL_ShowCursor(SDL_DISABLE);
      }
-     NewInput.symbol=event.key.keysym.sym;
-     //do nothing when all we got is a modifier key
-     if (!enabler.is_modkey(NewInput.symbol)) {
-      if (NewInput.symbol==SDLK_F12) {
-       zoom_display(zoom_reset);
-       break;
-      }
-      NewUnicode.symbol=event.key.keysym.unicode;
-      enabler.add_input(NewInput.Value,NewUnicode.Value);
-     }
-     /* Debian _somehow_ managed to patch SDL 1.2 so that the 'lock'
-     * keys don't generate a modifier. This can be fixed by setting
-     * an environmental variable that is supposed to _cause_ this
-     * behaviour. This also effects Ubuntu (as of 8.04.1).
-     */
     break;
     case SDL_ACTIVEEVENT:
      if (event.active.state & SDL_APPACTIVE) {
@@ -370,13 +305,15 @@ static void eventLoop(GL_Window window)
         gps.force_full_display_count++;
         std::cout << "Gained focus\n";
       } else {
-       enabler.clear_input();
+       // enabler.clear_input();
        // TODO: Disable rendering when nobody would see it anyway
        // Or maybe pause?
       }
      }
     break;
-    case SDL_VIDEOEXPOSE:   gps.force_full_display_count++; break;
+    case SDL_VIDEOEXPOSE:
+      gps.force_full_display_count++;
+      break;
     case SDL_MOUSEMOTION:
      // Is the mouse over the screen surface?
      if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
@@ -517,8 +454,7 @@ int enablerst::loop(void)
 	{
 	  // At this point we should have a window that is setup to render OpenGL.
 	  textures.upload_textures();
-      keystate=SDL_GetKeyState(0);
-      SDL_EnableUNICODE(1);
+          SDL_EnableUNICODE(1);
 	  eventLoop(window);
 	  textures.remove_uploaded_textures();
 

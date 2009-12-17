@@ -8,7 +8,7 @@ The sound volume runs from 0 (off) to 255 (full).  You can set the volume from t
 
 Change this to skip the wonderful intro movies.
 
-[INTRO:OFF]
+[INTRO:ON]
 
 This lets you set the starting windowed/fullscreen setting.  Can be YES, NO or PROMPT.
 

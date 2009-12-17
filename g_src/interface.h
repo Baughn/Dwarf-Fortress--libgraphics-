@@ -66,7 +66,7 @@ enum InterfacePushType
 #define MOVIEBUFFSIZE 800000
 #define COMPMOVIEBUFFSIZE 1000000
 
-class interfacest : public interfacekeyst
+class interfacest
 {
 	friend class viewscreen_movieplayerst;
 
