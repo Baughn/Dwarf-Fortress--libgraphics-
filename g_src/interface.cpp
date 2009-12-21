@@ -821,33 +821,32 @@ void interfacest::insertscreen_at_front(viewscreenst *scr)
 }
 
 char interfacest::loop() {
- //NO INTERFACE LEFT, QUIT
- if(view.child==0)return 1;
+  //NO INTERFACE LEFT, QUIT
+  if(view.child==0)return 1;
 
 #ifdef ENABLER
- if(shutdown_interface_for_ms>0) {
-  //CLEAR ALL THE KEYS
-//  enabler.clear_input();
-  //DONE
-  if(enabler.now-shutdown_interface_tickcount>=shutdown_interface_for_ms||
-   shutdown_interface_tickcount>enabler.now) shutdown_interface_for_ms=0;
- }
+  if(shutdown_interface_for_ms>0) {
+    // TODO
+    enabler.clear_input();     //CLEAR ALL THE KEYS
+    if(enabler.now-shutdown_interface_tickcount>=shutdown_interface_for_ms||
+       shutdown_interface_tickcount>enabler.now) shutdown_interface_for_ms=0;
+  }
 #endif
 
   //GRAB CURRENT SCREEN AT THE END OF THE LIST
   viewscreenst *currentscreen=&view;
-  while(currentscreen->child!=NULL)currentscreen=currentscreen->child;
- //MOVE SCREENS BACK
- switch(currentscreen->breakdownlevel) {
+  while(currentscreen->child!=NULL) currentscreen = currentscreen->child;
+  //MOVE SCREENS BACK
+  switch(currentscreen->breakdownlevel) {
   case INTERFACE_BREAKDOWN_NONE:
-   //FRAME COUNT
-   if(gps.display_frames && !enabler.doing_buffer_draw()) {
-    QueryPerformanceCounter(&gps.print_time[gps.print_index]);
-    gps.print_index=(gps.print_index+1)%100;
-   }
-
-   if (currentscreen->child==NULL) currentscreen->logic();
-
+    //FRAME COUNT
+    if(gps.display_frames && !enabler.doing_buffer_draw()) {
+      QueryPerformanceCounter(&gps.print_time[gps.print_index]);
+      gps.print_index=(gps.print_index+1)%100;
+    }
+    
+    if (currentscreen->child==NULL) currentscreen->logic();
+    
    // FIXME
    // switch (pressedRange(INTERFACEKEY_OPTIONS,INTERFACEKEY_ZOOM_RESET)) {
    //  //TOGGLE SCREEN
@@ -890,33 +889,33 @@ char interfacest::loop() {
    //  break;
    //  default: if(currentscreen->movies_okay()) handlemovie(0);break;
    // }
-   break;
- case INTERFACE_BREAKDOWN_QUIT:
-   {
-     handlemovie(1);
-     return 1;
-   }
- case INTERFACE_BREAKDOWN_STOPSCREEN:
-   if(currentscreen->movies_okay())
-     {
-       //HANDLE MOVIES
-       handlemovie(0);
-     }
-   
-   removescreen(currentscreen);
-   break;
- case INTERFACE_BREAKDOWN_TOFIRST:
-   if(currentscreen->movies_okay())
-     {
-       //HANDLE MOVIES
-       handlemovie(0);
-     }
-   
-   remove_to_first();
-   break;
- }
+    break;
+  case INTERFACE_BREAKDOWN_QUIT:
+    {
+      handlemovie(1);
+      return 1;
+    }
+  case INTERFACE_BREAKDOWN_STOPSCREEN:
+    if(currentscreen->movies_okay())
+      {
+        //HANDLE MOVIES
+        handlemovie(0);
+      }
+    
+    removescreen(currentscreen);
+    break;
+  case INTERFACE_BREAKDOWN_TOFIRST:
+    if(currentscreen->movies_okay())
+      {
+        //HANDLE MOVIES
+        handlemovie(0);
+      }
+    
+    remove_to_first();
+    break;
+  }
  
- return 0;
+  return 0;
 }
 
 void interfacest::remove_to_first()

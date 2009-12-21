@@ -2,6 +2,7 @@
 #define ENABLER_INPUT_H
 
 #include <SDL/SDL.h>
+#include <string>
 
 /* typedef union { */
 /*   struct { */
@@ -19,8 +20,13 @@
 
 class enabler_inputst {
  public:
-  void add_input(uint32_t sym, uint32_t unicode);
+  void add_input(SDL_Event);
   void clear_input();
+
+  void load_keybindings(const std::string &file){}
+  void save_keybindings(const std::string &file){}
+  std::string GetKeyDisplay(int binding){return "I DO NOT EXIST";}
+  std::string GetBindingDisplay(int binding){return "I DO NOT EXIST EITHER";}
 };
 
 

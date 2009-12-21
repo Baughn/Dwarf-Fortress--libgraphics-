@@ -739,7 +739,7 @@ typedef struct {									// Contains Information Vital To A Window
   BOOL				isVisible;					// Window Visible?
 } GL_Window;										// GL_Window
 
-class enablerst: public enabler_inputst
+class enablerst : public enabler_inputst
 {
   friend class gridrectst;
   friend class tilest;
@@ -769,21 +769,11 @@ class enablerst: public enabler_inputst
   void graphicsinit();
   long gridrect_create(long dimx,long dimy);
   long cursesrect_create(long font_id,long x,long y,long dimx,long dimy);
-/*   long font_create(const string &filename,long letx,long lety,char variable=0); */
   gridrectst *get_gridrect(long rect_id);
   void toggle_fullscreen()
   {
     toggle_fullscreen(&window);
   }
-/*   void locate(double fx,double fy,double fz=0); */
-/*   void add_perspective(float sx,float sy,float sz, */
-/* 		       float gx,float gy,float gz, */
-/* 		       float nx,float ny,float nz); */
-/*   void add_translate(float sx,float sy,float sz); */
-/*   void add_ortho(); */
-/*   void add_line(double endx,double endy); */
-/*   void add_line_3D(double endx,double endy,double endz); */
-/*   void add_rect(double endx,double endy); */
   // Display a particular tile at a particular window-relative location
   // Pass -1 as tex_pos to remove a particular tile. Using the same id twice
   // overwrites the last call.
@@ -830,39 +820,10 @@ void copy_texture_data(unsigned char *dest,long destx,long desty,char destalpha,
 void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,long alpha,string &filename);
 
 
-/*   void copy_texture_data(long dest,long src,long offx=0,long offy=0, */
-/* 			 float rmult=1,float gmult=1,float bmult=1,char use_trans=1,long *color_data=NULL,unsigned long flag=0); */
-/*   void copy_texture_data(long dest,unsigned char *src,long srcx,long srcy,char srcalpha, */
-/* 			 long offx=0,long offy=0, */
-/* 			 float rmult=1,float gmult=1,float bmult=1,char use_trans=1,long *color_data=NULL,unsigned long flag=0); */
-/*   void grayscale_texture_data(long pos); */
-/*   void antialias(unsigned char *dat,long srcx,long srcy,char border=0); */
-  void flip_uchar_array(unsigned char *buff,long dimx,long dimy,long bytes_per_pixel,unsigned long flag);
-  void get_texture_data_dims(long pos,short &width,short &height,char &alpha);
-/*   { */
-/*     if(pos<0||pos>=texture_data.size())return; */
-
-/*     if(texture_data[pos]==NULL)return; */
-
-/*     width=texture_data[pos]->width; */
-/*     height=texture_data[pos]->height; */
-/*     alpha=texture_data[pos]->alpha_texture; */
-/*   } */
-/*   void remove_texture(long pos); */
-/*   void remove_texture_data(long pos); */
-/*   void force_texture_create(long pos); */
-/*   { */
-/*     if(pos<0||pos>=texture.size())return; */
-
-/*     if(texture[pos]==NULL)return; */
-
-/*     texture[pos]->remove_texture(); */
-/*     texture[pos]->create_texture(); */
-/*   } */
+ void flip_uchar_array(unsigned char *buff,long dimx,long dimy,long bytes_per_pixel,unsigned long flag);
+ void get_texture_data_dims(long pos,short &width,short &height,char &alpha);
 
   void read_pixels(int x,int y,int width,int height,unsigned char *buffer);
-
-/*   void save_texture_data_to_bmp(long pos,string &filename); */
 
   enablerst();
   ~enablerst()
@@ -873,16 +834,6 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
 	  delete gridrect[t];
 	}
       gridrect.clear();
-/*       for(t=(long)texture.size()-1;t>=0;t--) */
-/* 	{ */
-/* 	  if(texture[t]!=NULL)delete texture[t]; */
-/* 	} */
-/*       texture.clear(); */
-/*       for(t=(long)texture_data.size()-1;t>=0;t--) */
-/* 	{ */
-/* 	  if(texture_data[t]!=NULL)delete texture_data[t]; */
-/* 	} */
-/*       texture_data.clear(); */
     }
   void enable_buffer_draw(){buffer_draw=1;}
   void disable_buffer_draw(){buffer_draw=0;}
@@ -946,22 +897,9 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
   void toggle_fullscreen(GL_Window* window);
   void create_textures();
   void remove_textures();
-/*   { */
-/*     long t; */
-/*     for(t=(long)texture.size()-1;t>=0;t--) */
-/*       { */
-/* 	if(texture[t]==NULL)continue; */
-
-/* 	texture[t]->remove_texture(); */
-/*       } */
-/*   } */
 
  public:
-    void load_keybindings(const string &file){}
-    void save_keybindings(const string &file){}
-    string GetKeyDisplay(int binding){return "I DO NOT EXIST";}
-    string GetBindingDisplay(int binding){return "I DO NOT EXIST EITHER";}
-bool RunningMacro;
+  bool RunningMacro;
 
   void reset_gl(GL_Window* window);
   void reset_gl()
