@@ -30,6 +30,11 @@ bool musicsoundst::initsound() {
   
   // Find out what devices we have available
   const char *devices = alcGetString(NULL, ALC_DEVICE_SPECIFIER);
+  if (!devices) {
+    puts("No sound devices available. Sound disabled. OpenAL broken?");
+    return false;
+  }
+
   const char *firstdevice = devices;
   puts("Sound devices available:");
   while (*devices) {
