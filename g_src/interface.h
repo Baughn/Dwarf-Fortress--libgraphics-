@@ -88,7 +88,6 @@ class interfacest
 
 		void print_interface_token(InterfaceKey key);
 
-
 		interfacest();
 		~interfacest();
 

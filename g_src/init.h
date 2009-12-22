@@ -1,6 +1,8 @@
 #ifndef INIT_H
 #define INIT_H
 
+#include "enabler.h"
+
 class init_fontst
 {
 	public:

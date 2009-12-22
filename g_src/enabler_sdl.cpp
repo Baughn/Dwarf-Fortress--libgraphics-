@@ -48,8 +48,6 @@ enablerst enabler;
 #include "init.h"
 extern initst init;
 
-#include "lua.h"
-
 #ifndef NO_FMOD
 // For musicsound.update();
 #include "music_and_sound_g.h"
@@ -267,122 +265,123 @@ static void zoom_display_delayed(enum zoom_commands command) {
 
 static void eventLoop(GL_Window window)
 {
- // Initialize the zoom
- reset_window();
+  // Initialize the zoom
+  reset_window();
   
- SDL_Event event;
- SDL_Surface *screen = NULL;
- Uint32 mouse_lastused = 0;
- SDL_ShowCursor(SDL_DISABLE);
+  SDL_Event event;
+  SDL_Surface *screen = NULL;
+  Uint32 mouse_lastused = 0;
+  SDL_ShowCursor(SDL_DISABLE);
 
- while (loopvar) {
-  enabler.now = SDL_GetTicks();
-  // Handle buffered zoom events
-  while (!zoom_command_buffer.empty()) {
-    zoom_display_delayed(zoom_command_buffer.front());
-    zoom_command_buffer.pop();
-  }
-  // Handle SDL events
-  while (SDL_PollEvent(&event)) {
-    switch (event.type) {
-    case SDL_KEYDOWN:
-      // Disable mouse if it's been long enough
-      if (mouse_lastused + 5000 < enabler.now) {
-        if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
-          //       hide the mouse picture
-          //       enabler.set_tile(0, TEXTURE_MOUSE, enabler.mouse_x, enabler.mouse_y);
-        }
-        SDL_ShowCursor(SDL_DISABLE);
-      }
-    case SDL_KEYUP:
-    case SDL_QUIT:
-    case SDL_MOUSEBUTTONDOWN:
-    case SDL_MOUSEBUTTONUP:
-      enabler.add_input(event);
-    break;
-    case SDL_ACTIVEEVENT:
-      if (event.active.state & SDL_APPACTIVE) {
-        if (event.active.gain) {
-          gps.force_full_display_count++;
-          std::cout << "Gained focus\n";
-        } else {
-          enabler.clear_input();
-          // TODO: Disable rendering when nobody would see it anyway
-          // Or maybe pause?
-        }
-      }
-      break;
-    case SDL_VIDEOEXPOSE:
-      gps.force_full_display_count++;
-      break;
-    case SDL_MOUSEMOTION:
-      // Is the mouse over the screen surface?
-      if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
-        if (event.motion.x >= origin_x && event.motion.x < origin_x + size_x &&
-            event.motion.y >= origin_y && event.motion.y < origin_y + size_y) {
-          // Store last position
-          enabler.oldmouse_x = enabler.mouse_x;
-          enabler.oldmouse_y = enabler.mouse_y;
-          enabler.tracking_on = 1;
-          // Set viewport_x/y as appropriate, and fixup mouse position for zoom
-          // We use only the central 60% of the window for setting viewport origin.
-          if (!zoom_grid) {
-            double mouse_x = (double)event.motion.x / size_x,
-              mouse_y = (double)event.motion.y / size_y;
-            double percentage = 0.60;
-            mouse_x /= percentage;
-            mouse_y /= percentage;
-            mouse_x -= (1-percentage)/2;
-            mouse_y -= (1-percentage)/2;
-            mouse_x = MIN(MAX(mouse_x,0),1);
-            mouse_y = MIN(MAX(mouse_y,0),1);
-            double new_viewport_x = mouse_x, new_viewport_y = mouse_y;
-            if (new_viewport_x != viewport_x || new_viewport_y != viewport_y) {
-              viewport_x = new_viewport_x;
-              viewport_y = new_viewport_y;
-              gps.force_full_display_count++;
-            }
-            double visible = 1/viewport_zoom,
-              invisible = 1 - visible;
-            double visible_w = enabler.window_width * visible,
-              visible_h = enabler.window_height * visible;
-            enabler.mouse_x = ((double)event.motion.x / enabler.window_width) * visible_w + (invisible*viewport_x*enabler.window_width);
-            enabler.mouse_y = ((double)event.motion.y / enabler.window_height) * visible_h + (invisible*viewport_y*enabler.window_height);
-          } else {
-            enabler.mouse_x = event.motion.x;
-            enabler.mouse_y = event.motion.y;
-          }
-          mouse_lastused = enabler.now;
+  while (loopvar) {
+    Uint32 now = SDL_GetTicks();
+    enabler.now = now;
+    // Handle buffered zoom events
+    while (!zoom_command_buffer.empty()) {
+      zoom_display_delayed(zoom_command_buffer.front());
+      zoom_command_buffer.pop();
+    }
+    // Handle SDL events
+    while (SDL_PollEvent(&event)) {
+      switch (event.type) {
+      case SDL_KEYDOWN:
+        // Disable mouse if it's been long enough
+        if (mouse_lastused + 5000 < enabler.now) {
           if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
-            //        turn on mouse picture
-            //        enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
-            SDL_ShowCursor(SDL_DISABLE);
-          } else SDL_ShowCursor(SDL_ENABLE);
-        } else {
-          enabler.oldmouse_x = -1;
-          enabler.oldmouse_y = -1;
-          enabler.mouse_x = -1;
-          enabler.mouse_y = -1;
-          enabler.mouse_lbut = 0;
-          enabler.mouse_rbut = 0;
-          enabler.mouse_lbut_lift = 0;
-          enabler.mouse_rbut_lift = 0;
-          enabler.tracking_on = 0;
+            //       hide the mouse picture
+            //       enabler.set_tile(0, TEXTURE_MOUSE, enabler.mouse_x, enabler.mouse_y);
+          }
+          SDL_ShowCursor(SDL_DISABLE);
         }
-      } //init mouse on
-      break;
-    case SDL_VIDEORESIZE:
-      resize_window(event.resize.w, event.resize.h);
-      break;
-    } // switch (event.type)
-  } //while have event
+      case SDL_KEYUP:
+      case SDL_QUIT:
+      case SDL_MOUSEBUTTONDOWN:
+      case SDL_MOUSEBUTTONUP:
+        enabler.add_input(event, now);
+        break;
+      case SDL_ACTIVEEVENT:
+        if (event.active.state & SDL_APPACTIVE) {
+          if (event.active.gain) {
+            gps.force_full_display_count++;
+            std::cout << "Gained focus\n";
+          } else {
+            enabler.clear_input();
+            // TODO: Disable rendering when nobody would see it anyway
+            // Or maybe pause?
+          }
+        }
+        break;
+      case SDL_VIDEOEXPOSE:
+        gps.force_full_display_count++;
+        break;
+      case SDL_MOUSEMOTION:
+        // Is the mouse over the screen surface?
+        if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
+          if (event.motion.x >= origin_x && event.motion.x < origin_x + size_x &&
+              event.motion.y >= origin_y && event.motion.y < origin_y + size_y) {
+            // Store last position
+            enabler.oldmouse_x = enabler.mouse_x;
+            enabler.oldmouse_y = enabler.mouse_y;
+            enabler.tracking_on = 1;
+            // Set viewport_x/y as appropriate, and fixup mouse position for zoom
+            // We use only the central 60% of the window for setting viewport origin.
+            if (!zoom_grid) {
+              double mouse_x = (double)event.motion.x / size_x,
+                mouse_y = (double)event.motion.y / size_y;
+              double percentage = 0.60;
+              mouse_x /= percentage;
+              mouse_y /= percentage;
+              mouse_x -= (1-percentage)/2;
+              mouse_y -= (1-percentage)/2;
+              mouse_x = MIN(MAX(mouse_x,0),1);
+              mouse_y = MIN(MAX(mouse_y,0),1);
+              double new_viewport_x = mouse_x, new_viewport_y = mouse_y;
+              if (new_viewport_x != viewport_x || new_viewport_y != viewport_y) {
+                viewport_x = new_viewport_x;
+                viewport_y = new_viewport_y;
+                gps.force_full_display_count++;
+              }
+              double visible = 1/viewport_zoom,
+                invisible = 1 - visible;
+              double visible_w = enabler.window_width * visible,
+                visible_h = enabler.window_height * visible;
+              enabler.mouse_x = ((double)event.motion.x / enabler.window_width) * visible_w + (invisible*viewport_x*enabler.window_width);
+              enabler.mouse_y = ((double)event.motion.y / enabler.window_height) * visible_h + (invisible*viewport_y*enabler.window_height);
+            } else {
+              enabler.mouse_x = event.motion.x;
+              enabler.mouse_y = event.motion.y;
+            }
+            mouse_lastused = enabler.now;
+            if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
+              //        turn on mouse picture
+              //        enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
+              SDL_ShowCursor(SDL_DISABLE);
+            } else SDL_ShowCursor(SDL_ENABLE);
+          } else {
+            enabler.oldmouse_x = -1;
+            enabler.oldmouse_y = -1;
+            enabler.mouse_x = -1;
+            enabler.mouse_y = -1;
+            enabler.mouse_lbut = 0;
+            enabler.mouse_rbut = 0;
+            enabler.mouse_lbut_lift = 0;
+            enabler.mouse_rbut_lift = 0;
+            enabler.tracking_on = 0;
+          }
+        } //init mouse on
+        break;
+      case SDL_VIDEORESIZE:
+        resize_window(event.resize.w, event.resize.h);
+        break;
+      } // switch (event.type)
+    } //while have event
   
-  enabler.do_frame();
+    enabler.do_frame();
 #if !defined(NO_FMOD)
-  // Call FMOD::System.update(). Manages a bunch of sound stuff.
-  musicsound.update();
+    // Call FMOD::System.update(). Manages a bunch of sound stuff.
+    musicsound.update();
 #endif
- }
+  }
 }
 
 #ifdef unix

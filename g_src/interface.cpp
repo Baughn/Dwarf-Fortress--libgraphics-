@@ -39,6 +39,8 @@ using std::string;
 #include "keybindings.h"
 #include "interface.h"
 
+#include <list>
+
 void dwarf_help_routine();
 void dwarf_end_announcements();
 void dwarf_remove_screen();
@@ -838,7 +840,7 @@ char interfacest::loop() {
   while(currentscreen->child!=NULL) currentscreen = currentscreen->child;
   //MOVE SCREENS BACK
   switch(currentscreen->breakdownlevel) {
-  case INTERFACE_BREAKDOWN_NONE:
+  case INTERFACE_BREAKDOWN_NONE: {
     //FRAME COUNT
     if(gps.display_frames && !enabler.doing_buffer_draw()) {
       QueryPerformanceCounter(&gps.print_time[gps.print_index]);
@@ -847,49 +849,60 @@ char interfacest::loop() {
     
     if (currentscreen->child==NULL) currentscreen->logic();
     
-   // FIXME
-   // switch (pressedRange(INTERFACEKEY_OPTIONS,INTERFACEKEY_ZOOM_RESET)) {
-   //  //TOGGLE SCREEN
-   //  case INTERFACEKEY_TOGGLE_FULLSCREEN: enabler.toggle_fullscreen();break;
-   //  //GAME OPTIONS
-   //  case INTERFACEKEY_OPTIONS: {
-   //   //PEEL BACK ALL SCREENS TO THE CURRENT OPTION SCREEN IF THERE IS ONE
-   //   //UNLESS THERE IS A BLOCKING SCREEN LIKE THE REGION MAKER
-   //   viewscreenst *opscreen=&view;
-   //   while(opscreen!=NULL) {
-   //    if(opscreen->is_option_screen()) {
-   //     opscreen->option_key_pressed=1;
-   //     while(opscreen->child!=NULL) {
-   //      if(opscreen->child->is_option_screen()==2) {
-   //       opscreen->child->option_key_pressed=1;
-   //       opscreen->option_key_pressed=0;
-   //       break;
-   //      }
-   //      removescreen(opscreen->child);
-   //     }
-   //     break;
-   //    }
-   //    opscreen=opscreen->child;
-   //   }
-   //   //NEED A NEW OPTIONS SCREEN?
-   //   if(opscreen==NULL) dwarf_option_screen();
-   //   break;
-   //  } //option screen
-   //  //DO MOVIE COMMANDS
-   //  case INTERFACEKEY_MOVIES:
-   //   if(currentscreen->movies_okay())use_movie_input();
-   //  break;
-   //  case INTERFACEKEY_HELP: currentscreen->help();break;
-   //  //HANDLE MOVIE
-   //  case INTERFACEKEY_ZOOM_IN: zoom_display(zoom_in);break;
-   //  case INTERFACEKEY_ZOOM_OUT: zoom_display(zoom_out);break;
-   //  case INTERFACEKEY_ZOOM_TOGGLE: zoom_display(zoom_toggle_gridzoom);break;
-   //  case INTERFACEKEY_ZOOM_RESET: zoom_display(zoom_reset);break;
-
-   //  break;
-   //  default: if(currentscreen->movies_okay()) handlemovie(0);break;
-   // }
+    // Feed input
+    std::list<InterfaceKey> input = enabler.get_input();
+    std::list<InterfaceKey>::iterator key;
+    for (key = input.begin(); key != input.end(); ++key) {
+      // ...right. FIXME.
+      std::set<InterfaceKey> s;
+      s.insert(*key);
+      currentscreen->feed(s);
+    }
     break;
+  } // case INTERFACE_BREAKDOWN_NONE
+    
+    // FIXME
+    // switch (pressedRange(INTERFACEKEY_OPTIONS,INTERFACEKEY_ZOOM_RESET)) {
+    //  //TOGGLE SCREEN
+    //  case INTERFACEKEY_TOGGLE_FULLSCREEN: enabler.toggle_fullscreen();break;
+    //  //GAME OPTIONS
+    //  case INTERFACEKEY_OPTIONS: {
+    //   //PEEL BACK ALL SCREENS TO THE CURRENT OPTION SCREEN IF THERE IS ONE
+    //   //UNLESS THERE IS A BLOCKING SCREEN LIKE THE REGION MAKER
+    //   viewscreenst *opscreen=&view;
+    //   while(opscreen!=NULL) {
+    //    if(opscreen->is_option_screen()) {
+    //     opscreen->option_key_pressed=1;
+    //     while(opscreen->child!=NULL) {
+    //      if(opscreen->child->is_option_screen()==2) {
+    //       opscreen->child->option_key_pressed=1;
+    //       opscreen->option_key_pressed=0;
+    //       break;
+    //      }
+    //      removescreen(opscreen->child);
+    //     }
+    //     break;
+    //    }
+    //    opscreen=opscreen->child;
+    //   }
+    //   //NEED A NEW OPTIONS SCREEN?
+    //   if(opscreen==NULL) dwarf_option_screen();
+    //   break;
+    //  } //option screen
+    //  //DO MOVIE COMMANDS
+    //  case INTERFACEKEY_MOVIES:
+    //   if(currentscreen->movies_okay())use_movie_input();
+    //  break;
+    //  case INTERFACEKEY_HELP: currentscreen->help();break;
+    //  //HANDLE MOVIE
+    //  case INTERFACEKEY_ZOOM_IN: zoom_display(zoom_in);break;
+    //  case INTERFACEKEY_ZOOM_OUT: zoom_display(zoom_out);break;
+    //  case INTERFACEKEY_ZOOM_TOGGLE: zoom_display(zoom_toggle_gridzoom);break;
+    //  case INTERFACEKEY_ZOOM_RESET: zoom_display(zoom_reset);break;
+    
+    //  break;
+    //  default: if(currentscreen->movies_okay()) handlemovie(0);break;
+    // }
   case INTERFACE_BREAKDOWN_QUIT:
     {
       handlemovie(1);

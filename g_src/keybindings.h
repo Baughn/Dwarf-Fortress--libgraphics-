@@ -2,7 +2,6 @@
 #define KEYBINDINGS_H
 
 #include "ViewBase.h"
-#include "enabler_input.h"
 
 enum InterfaceKeyType {
  INTERFACEKEY_NONE=0,

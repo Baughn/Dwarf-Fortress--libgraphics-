@@ -4,6 +4,8 @@
 #include <set>
 typedef long InterfaceKey;
 
+#include "keybindings.h"
+
 enum InterfaceBreakdownTypes
 {
 	INTERFACE_BREAKDOWN_NONE,
