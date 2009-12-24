@@ -27,7 +27,7 @@ enum MatchType { type_unicode, type_key, type_button };
 
 struct EventMatch {
   MatchType type;
-  SDLMod mod;     // not defined for type=unicode
+  Uint8 mod;      // not defined for type=unicode. 1: shift, 2: ctrl, 4:alt
   Uint8 scancode; // not defined for type=button
   union {
     Uint16 unicode;

@@ -103,20 +103,11 @@ static string encode_utf8(int unicode) {
   return s;
 }
 
-static SDLMod parse_mod(string s) {
-  int i = atoi(s.c_str());
-  int mod = KMOD_NONE;
-  if (i & 1) mod |= KMOD_SHIFT;
-  if (i & 2) mod |= KMOD_CTRL;
-  if (i & 4) mod |= KMOD_ALT;
-  return (SDLMod)mod;
-}
-
-static string display(SDLMod mod, string rest) {
+static string display(Uint8 mod, string rest) {
   string disp;
-  if (mod & KMOD_SHIFT) disp += "Shift+";
-  if (mod & KMOD_CTRL) disp += "Ctrl+";
-  if (mod & KMOD_ALT) disp += "Alt+";
+  if (mod & 1) disp += "Shift+";
+  if (mod & 2) disp += "Ctrl+";
+  if (mod & 4) disp += "Alt+";
   return disp + rest;
 }
 
@@ -169,7 +160,7 @@ void enabler_inputst::load_keybindings(const string &file) {
           if (boost::regex_search(*line, match, sym)) {
             map<string,SDLKey>::iterator it = sdlNames.right.find(match[2]);
             if (it != sdlNames.right.end()) {
-              matcher.mod  = parse_mod(match[1]);
+              matcher.mod  = atoi(string(match[1]).c_str());
               matcher.type = type_key;
               matcher.key  = it->second;
               keymap.insert(pair<EventMatch,InterfaceKey>(matcher, (InterfaceKey)binding));
@@ -201,7 +192,7 @@ void enabler_inputst::load_keybindings(const string &file) {
             string str = match[1];
             matcher.button = atoi(str.c_str());
             if (matcher.button) {
-              matcher.mod  = parse_mod(match[1]);
+              matcher.mod  = atoi(string(match[1]).c_str());
               keymap.insert(pair<EventMatch,InterfaceKey>(matcher, (InterfaceKey)binding));
               update_keydisplay(binding, "Button " + match[2]);
             } else {
