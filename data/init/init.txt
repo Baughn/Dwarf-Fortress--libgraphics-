@@ -90,7 +90,7 @@ Change this to YES if you'd like to use a BMP for the mouse cursor.  The image c
 
 This controls the number of milliseconds that must pass before a held key sends an initial repeat press to the game.  You might need to adjust this.
 
-[KEY_HOLD_MS:150]
+[KEY_HOLD_MS:250]
 
 This controls the number of milliseconds that must pass before a held key sends a repeat press to the game after the repeat process has begun.
 

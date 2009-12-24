@@ -48,6 +48,8 @@ enablerst enabler;
 #include "init.h"
 extern initst init;
 
+#include "keybindings.h"
+
 #ifndef NO_FMOD
 // For musicsound.update();
 #include "music_and_sound_g.h"
@@ -300,12 +302,12 @@ static void eventLoop(GL_Window window)
         enabler.add_input(event, now);
         break;
       case SDL_ACTIVEEVENT:
+        enabler.clear_input();
         if (event.active.state & SDL_APPACTIVE) {
           if (event.active.gain) {
             gps.force_full_display_count++;
             std::cout << "Gained focus\n";
           } else {
-            enabler.clear_input();
             // TODO: Disable rendering when nobody would see it anyway
             // Or maybe pause?
           }
@@ -1790,6 +1792,10 @@ int main (int argc, char* argv[])
     report_error("SDL initialization failure", SDL_GetError());
     return false;
   }
+
+  // Load keyboard map
+  keybinding_init();
+  enabler.load_keybindings("data/init/interface.txt");
 
   string cmdLine;
   for (int i = 1; i < argc; ++i) { 

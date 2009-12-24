@@ -3,6 +3,12 @@
 
 #include "ViewBase.h"
 
+#include <SDL.h>
+#include <map>
+#include <string>
+
+#include "bimap.h"
+
 enum InterfaceKeyType {
  INTERFACEKEY_NONE=0,
  INTERFACEKEY_SELECT,
@@ -15,8 +21,8 @@ enum InterfaceKeyType {
  INTERFACEKEY_CLOSE_MEGA_ANNOUNCEMENT,
  INTERFACEKEY_OPTION_EXPORT,
  INTERFACEKEY_OPTION_EXPORT_RAW_INFO,
- INTERFACEKEY_OPTIONS,  //keep to ZOOM_RESET together for pressedRange
- INTERFACEKEY_HELP,     //in interface.cpp
+ INTERFACEKEY_OPTIONS,
+ INTERFACEKEY_HELP,
  INTERFACEKEY_TOGGLE_FULLSCREEN,
  INTERFACEKEY_MOVIES,
  INTERFACEKEY_ZOOM_IN,
@@ -29,8 +35,8 @@ enum InterfaceKeyType {
  INTERFACEKEY_MOVIE_LOAD,
  INTERFACEKEY_CHANGETAB,
  INTERFACEKEY_REVERSETAB,
- INTERFACEKEY_STANDARDSCROLL_UP,    //make sure to keep the scrolling group together
- INTERFACEKEY_STANDARDSCROLL_DOWN,  //they are checked as a group for repeat timing
+ INTERFACEKEY_STANDARDSCROLL_UP,
+ INTERFACEKEY_STANDARDSCROLL_DOWN,
  INTERFACEKEY_STANDARDSCROLL_LEFT,
  INTERFACEKEY_STANDARDSCROLL_RIGHT,
  INTERFACEKEY_STANDARDSCROLL_PAGEUP,
@@ -1151,4 +1157,10 @@ enum InterfaceKeyType {
  INTERFACEKEY_STRING_A255,
  INTERFACEKEYNUM
 };
+
+extern bimap<InterfaceKeyType,std::string> bindingNames;
+extern bimap<SDLKey,std::string> sdlNames;
+
+void keybinding_init();
+
 #endif

@@ -1,3 +1,4 @@
+# -*- mode: python -*-
 from sys import platform
 import os
 
@@ -31,7 +32,7 @@ env["CPPPATH"].append('#g_src/glext')
 env["CCFLAGS"].append('-DGLEW_STATIC') # Should only be needed on windows, but can't hurt.
 
 # Generic unix, including Linux
-env["LIBS"] += ['SDL_image']
+env["LIBS"] += ['SDL_image', 'boost_regex']
 env['ASFLAGS']="--32"
 env['LINKFLAGS'].append("-m32")
 env["CCFLAGS"].append("-m32")
