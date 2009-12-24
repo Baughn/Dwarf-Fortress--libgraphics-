@@ -1776,17 +1776,18 @@ int main (int argc, char* argv[])
   gtk_init(&argc, &argv);
 #endif
 
+  init.begin();
+  
 #ifdef linux
-  // Initialize OpenAL
-  // FIXME: Move this to after checking the init.txt value
-  if (!musicsound.initsound())
-    puts("Initializing OpenAL failed, no sound will be played");
+  if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF)) {
+    // Initialize OpenAL
+    if (!musicsound.initsound())
+      puts("Initializing OpenAL failed, no sound will be played");
+  }
 #endif
 
   // Initialise relevant SDL subsystems.
   int retval = SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO);
-  // Turn on keyboard translation, from raw keycodes to letters
-  //SDL_EnableUNICODE(1);
   // Report failure.
   if (retval != 0) {
     report_error("SDL initialization failure", SDL_GetError());

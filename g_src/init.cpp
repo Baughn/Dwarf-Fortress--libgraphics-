@@ -50,6 +50,10 @@ init_displayst::init_displayst()
 
 void initst::begin()
 {
+  static bool called = false;
+  if (called) return;
+  called = true;
+  
 	string small_font="data/art/curses_640x300.png";
 	string large_font="data/art/curses_640x300.png";
 	std::ifstream fseed("data/init/init.txt");
