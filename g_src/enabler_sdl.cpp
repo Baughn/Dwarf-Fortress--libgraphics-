@@ -1542,6 +1542,10 @@ void gridrectst::allocate(long newdimx,long newdimy)
 void gridrectst::clean()
 {
   allocate(0,0);
+  map<texture_fullid, SDL_Surface*>::iterator it = tile_cache.begin();
+  for (;it != tile_cache.end(); ++it)
+    SDL_FreeSurface(it->second);
+  tile_cache.clear();
 }
 
 long enablerst::gridrect_create(long dimx,long dimy)
