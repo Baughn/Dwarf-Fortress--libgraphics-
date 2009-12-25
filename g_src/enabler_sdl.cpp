@@ -826,14 +826,35 @@ SDL_Surface *gridrectst::tile_cache_lookup(texture_fullid &id) {
   } else {
     // Create the colorized texture
     SDL_Surface *tex   = enabler.textures.get_texture_data(id.texpos);
+    SDL_Surface *color;
     bool use_hw        = init.display.flag.has_flag(INIT_DISPLAY_FLAG_2DHW);
-    SDL_Surface *color = SDL_CreateRGBSurface(use_hw ? SDL_HWSURFACE : SDL_SWSURFACE,
-                                              dispx, dispy,
-                                              tex->format->BitsPerPixel,
-                                              tex->format->Rmask,
-                                              tex->format->Bmask,
-                                              tex->format->Gmask,
-                                              0);
+    if (use_hw) {
+      color = SDL_CreateRGBSurface(SDL_HWSURFACE,
+                                                dispx, dispy,
+                                                tex->format->BitsPerPixel,
+                                                tex->format->Rmask,
+                                                tex->format->Bmask,
+                                                tex->format->Gmask,
+                                                0);
+      if (!color) {
+        use_hw = false;
+        MessageBox (NULL, "Unable to create texture in video memory. Performance will suffer. Don't use 2DHW, or don't use graphical tiles.", "Out of VRAM", MB_OK | MB_ICONEXCLAMATION);
+      }
+    }
+    if (!use_hw) {
+      color = SDL_CreateRGBSurface(SDL_SWSURFACE,
+                                   dispx, dispy,
+                                   tex->format->BitsPerPixel,
+                                   tex->format->Rmask,
+                                   tex->format->Bmask,
+                                   tex->format->Gmask,
+                                   0);
+      if (!color) {
+        MessageBox (NULL, "Unable to create texture!", "Fatal error", MB_OK | MB_ICONEXCLAMATION);
+        abort();
+      }
+    }
+
     // Fill it
     Uint32 color_fgi = SDL_MapRGB(color->format, id.r*255, id.g*255, id.b*255);
     Uint8 *color_fg = (Uint8*) &color_fgi;
