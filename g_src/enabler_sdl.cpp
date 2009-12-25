@@ -413,6 +413,13 @@ static Uint32 timer_tick(Uint32 interval, void *param) {
 
 int enablerst::loop(void)
 {
+  // Read init values for setup
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_2D)) {
+    puts("Using 2D mode");
+    use_opengl = false;
+  } else
+    use_opengl = true;
+  
   // Fill Out Window
   ZeroMemory (&window, sizeof (GL_Window));               // Make Sure Memory Is Zeroed
   window.init.title			= (char*)GAME_TITLE_STRING; // Window Title
@@ -449,7 +456,7 @@ int enablerst::loop(void)
       window.init.isFullScreen = create_full_screen;
       if (!create_window_GL(&window))
 	{
-	  MessageBox (NULL, "Error Creating OpenGL Window", "Error", MB_OK | MB_ICONEXCLAMATION);
+	  MessageBox (NULL, "Error Creating Window", "Error", MB_OK | MB_ICONEXCLAMATION);
 	  is_program_looping = FALSE;
 	}
       else
@@ -538,8 +545,12 @@ void enablerst::do_frame()
 void enablerst::render(GL_Window &window, enum render_phase phase)
 {
   render_things(phase);
-  if (phase == complete)
-    SDL_GL_SwapBuffers();
+  if (phase == complete) {
+    if (use_opengl) 
+      SDL_GL_SwapBuffers();
+    else
+      SDL_Flip(SDL_GetVideoSurface());
+  }
 }
 
 void enablerst::terminate_application(GL_Window* window)
@@ -576,8 +587,15 @@ void enablerst::reset_gl(GL_Window* window) {
   // ne_toggle_fullscreen();
 }
 
-void enablerst::reshape_GL(int width,int height)				// Reshape The Window When It's Moved Or Resized
+// Reshape The Window When It's Moved Or Resized
+void enablerst::reshape_GL(int width,int height)
 {
+  window_width=width;
+  window_height=height;
+
+  if (!use_opengl)
+    return;
+  
   glDisable(GL_ALPHA_TEST); glDisable(GL_BLEND); glDisable(GL_DEPTH_TEST);
   glDisable(GL_DITHER); glDisable(GL_FOG); glDisable(GL_LIGHTING);
   glDisable(GL_LOGIC_OP); glDisable(GL_STENCIL_TEST);
@@ -588,20 +606,20 @@ void enablerst::reshape_GL(int width,int height)				// Reshape The Window When I
   glPixelTransferi(GL_BLUE_SCALE, 1); glPixelTransferi(GL_BLUE_BIAS, 0);
   glPixelTransferi(GL_ALPHA_SCALE, 1); glPixelTransferi(GL_ALPHA_BIAS, 0);
 
-  window_width=width;
-  window_height=height;
 
-  glViewport (0, 0, (GLsizei)(width), (GLsizei)(height));		// Reset The Current Viewport
-  glMatrixMode (GL_PROJECTION);								// Select The Projection Matrix
-  glLoadIdentity ();											// Reset The Projection Matrix
+  glViewport (0, 0, (GLsizei)(width), (GLsizei)(height)); // Reset The Current Viewport
+  glMatrixMode (GL_PROJECTION);                           // Select The Projection Matrix
+  glLoadIdentity ();                                      // Reset The Projection Matrix
   gluOrtho2D(0.0, width, height, 0.0);
-  glMatrixMode (GL_MODELVIEW);								// Select The Modelview Matrix
-  glLoadIdentity ();											// Reset The Modelview Matrix
+  glMatrixMode (GL_MODELVIEW);                            // Select The Modelview Matrix
+  glLoadIdentity ();                                      // Reset The Modelview Matrix
 }
 
-char enablerst::change_screen_resolution (int width, int height, int bitsPerPixel)	// Change The Screen Resolution
+// Change The Screen Resolution
+char enablerst::change_screen_resolution (int width, int height, int bitsPerPixel)
 {
   // TODO
+  std::cerr << "Called unimplemented function change_screen_resolution\n";
   return false;
 }
 
@@ -617,16 +635,20 @@ void report_error(const char *error_preface, const char *error_message)
   delete [] buf;
 }
 
-// This function creates our OpenGL window.
+// This function creates our OpenGL(?) window.
 char enablerst::create_window_GL(GL_Window* window)
 {
   int retval = -1;
   Uint32 flags = 0;
   SDL_Surface *screen = NULL;
 	
-  // Set up SDL to give us an OpenGL context.
-  flags |= SDL_HWSURFACE;
-  flags |= SDL_OPENGL;
+  // Set up SDL to give us a context.
+  if (use_opengl)
+    flags |= SDL_HWSURFACE | SDL_OPENGL;
+  else {
+    flags |= init.display.flag.has_flag(INIT_DISPLAY_FLAG_2DHW) ? SDL_HWSURFACE : SDL_SWSURFACE;
+    flags |= init.display.flag.has_flag(INIT_DISPLAY_FLAG_2DASYNC) ? SDL_ASYNCBLIT : 0;
+  }
   // Find the current desktop resolution if fullscreen resolution is auto
   if (desired_fullscreen_width == 0 || desired_fullscreen_height == 0) {
     const struct SDL_VideoInfo *info = SDL_GetVideoInfo();
@@ -655,18 +677,18 @@ char enablerst::create_window_GL(GL_Window* window)
     SDL_FreeSurface(icon); 
   }
 
-  // Ask for an SDL_Surface (and so an OpenGL context)
-  SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 0);
-  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_SINGLE_BUFFER))
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 0);
- else
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	
-// Toady: Is this actually useful for anything? You could save some memory by uncommenting this line.
-//   SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
-  // WARNING: If you ask for acceleration, ATI cards will refuse to give you any
-  // It's the default anyway, so it's not realy needed.
-//   SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
+  if (use_opengl) {
+    // Setup opengl attributes
+    SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 0);
+    if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_SINGLE_BUFFER))
+      SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 0);
+    else
+      SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
+    glewInit();
+  }
+    
   screen = SDL_SetVideoMode(window->init.width, window->init.height, window->init.bitsPerPixel, flags);
   if (screen == NULL) {
     destroy_window_GL(window);
@@ -680,15 +702,18 @@ char enablerst::create_window_GL(GL_Window* window)
       return false;
     }
   }
-  glewInit();
-  // Make sure we actually got what we asked for
-  int test=0;
-  SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &test);
-  if (test != ((init.display.flag.has_flag(INIT_DISPLAY_FLAG_SINGLE_BUFFER)) ? 0 : 1))
-    std::cerr << "SDL_GL_DOUBLEBUFFER failed\n";
+
+  if (use_opengl) {
+    // Make sure we actually got what we asked for
+    int test=0;
+    SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &test);
+    if (test != ((init.display.flag.has_flag(INIT_DISPLAY_FLAG_SINGLE_BUFFER)) ? 0 : 1))
+      std::cerr << "SDL_GL_DOUBLEBUFFER failed\n";
+  }
 	
   reshape_GL(window->init.width, window->init.height);
-  glClear(GL_COLOR_BUFFER_BIT);
+  if (use_opengl)
+    glClear(GL_COLOR_BUFFER_BIT);
 	
   // Initialize the gridrects
   for (int i=0; i<gridrect.size(); i++)
@@ -786,8 +811,99 @@ enablerst::enablerst()
 }
 
 
-void gridrectst::render(enum render_phase phase, bool clear)
+void gridrectst::render(render_phase phase, bool clear)
 {
+  if (enabler.use_opengl)
+    render_gl(phase, clear);
+  else if (phase == complete) // There is absolutely no point in trying to phase things in 2D
+    render_2d(clear);
+}
+
+SDL_Surface *gridrectst::tile_cache_lookup(texture_fullid &id) {
+  map<texture_fullid, SDL_Surface*>::iterator it = tile_cache.find(id);
+  if (it != tile_cache.end()) {
+    return it->second;
+  } else {
+    // Create the colorized texture
+    SDL_Surface *tex   = enabler.textures.get_texture_data(id.texpos);
+    bool use_hw        = init.display.flag.has_flag(INIT_DISPLAY_FLAG_2DHW);
+    SDL_Surface *color = SDL_CreateRGBSurface(use_hw ? SDL_HWSURFACE : SDL_SWSURFACE,
+                                              dispx, dispy,
+                                              tex->format->BitsPerPixel,
+                                              tex->format->Rmask,
+                                              tex->format->Bmask,
+                                              tex->format->Gmask,
+                                              0);
+    // Fill it
+    Uint32 color_fgi = SDL_MapRGB(color->format, id.r*255, id.g*255, id.b*255);
+    Uint8 *color_fg = (Uint8*) &color_fgi;
+    Uint32 color_bgi = SDL_MapRGB(color->format, id.br*255, id.bg*255, id.bb*255);
+    Uint8 *color_bg = (Uint8*) &color_bgi;
+    SDL_LockSurface(tex);
+    SDL_LockSurface(color);
+
+    Uint8 *pixel_src, *pixel_dst;
+    for (int y = 0; y < tex->h; y++) {
+      pixel_src = ((Uint8*)tex->pixels) + (y * tex->pitch);
+      pixel_dst = ((Uint8*)color->pixels) + (y * color->pitch);
+      for (int x = 0; x < tex->w; x++, pixel_src+=4, pixel_dst+=4) {
+        float alpha = pixel_src[3] / 255;
+        for (int c = 0; c < 3; c++) {
+          pixel_dst[c] = (alpha * (pixel_src[c] & color_fg[c])) + ((1 - alpha) * color_bg[c]);
+        }
+      }
+    }
+    
+    SDL_UnlockSurface(color);
+    SDL_UnlockSurface(tex);
+
+    // Convert to display format
+    SDL_DisplayFormat(color);
+    // Insert and return
+    tile_cache[id] = color;
+    return color;
+  }
+}
+
+void gridrectst::render_2d(bool clear) {
+  SDL_Surface *screen = SDL_GetVideoSurface();
+
+  if (clear)
+    SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
+  
+  // Render the grid
+  int tile = 0;
+  int posx = 0, posy = 0;
+  SDL_Rect dst; dst.w = dispx; dst.h = dispy;
+  for (int x = 0; x < dimx; x++, posx += dispx) {
+    posy = 0;
+    for (int y = 0; y < dimy; y++, tile++, posy += dispy) {
+      long texpos = buffer_texpos[tile];
+      if (texpos == -1) continue; // Tile not dirty
+      // Dirty. Update dirty buffer.
+      s_buffer_texpos[tile] = buffer_texpos[tile];
+      s_buffer_r[tile]      = buffer_r[tile];
+      s_buffer_g[tile]      = buffer_g[tile];
+      s_buffer_b[tile]      = buffer_b[tile];
+      s_buffer_br[tile]     = buffer_br[tile];
+      s_buffer_bg[tile]     = buffer_bg[tile];
+      s_buffer_bb[tile]     = buffer_bb[tile];
+      // Find and display cached tile
+      texture_fullid texid = { texpos,
+                               buffer_r[tile],
+                               buffer_g[tile],
+                               buffer_b[tile],
+                               buffer_br[tile],
+                               buffer_bg[tile],
+                               buffer_bb[tile] };
+      SDL_Surface *texture = tile_cache_lookup(texid);
+      dst.x = posx; dst.y = posy;
+      SDL_BlitSurface(texture, NULL, screen, &dst);
+    }
+  }
+}
+
+void gridrectst::render_gl(render_phase phase, bool clear) {
   if (!gl_initialized) {
     puts("render called without gl being initialized");
     return;
@@ -1212,6 +1328,7 @@ void gridrectst::render(enum render_phase phase, bool clear)
 
 void gridrectst::init_gl() {
   static bool shown=false; // It's a bit hacky, but we want to only show the message once
+  if (!enabler.use_opengl) return;
   if (gl_initialized) uninit_gl();
   vertices_initialized = false;
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO) && GLEW_ARB_vertex_buffer_object) {
@@ -1341,7 +1458,7 @@ void gridrectst::init_gl() {
 }
 
 void gridrectst::uninit_gl() {
-  if (!gl_initialized) return;
+  if (!gl_initialized || !enabler.use_opengl) return;
   if (vbo_refs[0]) {
     glDeleteBuffersARB(4, vbo_refs);
     vbo_refs[0] = 0;
@@ -1464,27 +1581,33 @@ void enablerst::set_color(float r,float g,float b,float a)
 
 void enablerst::render_tiles(enum render_phase phase, bool clear)
 {
-  //SET UP THE VIEW
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-  glTranslatef(-center_x,-center_y,0);
-
+  if (use_opengl) {
+    //SET UP THE VIEW
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glTranslatef(-center_x,-center_y,0);
+  }
+    
   // Draw gridrects
   // Toady: gridrect.size always seems to be 1. Is there any use in it being an array?
   for(int r=0;r<gridrect.size();r++)
     {
-      assert(r < 2);
+      assert (r < 2);
       gridrect[r]->render(phase, clear);
     }
   // Draw set_tile tiles
   if (phase == complete) {
-    glColor3f(1,1,1);
-    glEnable(GL_ALPHA_TEST);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(2, GL_FLOAT, 0, tile_vertices);
-    glTexCoordPointer(2, GL_FLOAT, 0, tile_texcoords);
-    glDrawArrays(GL_QUADS, 0, tiles.size() * 4);
+    if (use_opengl) {
+      glColor3f(1,1,1);
+      glEnable(GL_ALPHA_TEST);
+      glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+      glEnableClientState(GL_VERTEX_ARRAY);
+      glVertexPointer(2, GL_FLOAT, 0, tile_vertices);
+      glTexCoordPointer(2, GL_FLOAT, 0, tile_texcoords);
+      glDrawArrays(GL_QUADS, 0, tiles.size() * 4);
+    } else {
+      // TODO: Draw tiles for 2D mode
+    }
   }
 }
 
@@ -1557,8 +1680,12 @@ void enablerst::disable_fade()
 
 void enablerst::read_pixels(int x,int y,int width,int height,unsigned char *buffer)
 {
-  glReadBuffer(GL_BACK);
-  glReadPixels(x,y,width,height,GL_RGBA,GL_UNSIGNED_BYTE,buffer);
+  if (use_opengl) {
+    glReadBuffer(GL_BACK);
+    glReadPixels(x,y,width,height,GL_RGBA,GL_UNSIGNED_BYTE,buffer);
+  } else {
+    // TODO: for 2D
+  }
 }
 
 void enablerst::flip_uchar_array(unsigned char *buff,long dimx,long dimy,long bytes_per_pixel,unsigned long flag)
@@ -1745,31 +1872,6 @@ void text_system_file_infost::get_text(text_infost &text)
   fseed.close();
 }
 
-// void enablerst::antialias(unsigned char *dat,long srcx,long srcy,char border)
-// {
-//   long pos=3,x,y;
-//   for(y=0;y<srcy;y++)
-//     {
-//       for(x=0;x<srcx;x++,pos+=4)
-// 	{
-// 	  if(dat[pos]!=0)
-// 	    {
-// 	      if(x>0&&y>0&&x<srcx-1&&y<srcy-1)
-// 		{
-// 		  if(dat[pos-4]==0||
-// 		     dat[pos+4]==0||
-// 		     dat[pos-4*srcx]==0||
-// 		     dat[pos+4*srcx]==0)
-// 		    {
-// 		      dat[pos]=128;
-// 		    }
-// 		}
-// 	      else if(border)dat[pos]=128;
-// 	    }
-// 	}
-//     }
-// }
-
 int main (int argc, char* argv[])
 {
 #if !defined(__APPLE__) && defined(unix)
@@ -1871,85 +1973,6 @@ BOOL QueryPerformanceFrequency(LARGE_INTEGER* performanceCount)
 }
 #endif
 
-// http://msdn.microsoft.com/en-us/library/ms646301.aspx 
-/*
-SHORT Enabler_GetKeyState(int virtKey)
-{
-  Uint8 *keystate = SDL_GetKeyState(NULL);
-  SDLMod keymod = SDL_GetModState();
-	
-  switch (virtKey) {
-  case VK_LSHIFT:
-  case VK_RSHIFT:
-  case VK_SHIFT:
-    if (keymod & KMOD_SHIFT) {
-      return (keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]) ? 0x8001 : 0x0001;
-    } else {
-      return (keystate[SDLK_LSHIFT] || keystate[SDLK_RSHIFT]) ? 0x8000 : 0x0000;
-    }
-    break;
-  case VK_LCONTROL:
-  case VK_RCONTROL:
-  case VK_CONTROL:
-    if (keymod & KMOD_CTRL) {
-      return (keystate[SDLK_LCTRL] || keystate[SDLK_RCTRL]) ? 0x8001 : 0x0001;
-    } else {
-      return (keystate[SDLK_LCTRL] || keystate[SDLK_RCTRL]) ? 0x8000 : 0x0000;
-    }
-    break;
-  case VK_CAPITAL:
-    if (keymod & KMOD_CAPS) {
-      return (keystate[SDLK_CAPSLOCK]) ? 0x8001 : 0x0001;
-    } else {
-      return (keystate[SDLK_CAPSLOCK]) ? 0x8000 : 0x0000;
-    }
-    break;
-  case VK_LMENU:
-  case VK_RMENU:
-  case VK_MENU:
-    if (keymod & KMOD_ALT) {
-      return (keystate[SDLK_LALT] || keystate[SDLK_RALT]) ? 0x8001 : 0x0001;
-    } else {
-      return (keystate[SDLK_LALT] || keystate[SDLK_RALT]) ? 0x8000 : 0x0000;
-    }
-    break;
-  case VK_NUMLOCK:
-    if (keymod & KMOD_NUM) {
-      return (keystate[SDLK_NUMLOCK]) ? 0x8001 : 0x0001;
-    } else {
-      return (keystate[SDLK_NUMLOCK]) ? 0x8000 : 0x0000;
-    }
-    break;
-  default:
-    if (virtKey <= SDLK_FIRST || virtKey >= SDLK_LAST) {
-      return 0x0000;
-    }
-    if (keystate[virtKey]) {
-      return 0x8000;
-    }
-    else return 0x0000;
-  }
-}
-
-int Enabler_ShowCursor(BOOL show)
-{
-  static int displayCount = 0;
-	
-  if(show) {
-    displayCount += 1;
-    if (displayCount == 0) {
-      SDL_ShowCursor(SDL_ENABLE);
-    }
-  } else {
-    if (displayCount == 0) {
-      SDL_ShowCursor(SDL_DISABLE);
-    }
-    displayCount -= 1;
-  }
-	
-  return displayCount;
-}
-*/
 
 char* itoa(int value, char* result, int base)
 {
@@ -2061,13 +2084,13 @@ struct vsize_pos {
 
 // Texture catalog implementation
 void textures::upload_textures() {
-  if (uploaded) return; // Don't bother
+  if (uploaded || !enabler.use_opengl) return; // Don't bother
   glEnable(GL_TEXTURE_2D);
   printGLError();
   glGenTextures(1, &gl_catalog);
   printGLError();
 
-  // First, sort the textures by vertical size. We'Ll want to place the large
+  // First, sort the textures by vertical size. We'll want to place the large
   // ones first.
   // Since we mustn't alter the raws array, first thing is to create a new one.
   // We pretend textures are one pixel larger than they actually are in either
@@ -2245,7 +2268,7 @@ void textures::upload_textures() {
 }
 
 void textures::remove_uploaded_textures() {
-  if (!uploaded) return; // Nothing to do
+  if (!uploaded || !enabler.use_opengl) return; // Nothing to do
   glDeleteTextures(1, &gl_catalog);
   uploaded=false;
 }
@@ -2276,7 +2299,7 @@ long textures::clone_texture(long src) {
   if (uploaded) {
     remove_uploaded_textures();
     upload_textures();
-	  }
+  }
 
   return tx;
 }
@@ -2694,59 +2717,6 @@ void enablerst::save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,lo
 0xff000000*alpha);
  SDL_SaveBMP(bmp, filename.c_str());
  SDL_FreeSurface(bmp); // Does not free bitmapImage
- /*
-#ifdef WIN32
-  FILE *filePtr;
-  BITMAPFILEHEADER bitmapFileHeader;
-  BITMAPINFOHEADER bitmapInfoHeader;
-  unsigned int      imageIdx=0;       // image index counter
-  unsigned char     tempRGB;            // swap variable
-
-  // open filename in "write binary" mode
-  filePtr = fopen(filename.c_str(), "wb");
-  if (filePtr == NULL)
-    return;
-
-  bitmapFileHeader.bfReserved1=0;
-  bitmapFileHeader.bfReserved2=0;
-  bitmapFileHeader.bfOffBits=sizeof(BITMAPFILEHEADER)+sizeof(BITMAPINFOHEADER);
-  bitmapFileHeader.bfSize=sizeof(BITMAPFILEHEADER);
-  bitmapFileHeader.bfType=BITMAP_ID;
-
-  // write the bitmap file header
-  fwrite(&bitmapFileHeader, sizeof(BITMAPFILEHEADER), 1, filePtr);
-
-  bitmapInfoHeader.biBitCount=24+alpha*8;
-  bitmapInfoHeader.biClrImportant=0;
-  bitmapInfoHeader.biClrUsed=0;
-  bitmapInfoHeader.biCompression=0;
-  bitmapInfoHeader.biWidth=dimx;
-  bitmapInfoHeader.biHeight=dimy;
-  long bytes=bitmapInfoHeader.biBitCount/8;
-  bitmapInfoHeader.biPlanes=1;
-  bitmapInfoHeader.biSize=sizeof(BITMAPINFOHEADER);
-  bitmapInfoHeader.biSizeImage=bitmapInfoHeader.biHeight*bitmapInfoHeader.biWidth*bytes;
-  bitmapInfoHeader.biXPelsPerMeter=1;
-  bitmapInfoHeader.biYPelsPerMeter=1;
-
-  // write the bitmap information header
-  fwrite(&bitmapInfoHeader, sizeof(BITMAPINFOHEADER), 1, filePtr);
-
-  // swap the R and B values to get RGB since the bitmap color format is in BGR
-  for (imageIdx = 0; imageIdx < bitmapInfoHeader.biSizeImage; imageIdx+=bytes)
-  {
-    tempRGB = bitmapImage[imageIdx];
-    bitmapImage[imageIdx] = bitmapImage[imageIdx + 2];
-    bitmapImage[imageIdx + 2] = tempRGB;
-  }
-
-  // read in the bitmap image data
-  fwrite(bitmapImage, 1, bitmapInfoHeader.biSizeImage, filePtr);
-
-  // close the file
-  fclose(filePtr);
-#endif
-  */
 }
 
 bool enablerst::prep_for_image_export()

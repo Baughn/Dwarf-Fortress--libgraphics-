@@ -22,6 +22,7 @@
 
 using std::vector;
 using std::pair;
+using std::map;
 
 #include "svector.h"
 #include "endian.h"
@@ -357,16 +358,41 @@ enum render_phase {
 // From graphics.cpp
 void render_things(enum render_phase);
 
+// A tuple of everything that tile rendering depends on
+struct texture_fullid {
+  int texpos;
+  float r, g, b;
+  float br, bg, bb;
+
+  bool operator< (struct texture_fullid other) const {
+    if (texpos != other.texpos) return texpos < other.texpos;
+    if (r != other.r) return r < other.r;
+    if (g != other.g) return g < other.g;
+    if (b != other.b) return b < other.b;
+    if (br != other.br) return br < other.br;
+    if (bg != other.bg) return br < other.br;
+    return bb < other.bb;
+  }
+};
+
 class gridrectst
 {
   friend class enablerst;
 
+  void render_gl(render_phase, bool clear);
+  void render_2d(bool clear);
+
+  // A tile cache for 2D mode
+  map<texture_fullid, SDL_Surface*> tile_cache;
+  SDL_Surface *tile_cache_lookup(texture_fullid& id);
+
+  
  public:
   long id;
 
   //FUNCTIONS
   static gridrectst *create(long newdimx,long newdimy);
-  void render(enum render_phase, bool clear);
+  void render(render_phase, bool clear);
 
   //THE DIMENSIONS
   long dimx,dimy;
@@ -885,7 +911,7 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
   char buffer_draw;
 
   // Tile-map used by set_tile
-  std::map<int,struct tile> tiles;
+  map<int,struct tile> tiles;
   // Vertex and texture arrays generated from above map
   GLfloat *tile_vertices;
   GLfloat *tile_texcoords;
@@ -900,6 +926,7 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
 
  public:
   bool RunningMacro;
+  bool use_opengl; // If false, everything goes via SDL 2D output instead
 
   void reset_gl(GL_Window* window);
   void reset_gl()
