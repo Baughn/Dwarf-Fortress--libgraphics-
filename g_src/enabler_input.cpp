@@ -354,16 +354,26 @@ void enabler_inputst::clear_input() {
   pressed_keys.clear();
 }
 
-list<InterfaceKey> enabler_inputst::get_input() {
+list<set<InterfaceKey> > enabler_inputst::get_input() {
   Time now = SDL_GetTicks();
 
   // We walk the timeline, returning all events scheduled in the
-  // past/present, and inserting repeats in the future as appropriate
-  list<InterfaceKey> input;
+  // past/present, and inserting repeats in the future as appropriate.
+  // All events that occur simultaneously are inserted in the same set.
+  list<set<InterfaceKey> > input;
+  set<InterfaceKey> current;
+  Time current_now = 0;
   map<Time,Event>::iterator it = timeline.begin();
   while (it != timeline.end() && it->first <= now) {
+    if (it->first != current_now) {
+      if (current.size()) {
+        input.push_back(current);
+        current.clear();
+      }
+      current_now = it->first;
+    }
     Event ev = it->second;
-    input.push_back(ev.k);
+    current.insert(ev.k);
     // Schedule a repeat
     switch (ev.r) {
     case REPEAT_NOT:
@@ -380,9 +390,12 @@ list<InterfaceKey> enabler_inputst::get_input() {
     map<Time,Event>::iterator it2 = it++;
     timeline.erase(it2);
   }
+  // And insert the last one.
+  if (current.size())
+    input.push_back(current);
   // if (input.size()) {
   //   cout << "Returning " << input.size() << " pieces of input:\n";
-  //   list<InterfaceKey>::iterator it;
+  //   set<InterfaceKey>::iterator it;
   //   for (it = input.begin(); it != input.end(); ++it)
   //     cout << "    " << GetKeyDisplay(*it) << ": " << GetBindingDisplay(*it) << endl;
   // }

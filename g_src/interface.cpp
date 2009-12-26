@@ -40,6 +40,7 @@ using std::string;
 #include "interface.h"
 
 #include <list>
+#include <set>
 
 void dwarf_help_routine();
 void dwarf_end_announcements();
@@ -59,6 +60,8 @@ inline void CHECK_ERR(int err, const char* msg)
 
 using std::fstream;
 using std::ios;
+using std::list;
+using std::set;
 
 extern interfacest gview;
 extern enablerst enabler;
@@ -855,15 +858,14 @@ char interfacest::loop() {
     // }
 
     // Feed input
-    std::list<InterfaceKey> input = enabler.get_input();
-    std::list<InterfaceKey>::iterator it;
-    for (it = input.begin(); it != input.end(); ++it) {
-      InterfaceKey key = *it;
-      switch (key) {
-      case INTERFACEKEY_TOGGLE_FULLSCREEN:
+    list<set<InterfaceKey> > eras = enabler.get_input();
+    list<set<InterfaceKey> >::iterator era;
+    for (era = eras.begin(); era != eras.end(); ++era) {
+      currentscreen->feed(*era);
+      if (era->count(INTERFACEKEY_TOGGLE_FULLSCREEN)) {
         enabler.toggle_fullscreen();
-        break;
-      case INTERFACEKEY_OPTIONS: {
+      }
+      if (era->count(INTERFACEKEY_OPTIONS)) {
         //PEEL BACK ALL SCREENS TO THE CURRENT OPTION SCREEN IF THERE IS ONE
         //UNLESS THERE IS A BLOCKING SCREEN LIKE THE REGION MAKER
         viewscreenst *opscreen=&view;
@@ -884,25 +886,20 @@ char interfacest::loop() {
         }
         //NEED A NEW OPTIONS SCREEN?
         if(opscreen==NULL) dwarf_option_screen();
-        break;
-      } //option screen
-        //DO MOVIE COMMANDS
-      case INTERFACEKEY_MOVIES:
-        if(currentscreen->movies_okay())use_movie_input();
-        break;
-      case INTERFACEKEY_HELP: currentscreen->help();break;
-      case INTERFACEKEY_ZOOM_IN: zoom_display(zoom_in);break;
-      case INTERFACEKEY_ZOOM_OUT: zoom_display(zoom_out);break;
-      case INTERFACEKEY_ZOOM_TOGGLE: zoom_display(zoom_toggle_gridzoom);break;
-      case INTERFACEKEY_ZOOM_RESET: zoom_display(zoom_reset);break;
-        // And everything else gets the input.
-      default:
-        
-        // ...right. FIXME.
-        std::set<InterfaceKey> s;
-        s.insert(key);
-        currentscreen->feed(s);
       }
+      //DO MOVIE COMMANDS
+      if (era->count(INTERFACEKEY_MOVIES))
+        if(currentscreen->movies_okay()) use_movie_input();
+      if (era->count(INTERFACEKEY_HELP))
+        currentscreen->help();
+      if (era->count(INTERFACEKEY_ZOOM_IN))
+        zoom_display(zoom_in);
+      if (era->count(INTERFACEKEY_ZOOM_OUT))
+        zoom_display(zoom_out);
+      if (era->count(INTERFACEKEY_ZOOM_TOGGLE))
+        zoom_display(zoom_toggle_gridzoom);
+      if (era->count(INTERFACEKEY_ZOOM_RESET))
+        zoom_display(zoom_reset);
     }
     break;
   } // case INTERFACE_BREAKDOWN_NONE
