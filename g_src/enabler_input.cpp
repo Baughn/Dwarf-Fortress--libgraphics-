@@ -326,22 +326,28 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
     }
   } else {
     set<InterfaceKey>::iterator key;
+    // As policy, when the user hits a non-repeating key we want to
+    // also cancel any keys that are currently repeating. This allows
+    // for easy recovery from stuck keys.
+    //
+    // Unfortunately, each key may be bound to multiple
+    // commands. So, lacking information on which commands are
+    // accepted at the moment, there is no way we can know if it's
+    // okay to cancel repeats unless /all/ the bindings are
+    // non-repeating.
     for (key = keys.begin(); key != keys.end(); ++key) {
       Event e = {key_repeat(*key), *key};
       timeline.insert(pair<Time,Event>(now,e));
-      // As policy, when the user hits a non-repeating key we also
-      // cancel any keys that are currently repeating. This allows for
-      // easy recovery from stuck keys.
-      if (e.r == REPEAT_NOT) {
-        // Set everything on the timeline to non-repeating
-        multimap<Time,Event>::iterator it;
-        for (it = timeline.begin(); it != timeline.end(); ++it) {
-          it->second.r = REPEAT_NOT;
-        }
-      }
     }
+    // if (cancel_ok) {
+    //   // Set everything on the timeline to non-repeating
+    //   multimap<Time,Event>::iterator it;
+    //   for (it = timeline.begin(); it != timeline.end(); ++it) {
+    //     it->second.r = REPEAT_NOT;
+    //   }
   }
 }
+
 
 void enabler_inputst::clear_input() {
   timeline.clear();
