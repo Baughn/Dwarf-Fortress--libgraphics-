@@ -76,14 +76,6 @@ static int glerrorcount = 0;
 # define deputs(str)
 #endif
 
-
-#ifndef MAX
-	#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-#endif
-#ifndef MIN
-	#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#endif
-
 // Yes, the profusion of global variables below is a bad thing. The reason they
 // exist is because there is only one, global gridrectst, but it likes to
 // pretend otherwise, and zooming is currently a global action. In other words,

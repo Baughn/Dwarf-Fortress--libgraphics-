@@ -695,5 +695,13 @@ void initst::begin()
 	enabler.textures.load_multi_pdim(small_font,font.small_font_texpos,16,16,true,&font.small_font_dispx,&font.small_font_dispy);
 	enabler.textures.load_multi_pdim(large_font,font.large_font_texpos,16,16,true,&font.large_font_dispx,&font.large_font_dispy);
 
+        // compute the desired window size, if set to auto
+        if (enabler.desired_windowed_width < MAX_GRID_X && enabler.desired_windowed_height < MAX_GRID_Y) {
+          int dimx = MAX(enabler.desired_windowed_width,80);
+          int dimy = MAX(enabler.desired_windowed_height,25);
+          enabler.desired_windowed_width = font.small_font_dispx * dimx;
+          enabler.desired_windowed_height = font.small_font_dispy * dimy;
+        }
+
 	gps.prepare_rect(1);
 }
