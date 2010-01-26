@@ -3,7 +3,7 @@
 
 #include "ViewBase.h"
 
-#include <SDL.h>
+#include <SDL/SDL.h>
 #include <map>
 #include <string>
 

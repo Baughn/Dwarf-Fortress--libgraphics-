@@ -151,6 +151,8 @@ void viewscreen_movieplayerst::logic()
 
 void viewscreen_movieplayerst::render()
 {
+	if(breakdownlevel!=INTERFACE_BREAKDOWN_NONE)return;
+
 	if(!quit_if_no_play)
 		{
 		if(editing)drawborder(NULL);

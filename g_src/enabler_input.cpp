@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <SDL/SDL.h>
 #include <map>
 #include <iostream>
 #include <algorithm>
@@ -363,7 +363,7 @@ list<set<InterfaceKey> > enabler_inputst::get_input() {
   list<set<InterfaceKey> > input;
   set<InterfaceKey> current;
   Time current_now = 0;
-  map<Time,Event>::iterator it = timeline.begin();
+  multimap<Time,Event>::iterator it = timeline.begin();
   while (it != timeline.end() && it->first <= now) {
     if (it->first != current_now) {
       if (current.size()) {
@@ -387,7 +387,7 @@ list<set<InterfaceKey> > enabler_inputst::get_input() {
       break;
     }
     // Delete the event from the timeline and iterate
-    map<Time,Event>::iterator it2 = it++;
+	multimap<Time,Event>::iterator it2 = it++;
     timeline.erase(it2);
   }
   // And insert the last one.
