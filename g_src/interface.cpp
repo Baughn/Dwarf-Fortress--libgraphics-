@@ -859,49 +859,59 @@ char interfacest::loop() {
     //   handlemovie(0);
     // }
 
-    // Feed input
-    list<set<InterfaceKey> > eras = enabler.get_input();
-    list<set<InterfaceKey> >::iterator era;
-    for (era = eras.begin(); era != eras.end(); ++era) {
-      currentscreen->feed(*era);
-      if (era->count(INTERFACEKEY_TOGGLE_FULLSCREEN)) {
-        enabler.toggle_fullscreen();
+    if (flag & INTERFACEFLAG_RETAIN_NONZERO_INPUT) {
+      flag&=~INTERFACEFLAG_RETAIN_NONZERO_INPUT;
+      set<InterfaceKey> dummy;
+      currentscreen->feed(dummy);
+    } else {
+      // Feed input
+      list<set<InterfaceKey> > eras = enabler.get_input();
+      if (!eras.size()) {
+        set<InterfaceKey> dummy;
+        currentscreen->feed(dummy);
       }
-      if (era->count(INTERFACEKEY_OPTIONS)) {
-        //PEEL BACK ALL SCREENS TO THE CURRENT OPTION SCREEN IF THERE IS ONE
-        //UNLESS THERE IS A BLOCKING SCREEN LIKE THE REGION MAKER
-        viewscreenst *opscreen=&view;
-        while(opscreen!=NULL) {
-          if(opscreen->is_option_screen()) {
-            opscreen->option_key_pressed=1;
-            while(opscreen->child!=NULL) {
-              if(opscreen->child->is_option_screen()==2) {
-                opscreen->child->option_key_pressed=1;
-                opscreen->option_key_pressed=0;
-                break;
-              }
-              removescreen(opscreen->child);
-            }
-            break;
-          }
-          opscreen = opscreen->child;
+      list<set<InterfaceKey> >::iterator era;
+      for (era = eras.begin(); era != eras.end(); ++era) {
+        currentscreen->feed(*era);
+        if (era->count(INTERFACEKEY_TOGGLE_FULLSCREEN)) {
+          enabler.toggle_fullscreen();
         }
-        //NEED A NEW OPTIONS SCREEN?
-        if(opscreen==NULL) dwarf_option_screen();
+        if (era->count(INTERFACEKEY_OPTIONS)) {
+          //PEEL BACK ALL SCREENS TO THE CURRENT OPTION SCREEN IF THERE IS ONE
+          //UNLESS THERE IS A BLOCKING SCREEN LIKE THE REGION MAKER
+          viewscreenst *opscreen=&view;
+          while(opscreen!=NULL) {
+            if(opscreen->is_option_screen()) {
+              opscreen->option_key_pressed=1;
+              while(opscreen->child!=NULL) {
+                if(opscreen->child->is_option_screen()==2) {
+                  opscreen->child->option_key_pressed=1;
+                  opscreen->option_key_pressed=0;
+                  break;
+                }
+                removescreen(opscreen->child);
+              }
+              break;
+            }
+            opscreen = opscreen->child;
+          }
+          //NEED A NEW OPTIONS SCREEN?
+          if(opscreen==NULL) dwarf_option_screen();
+        }
+        //DO MOVIE COMMANDS
+        if (era->count(INTERFACEKEY_MOVIES))
+          if(currentscreen->movies_okay()) use_movie_input();
+        if (era->count(INTERFACEKEY_HELP))
+          currentscreen->help();
+        if (era->count(INTERFACEKEY_ZOOM_IN))
+          zoom_display(zoom_in);
+        if (era->count(INTERFACEKEY_ZOOM_OUT))
+          zoom_display(zoom_out);
+        if (era->count(INTERFACEKEY_ZOOM_TOGGLE))
+          zoom_display(zoom_toggle_gridzoom);
+        if (era->count(INTERFACEKEY_ZOOM_RESET))
+          zoom_display(zoom_reset);
       }
-      //DO MOVIE COMMANDS
-      if (era->count(INTERFACEKEY_MOVIES))
-        if(currentscreen->movies_okay()) use_movie_input();
-      if (era->count(INTERFACEKEY_HELP))
-        currentscreen->help();
-      if (era->count(INTERFACEKEY_ZOOM_IN))
-        zoom_display(zoom_in);
-      if (era->count(INTERFACEKEY_ZOOM_OUT))
-        zoom_display(zoom_out);
-      if (era->count(INTERFACEKEY_ZOOM_TOGGLE))
-        zoom_display(zoom_toggle_gridzoom);
-      if (era->count(INTERFACEKEY_ZOOM_RESET))
-        zoom_display(zoom_reset);
     }
     break;
   } // case INTERFACE_BREAKDOWN_NONE
