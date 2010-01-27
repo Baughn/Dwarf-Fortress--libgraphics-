@@ -195,7 +195,8 @@ static void resize_window(int width, int height) {
 }
 
 void zoom_display(enum zoom_commands command) {
-  zoom_command_buffer.push(command);
+  if (enabler.use_opengl)
+    zoom_command_buffer.push(command);
 }
 
 // Delayed because it's /called/ delayed, not because it delays

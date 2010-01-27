@@ -189,14 +189,14 @@ void enabler_inputst::load_keybindings(const string &file) {
           } // Mouse buttons
           else if (boost::regex_search(*line, match, button)) {
             matcher.type = type_button;
-            string str = match[1];
+            string str = match[2];
             matcher.button = atoi(str.c_str());
             if (matcher.button) {
               matcher.mod  = atoi(string(match[1]).c_str());
               keymap.insert(pair<EventMatch,InterfaceKey>(matcher, (InterfaceKey)binding));
               update_keydisplay(binding, "Button " + match[2]);
             } else {
-              cout << "Broken button (should be a number): " << *line << endl;
+              cout << "Broken button (should be [BUTTON:#:#]): " << *line << endl;
             }
             ++line;
           } else {
