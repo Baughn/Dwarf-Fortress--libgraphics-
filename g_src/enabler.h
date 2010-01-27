@@ -417,6 +417,8 @@ class gridrectst
   long dispx,dispy;
   char black_space;
 
+  void dirty(int x, int y, int w, int h); // Dirty a rectangle so it'll be redrawn
+  
   //THREE-DIMENSIONAL DISPLAY
   float tri[TRIMAX][3];
   float tricol[TRIMAX][4];

@@ -102,19 +102,22 @@ static bool skip_gframe = true;
 double old_grid_zoom_req;
 bool old_zoom_grid;
 
-// GL viewport used for rendering, for mouse calculations
+// Viewport used for rendering, for mouse calculations
 static int origin_x, origin_y, size_x, size_y;
 
 // Translates a window position to a grid location. Returns -1 for
 // window locations outside the grid.
 pair<int,int> window_to_grid(int x, int y) {
-  // Translate to grid coordinates
-  if (x < origin_x || y < origin_y || x >= origin_x + size_x || y >= origin_y + size_y)
-    return std::make_pair(-1,-1);
-  double rel_x = (x - origin_x) / (double)size_x;
-  double rel_y = (y - origin_y) / (double)size_y;
-  return std::make_pair(rel_x * init.display.grid_x,
-                        rel_y * init.display.grid_y);
+  pair<int,int> ret;
+  if (x < origin_x || x >= origin_x + size_x)
+    ret.first = -1;
+  else
+    ret.first = ((x - origin_x) / (double)size_x) * init.display.grid_x;
+  if (y < origin_y || y >= origin_y + size_y)
+    ret.second = -1;
+  else
+    ret.second = ((y - origin_y) / (double)size_y) * init.display.grid_y;
+  return ret;
 }
 
 
@@ -282,8 +285,8 @@ static void eventLoop(GL_Window window)
         // Disable mouse if it's been long enough
         if (mouse_lastused + 5000 < enabler.now) {
           if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
-            //       hide the mouse picture
-            //       enabler.set_tile(0, TEXTURE_MOUSE, enabler.mouse_x, enabler.mouse_y);
+            // hide the mouse picture
+            enabler.set_tile(0, TEXTURE_MOUSE, enabler.mouse_x, enabler.mouse_y);
           }
           SDL_ShowCursor(SDL_DISABLE);
         }
@@ -347,9 +350,8 @@ static void eventLoop(GL_Window window)
             }
             mouse_lastused = enabler.now;
             if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
-              //        turn on mouse picture
-              //        enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
-              SDL_ShowCursor(SDL_DISABLE);
+              // turn on mouse picture
+              enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
             } else SDL_ShowCursor(SDL_ENABLE);
           } else {
             enabler.oldmouse_x = -1;
@@ -878,18 +880,42 @@ SDL_Surface *gridrectst::tile_cache_lookup(texture_fullid &id) {
   }
 }
 
+// Reset the partial-printing colors for all tiles underlying a
+// certain rectangle, so they'll be redrawn
+void gridrectst::dirty(int x, int y, int w, int h) {
+  pair<int,int> ul = window_to_grid(x,y),
+    lr = window_to_grid(x+w, y+h);
+  if (lr.first < 0)  lr.first  = dimx; // Right edge
+  if (lr.second < 0) lr.second = dimy; // Bottom edge
+  for (int posx = ul.first; posx <= lr.first; posx++) {
+    for (int posy = ul.second; posy <= lr.second; posy++) {
+      int tile = posx * dimy + posy;
+      s_buffer_texpos[tile] = -1;
+    }
+  }
+}
+
 void gridrectst::render_2d(bool clear) {
   SDL_Surface *screen = SDL_GetVideoSurface();
 
   if (clear)
     SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
+
+  // Figure out a viewport. Zooming is imposible, so we're always at
+  // 1:1, with black_space.
+  size_x = dispx * dimx;
+  size_y = dispy * dimy;
+  int black_x = screen->w - size_x,
+    black_y = screen->h - size_y;
+  origin_x = black_x > 0 ? black_x / 2 : 0;
+  origin_y = black_y > 0 ? black_y / 2 : 0;
   
   // Render the grid
   int tile = 0;
-  int posx = 0, posy = 0;
+  int posx = origin_x, posy = origin_y;
   SDL_Rect dst; dst.w = dispx; dst.h = dispy;
   for (int x = 0; x < dimx; x++, posx += dispx) {
-    posy = 0;
+    posy = origin_y;
     for (int y = 0; y < dimy; y++, tile++, posy += dispy) {
       long texpos = buffer_texpos[tile];
       if (texpos == -1) continue; // Tile not dirty
@@ -1623,51 +1649,66 @@ void enablerst::render_tiles(enum render_phase phase, bool clear)
       glTexCoordPointer(2, GL_FLOAT, 0, tile_texcoords);
       glDrawArrays(GL_QUADS, 0, tiles.size() * 4);
     } else {
-      // TODO: Draw tiles for 2D mode
+      // Draw tiles for 2D mode. This is harder than it sounds,
+      // because we have to dirty the underlying tiles so they're
+      // redrawn next cycle, or we get mouse droppings.
+      map<int,struct tile>::iterator it;
+      for (it = tiles.begin(); it != tiles.end(); ++it) {
+        // Draw the image
+        SDL_Surface *tex = textures.get_texture_data(it->second.tex);
+        SDL_Rect pos; pos.x = it->second.x; pos.y = it->second.y;
+        SDL_BlitSurface(tex, NULL, SDL_GetVideoSurface(), &pos);
+        // Dirty the underlying tiles
+        gridrect[0]->dirty(pos.x, pos.y, tex->w, tex->h);
+      }
     }
   }
 }
 
-// Toady: Yep, this had a lot more parameters as add_tile. You weren't using them.
 void enablerst::set_tile(long tex, int id, int x, int y) {
-  if (tex < 0 || textures.get_texture_data(tex) == NULL) {
+  if (tex <= 0 || textures.get_texture_data(tex) == NULL) {
     tiles.erase(id);
     return;
   }
-//   std::cout << tex << " " << id << "\n";
+  
   struct tile new_data;
   new_data.x = x;
   new_data.y = y;
   new_data.tex = tex;
+  int old_tex = tiles.count(id) ? tiles[id].tex : 0;
   tiles[id] = new_data;
-  // (Re)generate vertex and texture arrays for all tiles
-  // FIXME: This is overly expensive. Or it would be, if there was more than one tile
-  // at a time. You get the idea, though; just try not to regenerate /everything/
-  // /every/ time.
-  if (tile_vertices) delete[] tile_vertices;
-  if (tile_texcoords) delete[] tile_texcoords;
-  tile_vertices = new GLfloat[8*tiles.size()];
-  tile_texcoords = new GLfloat[8*tiles.size()];
-  GLfloat *tv = tile_vertices, *tt = tile_texcoords;
-  for (int i=0; i < tiles.size(); i++) {
-    struct tile t = tiles[i];
-    SDL_Surface *s = textures.get_texture_data(t.tex);
-    *(tv++) = t.x; // NW
-    *(tv++) = t.y;
-    *(tv++) = t.x + s->w; // NE
-    *(tv++) = t.y;
-    *(tv++) = t.x + s->w; // SE
-    *(tv++) = t.y + s->h;
-    *(tv++) = t.x; // SW
-    *(tv++) = t.y + s->h;
-    *(tt++) = textures.gl_texpos[t.tex].left; // NW
-    *(tt++) = textures.gl_texpos[t.tex].top;
-    *(tt++) = textures.gl_texpos[t.tex].right; // NE
-    *(tt++) = textures.gl_texpos[t.tex].top;
-    *(tt++) = textures.gl_texpos[t.tex].right; // SE
-    *(tt++) = textures.gl_texpos[t.tex].bottom;
-    *(tt++) = textures.gl_texpos[t.tex].left; // SW
-    *(tt++) = textures.gl_texpos[t.tex].bottom;
+
+  // If in 2D, that's all that needs to be done. If using opengl..
+  if (use_opengl && old_tex != tex) {
+    // (Re)generate vertex and texture arrays for all tiles
+    // FIXME: This is overly expensive. Or it would be, if there was more than one tile
+    // at a time. You get the idea, though; just try not to regenerate /everything/
+    // /every/ time.
+    if (tile_vertices) delete[] tile_vertices;
+    if (tile_texcoords) delete[] tile_texcoords;
+    tile_vertices = new GLfloat[8*tiles.size()];
+    tile_texcoords = new GLfloat[8*tiles.size()];
+    GLfloat *tv = tile_vertices, *tt = tile_texcoords;
+    for (int i=0; i < tiles.size(); i++) {
+      struct tile t = tiles[i];
+      SDL_Surface *s = textures.get_texture_data(t.tex);
+      *(tv++) = t.x; // NW
+      *(tv++) = t.y;
+      *(tv++) = t.x + s->w; // NE
+      *(tv++) = t.y;
+      *(tv++) = t.x + s->w; // SE
+      *(tv++) = t.y + s->h;
+      *(tv++) = t.x; // SW
+      *(tv++) = t.y + s->h;
+      *(tt++) = textures.gl_texpos[t.tex].left; // NW
+      *(tt++) = textures.gl_texpos[t.tex].top;
+      *(tt++) = textures.gl_texpos[t.tex].right; // NE
+      *(tt++) = textures.gl_texpos[t.tex].top;
+      *(tt++) = textures.gl_texpos[t.tex].right; // SE
+      *(tt++) = textures.gl_texpos[t.tex].bottom;
+      *(tt++) = textures.gl_texpos[t.tex].left; // SW
+      *(tt++) = textures.gl_texpos[t.tex].bottom;
+    }
   }
 }
 
