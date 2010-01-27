@@ -225,6 +225,16 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
   //   that raw keycode is released.
   // - Generally speaking, when modifiers are hit/released, we discard those
   //   events and generate press/release events for all pressed non-modifiers.
+  // - It's possible for multiple events to be generated on the same tick.
+  //   However, in reality they're distinct keypresses, and not simultaneous at
+  //   all. We fix this up by making sure 'now' is always later than the last time.
+
+  static Uint32 last_now = 0;
+  if (now <= last_now) {
+    last_now = now++;
+  } else {
+    last_now = now;
+  }
 
   list<KeyEvent> synthetics;
   set<EventMatch>::iterator pkit;
@@ -309,9 +319,6 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
   // haven't repeated yet (which are on their first cycle); those we
   // just set to non-repeating.
 
-  // if (e.match.type == type_unicode &&
-  // !e.release) cout << "Unicode input: " << (char)e.match.unicode <<
-  // endl;
   set<InterfaceKey> keys = key_translation(e);
   if (e.release) {
     multimap<Time,Event>::iterator it = timeline.begin();
