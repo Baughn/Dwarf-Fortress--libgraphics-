@@ -147,17 +147,6 @@ void viewscreen_movieplayerst::logic()
 		gps.prepare_rect(1);
 		return;
 		}
-}
-
-void viewscreen_movieplayerst::render()
-{
-	if(breakdownlevel!=INTERFACE_BREAKDOWN_NONE)return;
-
-	if(!quit_if_no_play)
-		{
-		if(editing)drawborder(NULL);
-		else drawborder("  Moving Records  ");
-		}
 
 	//LOAD A MOVIE BUFFER BY BUFFER
 	if(is_playing)
@@ -192,21 +181,11 @@ void viewscreen_movieplayerst::render()
 #endif
 
 			//PRINT THE NEXT FRAME AND ADVANCE POSITION
-			drawborder(NULL,-1);
-			
 			short x2,y2;
 			for(x2=0;x2<init.display.grid_x;x2++)
 				{
 				for(y2=0;y2<init.display.grid_y;y2++)
 					{
-					gps.locate(y2,x2);
-
-					gps.changecolor((gview.supermoviebuffer[gview.supermovie_pos+half_frame_size] & 7),
-						(gview.supermoviebuffer[gview.supermovie_pos+half_frame_size] & 56)>>3,
-						(gview.supermoviebuffer[gview.supermovie_pos+half_frame_size] & 64));
-
-					gps.addchar(gview.supermoviebuffer[gview.supermovie_pos]);
-
 					gview.supermovie_pos++;
 					}
 				}
@@ -232,6 +211,46 @@ void viewscreen_movieplayerst::render()
 				gps.prepare_rect(1);
 				}
 			}
+		}
+}
+
+void viewscreen_movieplayerst::render()
+{
+	if(breakdownlevel!=INTERFACE_BREAKDOWN_NONE)return;
+	
+	if(!is_playing&&is_forced_play)return;
+
+	if(!quit_if_no_play)
+		{
+		if(editing)drawborder(NULL);
+		else drawborder("  Moving Records  ");
+		}
+
+	//LOAD A MOVIE BUFFER BY BUFFER
+	if(is_playing)
+		{
+		long half_frame_size=init.display.grid_x*init.display.grid_y;
+
+		//PRINT THE NEXT FRAME AND ADVANCE POSITION
+		drawborder(NULL,-1);
+		
+		short x2,y2;
+		for(x2=0;x2<init.display.grid_x;x2++)
+			{
+			for(y2=0;y2<init.display.grid_y;y2++)
+				{
+				gps.locate(y2,x2);
+
+				gps.changecolor((gview.supermoviebuffer[gview.supermovie_pos+half_frame_size] & 7),
+					(gview.supermoviebuffer[gview.supermovie_pos+half_frame_size] & 56)>>3,
+					(gview.supermoviebuffer[gview.supermovie_pos+half_frame_size] & 64));
+
+				gps.addchar(gview.supermoviebuffer[gview.supermovie_pos]);
+
+				gview.supermovie_pos++;
+				}
+			}
+		gview.supermovie_pos-=half_frame_size;//RETURN TO LAST FRAME
 		}
 	else if(loading)
 		{
@@ -861,15 +880,9 @@ char interfacest::loop() {
 
     if (flag & INTERFACEFLAG_RETAIN_NONZERO_INPUT) {
       flag&=~INTERFACEFLAG_RETAIN_NONZERO_INPUT;
-      set<InterfaceKey> dummy;
-      currentscreen->feed(dummy);
     } else {
       // Feed input
       list<set<InterfaceKey> > eras = enabler.get_input();
-      if (!eras.size()) {
-        set<InterfaceKey> dummy;
-        currentscreen->feed(dummy);
-      }
       list<set<InterfaceKey> >::iterator era;
       for (era = eras.begin(); era != eras.end(); ++era) {
         currentscreen->feed(*era);
