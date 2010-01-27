@@ -18,8 +18,9 @@ enum Repeat {
 };
 
 struct Event {
-  Repeat r; // If REPEAT_SLOW, will be set to REPEAT_FAST next cycle.
+  Repeat r;
   InterfaceKey k;
+  int repeats; // Starts at 0, increments once per repeat
 };
 
 enum MatchType { type_unicode, type_key, type_button };

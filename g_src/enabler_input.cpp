@@ -305,19 +305,20 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
 
 void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
   // If this is a key-press event, we add it to the timeline. If it's
-  // a release, we remove any pending repeats after the current time,
-  // but not ones that are supposed to have already happened; those we
+  // a release, we remove any pending repeats, but not those that
+  // haven't repeated yet (which are on their first cycle); those we
   // just set to non-repeating.
-  // (Naturally, all presses /after/ the current time are /repeats/..)
-  // if (e.match.type == type_unicode && !e.release)
-  //   cout << "Unicode input: " << (char)e.match.unicode << endl;
+
+  // if (e.match.type == type_unicode &&
+  // !e.release) cout << "Unicode input: " << (char)e.match.unicode <<
+  // endl;
   set<InterfaceKey> keys = key_translation(e);
   if (e.release) {
     multimap<Time,Event>::iterator it = timeline.begin();
     while (it != timeline.end()) {
       multimap<Time,Event>::iterator el = it++;
       if (keys.count(el->second.k)) {
-        if (el->first >= now) {
+        if (el->second.repeats) {
           timeline.erase(el);
         } else {
           el->second.r = REPEAT_NOT;
@@ -336,7 +337,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
     // okay to cancel repeats unless /all/ the bindings are
     // non-repeating.
     for (key = keys.begin(); key != keys.end(); ++key) {
-      Event e = {key_repeat(*key), *key};
+      Event e = {key_repeat(*key), *key, 0};
       timeline.insert(pair<Time,Event>(now,e));
     }
     // if (cancel_ok) {
@@ -375,11 +376,11 @@ list<set<InterfaceKey> > enabler_inputst::get_input() {
     Event ev = it->second;
     current.insert(ev.k);
     // Schedule a repeat
+    ev.repeats++;
     switch (ev.r) {
     case REPEAT_NOT:
       break;
     case REPEAT_SLOW:
-      ev.r = REPEAT_FAST;
       timeline.insert(pair<Time,Event>(it->first + init.input.hold_time, ev));
       break;
     case REPEAT_FAST:
@@ -387,18 +388,24 @@ list<set<InterfaceKey> > enabler_inputst::get_input() {
       break;
     }
     // Delete the event from the timeline and iterate
-	multimap<Time,Event>::iterator it2 = it++;
+    multimap<Time,Event>::iterator it2 = it++;
     timeline.erase(it2);
   }
   // And insert the last one.
   if (current.size())
     input.push_back(current);
-  // if (input.size()) {
-  //   cout << "Returning " << input.size() << " pieces of input:\n";
-  //   set<InterfaceKey>::iterator it;
-  //   for (it = input.begin(); it != input.end(); ++it)
-  //     cout << "    " << GetKeyDisplay(*it) << ": " << GetBindingDisplay(*it) << endl;
-  // }
+#ifdef DEBUG
+  if (input.size()) {
+    cout << "Returning " << input.size() << " sets of input:\n";
+    list<set<InterfaceKey> >::iterator it;
+    for (it = input.begin(); it != input.end(); ++it) {
+      cout << " " << it->size() << ":\n";
+      set<InterfaceKey>::iterator it2;
+      for (it2 = it->begin(); it2 != it->end(); ++it2)
+        cout << "    " << GetKeyDisplay(*it2) << ": " << GetBindingDisplay(*it2) << endl;
+    }
+  }
+#endif
   return input;
 }
 
