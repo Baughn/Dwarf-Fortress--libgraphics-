@@ -293,9 +293,25 @@ static void eventLoop(GL_Window window)
         }
       case SDL_KEYUP:
       case SDL_QUIT:
+        enabler.add_input(event, now);
+        break;
       case SDL_MOUSEBUTTONDOWN:
       case SDL_MOUSEBUTTONUP:
-        enabler.add_input(event, now);
+        if (!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
+          int isdown = (event.type == SDL_MOUSEBUTTONDOWN);
+          if (event.button.button == SDL_BUTTON_LEFT) {
+            enabler.mouse_lbut = isdown;
+            enabler.mouse_lbut_down = isdown;
+            if (!isdown)
+              enabler.mouse_lbut_lift = 0;
+          } else if (event.button.button == SDL_BUTTON_RIGHT) {
+            enabler.mouse_rbut = isdown;
+            enabler.mouse_rbut_down = isdown;
+            if (!isdown)
+              enabler.mouse_rbut_lift = 0;
+          } else
+            enabler.add_input(event, now);
+        }
         break;
       case SDL_ACTIVEEVENT:
         enabler.clear_input();
