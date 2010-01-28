@@ -878,18 +878,19 @@ char interfacest::loop() {
     //   handlemovie(0);
     // }
 
-    if (flag & INTERFACEFLAG_RETAIN_NONZERO_INPUT) {
-      flag&=~INTERFACEFLAG_RETAIN_NONZERO_INPUT;
-    } else {
-      // Feed input
-      list<set<InterfaceKey> > eras = enabler.get_input();
-      list<set<InterfaceKey> >::iterator era;
-      for (era = eras.begin(); era != eras.end(); ++era) {
-        currentscreen->feed(*era);
-        if (era->count(INTERFACEKEY_TOGGLE_FULLSCREEN)) {
+    for (;;) {
+      if (flag & INTERFACEFLAG_RETAIN_NONZERO_INPUT) {
+        flag&=~INTERFACEFLAG_RETAIN_NONZERO_INPUT;
+        break;
+      } else {
+        // Feed input
+        set<InterfaceKey> era = enabler.get_input();
+        if (era.size() == 0) break;
+        currentscreen->feed(era);
+        if (era.count(INTERFACEKEY_TOGGLE_FULLSCREEN)) {
           enabler.toggle_fullscreen();
         }
-        if (era->count(INTERFACEKEY_OPTIONS)) {
+        if (era.count(INTERFACEKEY_OPTIONS)) {
           //PEEL BACK ALL SCREENS TO THE CURRENT OPTION SCREEN IF THERE IS ONE
           //UNLESS THERE IS A BLOCKING SCREEN LIKE THE REGION MAKER
           viewscreenst *opscreen=&view;
@@ -912,17 +913,17 @@ char interfacest::loop() {
           if(opscreen==NULL) dwarf_option_screen();
         }
         //DO MOVIE COMMANDS
-        if (era->count(INTERFACEKEY_MOVIES))
+        if (era.count(INTERFACEKEY_MOVIES))
           if(currentscreen->movies_okay()) use_movie_input();
-        if (era->count(INTERFACEKEY_HELP))
+        if (era.count(INTERFACEKEY_HELP))
           currentscreen->help();
-        if (era->count(INTERFACEKEY_ZOOM_IN))
+        if (era.count(INTERFACEKEY_ZOOM_IN))
           zoom_display(zoom_in);
-        if (era->count(INTERFACEKEY_ZOOM_OUT))
+        if (era.count(INTERFACEKEY_ZOOM_OUT))
           zoom_display(zoom_out);
-        if (era->count(INTERFACEKEY_ZOOM_TOGGLE))
+        if (era.count(INTERFACEKEY_ZOOM_TOGGLE))
           zoom_display(zoom_toggle_gridzoom);
-        if (era->count(INTERFACEKEY_ZOOM_RESET))
+        if (era.count(INTERFACEKEY_ZOOM_RESET))
           zoom_display(zoom_reset);
       }
     }

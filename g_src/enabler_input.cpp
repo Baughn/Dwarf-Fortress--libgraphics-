@@ -362,33 +362,28 @@ void enabler_inputst::clear_input() {
   pressed_keys.clear();
 }
 
-list<set<InterfaceKey> > enabler_inputst::get_input() {
+set<InterfaceKey> enabler_inputst::get_input() {
   Time now = SDL_GetTicks();
 
-  // We walk the timeline, returning all events scheduled in the
-  // past/present, and inserting repeats in the future as appropriate.
-  // All events that occur simultaneously are inserted in the same set.
-  list<set<InterfaceKey> > input;
-  set<InterfaceKey> current;
-  Time current_now = 0;
+  // We walk the timeline, returning all events occurring
+  // simultaneously with the first event to occur, in the past, and
+  // inserting repeats as appropriate.
+  set<InterfaceKey> input;
   multimap<Time,Event>::iterator it = timeline.begin();
-  while (it != timeline.end() && it->first <= now) {
-    if (it->first != current_now) {
-      if (current.size()) {
-        input.push_back(current);
-        current.clear();
-      }
-      current_now = it->first;
-    }
+  Time current_now = it->first;
+  while (it != timeline.end() && it->first <= now && it->first == current_now) {
     Event ev = it->second;
-    current.insert(ev.k);
+    input.insert(ev.k);
     // Schedule a repeat
     ev.repeats++;
     switch (ev.r) {
     case REPEAT_NOT:
       break;
     case REPEAT_SLOW:
-      timeline.insert(pair<Time,Event>(it->first + init.input.hold_time, ev));
+      if (ev.repeats > 1)
+        timeline.insert(pair<Time,Event>(it->first + init.input.repeat_time, ev));
+      else
+        timeline.insert(pair<Time,Event>(it->first + init.input.hold_time, ev));
       break;
     case REPEAT_FAST:
       timeline.insert(pair<Time,Event>(it->first + init.input.repeat_time, ev));
@@ -398,19 +393,12 @@ list<set<InterfaceKey> > enabler_inputst::get_input() {
     multimap<Time,Event>::iterator it2 = it++;
     timeline.erase(it2);
   }
-  // And insert the last one.
-  if (current.size())
-    input.push_back(current);
 #ifdef DEBUG
   if (input.size()) {
-    cout << "Returning " << input.size() << " sets of input:\n";
-    list<set<InterfaceKey> >::iterator it;
-    for (it = input.begin(); it != input.end(); ++it) {
-      cout << " " << it->size() << ":\n";
-      set<InterfaceKey>::iterator it2;
-      for (it2 = it->begin(); it2 != it->end(); ++it2)
-        cout << "    " << GetKeyDisplay(*it2) << ": " << GetBindingDisplay(*it2) << endl;
-    }
+    cout << "Returning input:\n";
+    set<InterfaceKey>::iterator it;
+    for (it = input.begin(); it != input.end(); ++it)
+        cout << "    " << GetKeyDisplay(*it) << ": " << GetBindingDisplay(*it) << endl;
   }
 #endif
   return input;
