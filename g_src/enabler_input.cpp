@@ -370,6 +370,7 @@ set<InterfaceKey> enabler_inputst::get_input() {
   // inserting repeats as appropriate.
   set<InterfaceKey> input;
   multimap<Time,Event>::iterator it = timeline.begin();
+  if (it == timeline.end()) return input;
   Time current_now = it->first;
   while (it != timeline.end() && it->first <= now && it->first == current_now) {
     Event ev = it->second;
