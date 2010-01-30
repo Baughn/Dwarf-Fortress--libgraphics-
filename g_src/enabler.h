@@ -370,7 +370,7 @@ struct texture_fullid {
     if (g != other.g) return g < other.g;
     if (b != other.b) return b < other.b;
     if (br != other.br) return br < other.br;
-    if (bg != other.bg) return br < other.br;
+    if (bg != other.bg) return bg < other.bg;
     return bb < other.bb;
   }
 };
