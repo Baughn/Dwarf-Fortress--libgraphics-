@@ -23,6 +23,9 @@ static map<InterfaceKey,string> keydisplay; // Used only for display, not for me
 
 static void update_keydisplay(InterfaceKey binding, string display) {
   // As a heuristic, we use whichever display string is shortest
+  // Need to filter out space/tab, for obvious reasons.
+  if (display == " ") display = "Space";
+  if (display == "\t") display = "Tab";
   map<InterfaceKey,string>::iterator it = keydisplay.find(binding);
   if (it == keydisplay.end() || it->second.length() > display.length()) {
     keydisplay[binding] = display;
