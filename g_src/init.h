@@ -142,4 +142,6 @@ class initst
 		void begin();
 };
 
+extern initst init;
+
 #endif

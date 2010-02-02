@@ -2,9 +2,11 @@
 #define VIEWBASE_H
 
 #include <set>
-typedef long InterfaceKey;
+#include <map>
+#include <string>
 
 #include "keybindings.h"
+#include "graphics.h"
 
 enum InterfaceBreakdownTypes
 {
@@ -41,131 +43,133 @@ class viewscreenst
 		virtual ~viewscreenst(){}
 };
 
-class ViewWidgets {
- protected:
- short x,x2,y,y2;
- public:
- char HasFocus;
- char DoClear;
- ViewWidgets(short X, short X2, short Y, short Y2) {x=X;y=Y;x2=X2;y2=Y2;HasFocus=DoClear=0;}
- virtual char input(void* param=0) {return 0;} //return value 1 on widget handled keypress, 0 otherwise
- virtual void logic(void* param=0) {}
- virtual void render(void* param=0) {}
- virtual void move(short X, short X2, short Y, short Y2) {x=X;y=Y;x2=X2;y2=Y2;}
- short clipx[2], clipy[2];
- void setclip();
- void releaseclip();
-};
+namespace widgets {
 
-class ListItemCB {
- public:
- virtual const char* ListItem(int Index, void* Param, char* Store) {
-  *Store=0;
-  return Store;
-  //Store does not necessarily have to be used in the code for derived
-  //classes.  The return pointer must always be set to where the text is.
- }
-};
+  using namespace std;
+  
+  template <typename T>
+  class menu {
+    typedef map<int,pair<string, T> > dict;
+    dict lines;
+    int selection;
+    int last_displayheight;
+    bool bleached;
+    
+    // Given 'total' lines, with 'sel' selected, and 'space' to draw in,
+    // returns the first line that should be drawn.
+    int first_line(int total, int sel, int space) {
+      // There is no doubt some clever math to do this, but I'm tired and don't care.
+      for (int start = 0;; start += space / 2) {
+        if (start + space/2 >= sel) return start;
+        if (start + space >= total) return start;
+      }
+    }
+    pair<string,T> mp(string s, T t) { return make_pair<string,T>(s,t); }
 
-class ListSelectorWidget : public ViewWidgets {
- protected:
- int count;
- int PageStart, PageEnd;
- public:
- char SelColorF, SelColorB, SelColorH; //unfocused selection colors
- char FSelColorF, FSelColorB, FSelColorH; //focused selection colors
- char ColorF, ColorB, ColorH; //other colors
- char wrap;  //list can wrap
- char ColorBlanks; //fill blank location with background color
- int selected; //treat as read only this will move into protected later
- ListItemCB* ListSrc;  //pointer to derived class that knows how to make the text items
- void SetListCount(int c) {
-  //0 makes empty, negative numbers can be used to decrease list size
-  if (c<0) {
-   c=count+c;
-   if (c<0) c=0;
-  }
-  int ps=PageSize();
-  if (c) {
-   if (selected==-1) selected=0;
-   else if (selected>=c) selected=c-1;
-   PageStart=(selected/ps)*ps;
-   PageEnd=PageStart+ps;
-  } else {
-   selected=-1;
-   PageStart=0;
-   PageEnd=ps;
-  }
-  count=c;
- }
- virtual int GetCount() {return count;}
- virtual int PageSize() {return 1;}
- ListSelectorWidget(short X, short X2, short Y, short Y2) : ViewWidgets(X,X2,Y,Y2) {
-  count=0;
-  selected=-1;
-  SelColorF=3;
-  FSelColorF=3;
-  ColorF=7;
-  SelColorB=FSelColorB=ColorB=0;
-  SelColorH=ColorH=0;
-  FSelColorH=1;
-  PageEnd=PageSize();
-  PageStart=0;
-  ColorBlanks=0;
-  wrap=1;
- }
- virtual void Jump(int s) {
-  if (s<0) return;
-  if (s>=count) s=count-1;
-  selected=s;
-  if (s<0) return;
-  int ps=PageSize();
-  PageStart=(selected/ps)*ps;
-  PageEnd=PageStart+ps;
- }
- virtual void move(short X, short X2, short Y, short Y2) {
-  x=X;y=Y;x2=X2;y2=Y2;
-  int ps=PageSize();
-  PageStart=(selected/ps)*ps;
-  PageEnd=PageStart+ps;
- }
-};
+    // Scrolls N lines up/down; positive = down
+    void scroll(int n) {
+      typename dict::iterator it = lines.find(selection);
+      for (int i = 0; i < abs(n); i++) {
+        if (n < 0 && it == lines.begin()) { // We've hit the top
+          if (i) break;
+          else {
+            it = --(lines.end());
+            break;
+          }
+        }
+        if (n < 0) --it; else ++it; // Scroll one line
+        if (it == lines.end()) { // We've hit the bottom
+          if (i) {
+            --it;
+            break;
+          }
+          else {
+            it = lines.begin();
+            break;
+          }
+        }
+        // If we hit neither the top nor bottom, loop.
+      }
 
-class TabBarWidget : public ListSelectorWidget {
- short spacing;
- public:
- const int *ForwardKeyList, *ReverseKeyList;
- short FKeySize, RKeySize;
- TabBarWidget(short X, short X2, short Y, short Y2) : ListSelectorWidget(X,X2,Y,Y2) {
-  ForwardKeyList=ReverseKeyList=0;
-  FKeySize=RKeySize=0;
-  spacing=1;
-  PageEnd=PageSize();
- }
- virtual char input(void* param=0);
- virtual void render(void* param=0);
- virtual int PageSize() {
-  if (spacing) return ((x2-x)/spacing)*(y2-y+1);
-  else return 1;
- }
- void AdjustSpacing(short sp) {
-  spacing=sp;
-  int ps=PageSize();
-  PageStart=(selected/ps)*ps;
-  PageEnd=PageStart+ps;
- }
-};
+      selection = it->first;
+    }
+    
+  public:
+    menu() { clear(); }
+    // Adds a line just past the last taken position
+    void add(string text, T token) {
+      if (!lines.size()) {
+        lines[0] = mp(text,token);
+      } else {
+        typename dict::iterator it = --(lines.end());
+        lines[it->first + 1] = mp(text,token);
+      }
+    }
+    // (Re)sets the text of the given line
+    void set(int line, string text, T token) {
+      lines[line] = mp(text,token);
+    }
+    // Handles (page) up/down
+    void feed(std::set<InterfaceKey> &input) {
+      if (!lines.size()) return;
+      if (input.count(INTERFACEKEY_STANDARDSCROLL_UP)) scroll(-1);
+      if (input.count(INTERFACEKEY_STANDARDSCROLL_DOWN)) scroll(1);
+      if (input.count(INTERFACEKEY_STANDARDSCROLL_PAGEUP)) scroll(-(last_displayheight / 2));
+      if (input.count(INTERFACEKEY_STANDARDSCROLL_PAGEDOWN)) scroll(last_displayheight / 2);        
+    }
+    void render(int x1, int x2, int y1, int y2) {
+      gps.erasescreen_rect(x1,x2,y1,y2);
+      int h = y2 - y1 + 1,
+        w = x2 - x1 + 1,
+        x = x1, y = y1;
+      last_displayheight = h;
+      if (!lines.size()) return;
+      int total = (--lines.end())->first + 1;
+      int first = first_line(total, selection, h);
+      typename dict::iterator it = lines.lower_bound(first);
+      for (; it != lines.end() && it->first - first < h; ++it) {
+        gps.locate(it->first - first + y, x);
+        gps.changecolor(7, 0, it->first == selection && !bleached);
+        gps.addst(it->second.first.substr(0, w));
+      }
+    }
+    // Read out the current selection
+    T get_selection() { return lines[selection].second; }
+    // Delete the currently selected line
+    void del_selection() {
+      typename dict::iterator it = lines.find(selection);
+      typename dict::iterator newsel = it;
+      ++newsel;
+      if (newsel == lines.end()) {
+        newsel = it;
+        --newsel;
+      }
+      lines.erase(it);
+      if (lines.size()) selection = newsel->first;
+    }
+    // If true, don't draw a highlight
+    void bleach(bool b) { bleached = b; }
+    // Reset the menu
+    void clear() {
+      selection = 0;
+      lines.clear();
+      last_displayheight = 10;
+      bleached = false;
+    }
+  };
 
-class ScrollListWidget : public ListSelectorWidget {
- public:
- const int *DownKeyList, *UpKeyList, *PgDnKeyList, *PgUpKeyList;
- short DKeySize, UKeySize, PDKeySize, PUKeySize;
- ScrollListWidget(short X, short X2, short Y, short Y2) : ListSelectorWidget(X,X2,Y,Y2) {
-  DownKeyList=UpKeyList=PgDnKeyList=PgUpKeyList=0;
-  DKeySize=UKeySize=PDKeySize=PUKeySize=0;
- }
- virtual char input(void* param=0);
- virtual void render(void* param=0);
- virtual int PageSize() {return y2-y-1;}
-};
+  class textbox {
+    string text;
+    bool keep;
+  public:
+    textbox() { textbox("", false); }
+    textbox(string initializer, bool keep) { this->keep = keep; text = initializer; }
+    string get_text() { return text; }
+    // Only cares about INTERFACEKEY_STRING events
+    void feed(std::set<InterfaceKey> &input);
+    void render(int x1, int x2, int y1, int y2);
+  };
+
+}
+
 #endif

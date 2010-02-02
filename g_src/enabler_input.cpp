@@ -9,10 +9,14 @@ using namespace std;
 #include "init.h"
 extern initst init;
 #include "platform.h"
+#include "files.h"
+#include "find_files.h"
+#include "svector.h"
 
 #include <boost/regex.hpp>
 
 // These change dynamically in the normal process of DF
+static Time last_era = 0; // We can process at most one input event per era of one millisecond
 static multimap<Time,Event> timeline; // A timeline of pending key events (for next get_input)
 static set<EventMatch> pressed_keys; // Keys we consider "pressed"
   
@@ -20,6 +24,29 @@ static set<EventMatch> pressed_keys; // Keys we consider "pressed"
 static multimap<EventMatch,InterfaceKey> keymap;
 static map<InterfaceKey,Repeat> repeatmap;
 static map<InterfaceKey,string> keydisplay; // Used only for display, not for meaning
+
+// Macro recording
+static bool macro_recording = false;
+static macro active_macro; // Active macro
+static map<string,macro> macros;
+
+// Keybinding editing
+static bool key_registering = false;
+static InterfaceKey register_to_key; // Key to register the next press as (if key_registering is true)
+static bool register_unicode; // Whether to ignore unicode or, if not, SDL symbols
+
+// Interface-file last loaded
+static string interfacefile;
+
+
+// Returns an unused era number no smaller than 'last'
+static Time next_era(Time clamp) {
+  if (last_era <= clamp) {
+    last_era = clamp;
+    return clamp;
+  } else
+    return last_era++;
+}
 
 static void update_keydisplay(InterfaceKey binding, string display) {
   // As a heuristic, we use whichever display string is shortest
@@ -106,16 +133,39 @@ static string encode_utf8(int unicode) {
   return s;
 }
 
+string translate_mod(Uint8 mod) {
+  string ret;
+  if (mod & 1) ret += "Shift+";
+  if (mod & 2) ret += "Ctrl+";
+  if (mod & 4) ret += "Alt+";
+  return ret;
+}
+
 static string display(Uint8 mod, string rest) {
-  string disp;
-  if (mod & 1) disp += "Shift+";
-  if (mod & 2) disp += "Ctrl+";
-  if (mod & 4) disp += "Alt+";
-  return disp + rest;
+  return translate_mod(mod) + rest;
+}
+
+static string translate_repeat(Repeat r) {
+  switch (r) {
+  case REPEAT_NOT: return "REPEAT_NOT";
+  case REPEAT_SLOW: return "REPEAT_SLOW";
+  case REPEAT_FAST: return "REPEAT_FAST";
+  default: return "REPEAT_BROKEN";
+  }
+}
+
+// Converts SDL mod states to ours, collapsing left/right shift/alt/ctrl
+static Uint8 getModState() {
+  Uint8 mod = SDL_GetModState(), ret = 0;
+  if (mod & KMOD_SHIFT) ret |= 1;
+  if (mod & KMOD_CTRL) ret |= 2;
+  if (mod & KMOD_ALT) ret |= 4;
+  return ret;
 }
 
 void enabler_inputst::load_keybindings(const string &file) {
   cout << "Loading bindings from " << file << endl;
+  interfacefile = file;
   ifstream s(file.c_str());
   if (!s.good()) {
     MessageBox(NULL, (file + " not found, or I/O error encountered").c_str(), 0, 0);
@@ -141,9 +191,9 @@ void enabler_inputst::load_keybindings(const string &file) {
 
   while (line != lines.end()) {
     if (boost::regex_search(*line, match, bind)) {
-      map<string,InterfaceKeyType>::iterator it = bindingNames.right.find(match[1]);
+      map<string,InterfaceKey>::iterator it = bindingNames.right.find(match[1]);
       if (it != bindingNames.right.end()) {
-        InterfaceKeyType binding = it->second;
+        InterfaceKey binding = it->second;
         // Parse repeat data
         if (match[2] == "REPEAT_FAST")
           repeatmap[(InterfaceKey)binding] = REPEAT_FAST;
@@ -169,7 +219,7 @@ void enabler_inputst::load_keybindings(const string &file) {
               keymap.insert(pair<EventMatch,InterfaceKey>(matcher, (InterfaceKey)binding));
               update_keydisplay(binding, display(matcher.mod, match[2]));
             } else {
-              cout << "Unknown SDLKey: " << match[1] << endl;
+              cout << "Unknown SDLKey: " << match[2] << endl;
             }
             ++line;           
           } // Unicode
@@ -218,6 +268,50 @@ void enabler_inputst::load_keybindings(const string &file) {
 
 void enabler_inputst::save_keybindings(const string &file) {
   cout << "Saving bindings to " << file << endl;
+  string temporary = file + ".partial";
+  ofstream s(temporary.c_str()); 
+  multimap<InterfaceKey,EventMatch> map;
+  InterfaceKey last_key = INTERFACEKEY_NONE;
+
+  if (!s.good()) {
+    string t = "Failed to open " + temporary + " for writing";
+    MessageBox(NULL, t.c_str(), 0, 0);
+    s.close();
+    return;
+  }
+  // Invert keyboard map
+  for (multimap<EventMatch,InterfaceKey>::iterator it = keymap.begin(); it != keymap.end(); ++it)
+    map.insert(pair<InterfaceKey,EventMatch>(it->second,it->first));
+  // And write.
+  for (multimap<InterfaceKey,EventMatch>::iterator it = map.begin(); it != map.end(); ++it) {
+    if (!s.good()) {
+      MessageBox(NULL, "I/O error while writing keyboard mapping", 0, 0);
+      s.close();
+      return;
+    }
+    if (it->first != last_key) {
+      last_key = it->first;
+      s << "[BIND:" << bindingNames.left[it->first] << ":"
+        << translate_repeat(repeatmap[it->first]) << "]" << endl;
+    }
+    switch (it->second.type) {
+    case type_unicode:
+      s << "[KEY:" << encode_utf8(it->second.unicode) << "]" << endl;
+      break;
+    case type_key:
+      s << "[SYM:" << (int)it->second.mod << ":" << sdlNames.left[it->second.key] << "]" << endl;
+      break;
+    case type_button:
+      s << "[BUTTON:" << (int)it->second.mod << ":" << (int)it->second.button << "]" << endl;
+      break;
+    }
+  }
+  s.close();
+  replace_file(temporary, file);
+}
+
+void enabler_inputst::save_keybindings() {
+  save_keybindings(interfacefile);
 }
 
 void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
@@ -232,13 +326,8 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
   //   However, in reality they're distinct keypresses, and not simultaneous at
   //   all. We fix this up by making sure 'now' is always later than the last time.
 
-  static Uint32 last_now = 0;
-  if (now <= last_now) {
-    last_now = now++;
-  } else {
-    last_now = now;
-  }
-
+  now = next_era(now);
+  
   list<KeyEvent> synthetics;
   set<EventMatch>::iterator pkit;
 
@@ -259,7 +348,7 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
       // Re-press them, with new modifiers, if they aren't unicode. We can't re-translate unicode.
       if (synth.match.type != type_unicode) {
         synth.release = false;
-        synth.match.mod = SDL_GetModState();
+        synth.match.mod = getModState();
         synthetics.push_back(synth);
       }
     }
@@ -279,7 +368,7 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
     // Since it's not a modifier, we also pass on symbolic/button (always) and unicode (if defined) events
     KeyEvent real;
     real.release = (e.type == SDL_KEYUP || e.type == SDL_MOUSEBUTTONUP) ? true : false;
-    real.match.mod = SDL_GetModState();
+    real.match.mod = getModState();
     if (e.type == SDL_MOUSEBUTTONUP || e.type == SDL_MOUSEBUTTONDOWN) {
       real.match.type = type_button;
       real.match.scancode = 0;
@@ -317,11 +406,22 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
 }
 
 void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
+  // We may be registering a new mapping, in which case we skip the
+  // rest of this function.
+  if (key_registering && !e.release) {
+    if ((e.match.type == type_unicode && register_unicode) ||
+        (e.match.type == type_key && !register_unicode) ||
+        (e.match.type == type_button)) {
+      keymap.insert(pair<EventMatch,InterfaceKey>(e.match,register_to_key));
+      key_registering = false;
+    }
+    return;
+  }
+
   // If this is a key-press event, we add it to the timeline. If it's
   // a release, we remove any pending repeats, but not those that
   // haven't repeated yet (which are on their first cycle); those we
   // just set to non-repeating.
-
   set<InterfaceKey> keys = key_translation(e);
   if (e.release) {
     multimap<Time,Event>::iterator it = timeline.begin();
@@ -405,6 +505,19 @@ set<InterfaceKey> enabler_inputst::get_input() {
         cout << "    " << GetKeyDisplay(*it) << ": " << GetBindingDisplay(*it) << endl;
   }
 #endif
+  // It could be argued that the "record event" step of recording
+  // belongs in add_input, not here.  I don't hold with this
+  // argument. The whole point is to record events as the user seems
+  // them happen.
+  if (macro_recording) {
+    set<InterfaceKey> macro_input = input;
+    macro_input.erase(INTERFACEKEY_RECORD_MACRO);
+    macro_input.erase(INTERFACEKEY_PLAY_MACRO);
+    macro_input.erase(INTERFACEKEY_SAVE_MACRO);
+    macro_input.erase(INTERFACEKEY_LOAD_MACRO);
+    if (macro_input.size())
+      active_macro.push_back(macro_input);
+  }
   return input;
 }
 
@@ -423,13 +536,13 @@ string enabler_inputst::GetKeyDisplay(int binding) {
   if (it != keydisplay.end())
     return it->second;
   else {
-    cout << "Missing binding displayed: " + bindingNames.left[(InterfaceKeyType)binding] << endl;
+    cout << "Missing binding displayed: " + bindingNames.left[binding] << endl;
     return "?";
   }
 }
 
 string enabler_inputst::GetBindingDisplay(int binding) {
-  map<InterfaceKeyType,string>::iterator it = bindingNames.left.find((InterfaceKeyType)binding);
+  map<InterfaceKey,string>::iterator it = bindingNames.left.find(binding);
   if (it != bindingNames.left.end())
     return it->second;
   else
@@ -442,4 +555,164 @@ Repeat enabler_inputst::key_repeat(InterfaceKey binding) {
     return it->second;
   else
     return REPEAT_NOT;
+}
+
+void enabler_inputst::record_input() {
+  active_macro.clear();
+  macro_recording = true;
+} 
+
+void enabler_inputst::record_stop() {
+  macro_recording = false;
+}
+
+bool enabler_inputst::is_recording() {
+  return macro_recording;
+}
+
+void enabler_inputst::play_macro() {
+  macro::iterator it;
+  set<InterfaceKey>::iterator it2;
+  for (it = active_macro.begin(); it != active_macro.end(); ++it) {
+    Uint32 era = next_era(0);
+    for (it2 = it->begin(); it2 != it->end(); ++it2) {
+      Event e = {REPEAT_NOT,*it2,0};
+      timeline.insert(make_pair<Time,Event>(era,e));
+    }
+  }
+}
+
+// Replaces any illegal letters.
+static string filter_filename(string name, char replacement) {
+  for (int i = 0; i < name.length(); i++) {
+    switch (name[i]) {
+    case '<': name[i] = replacement; break;
+    case '>': name[i] = replacement; break;
+    case ':': name[i] = replacement; break;
+    case '"': name[i] = replacement; break;
+    case '/': name[i] = replacement; break;
+    case '\\': name[i] = replacement; break;
+    case '|': name[i] = replacement; break;
+    case '?': name[i] = replacement; break;
+    case '*': name[i] = replacement; break;
+    }
+    if (name[i] <= 31) name[i] = replacement;
+  }
+  return name;
+}
+
+void enabler_inputst::load_macro_from_file(const string &file) {
+  ifstream s(file.c_str());
+  cout << "Loading " << file << endl;
+  char buf[100];
+  s.getline(buf, 100);
+  puts(buf);
+  string name(buf);
+  if (macros.find(name) != macros.end()) return; // Already got it.
+
+  macro macro;
+  set<InterfaceKey> group;
+  for(;;) {
+    s.getline(buf, 100);
+    if (!s.good()) {
+      MessageBox(NULL, "I/O error while loading macro", 0, 0);
+      s.close();
+      return;
+    }
+    string line(buf);
+    puts(buf);
+    if (line == "End of macro") {
+      if (group.size()) macro.push_back(group);
+      break;
+    } else if (line == "\tEnd of group") {
+      if (group.size()) macro.push_back(group);
+      group.clear();
+    } else {
+      map<string,InterfaceKey>::iterator it = bindingNames.right.find(line.substr(2));
+      if (it == bindingNames.right.end())
+        cout << "Binding name unknown while loading macro: " << line.substr(2) << endl;
+      else
+        group.insert(it->second);
+    }
+  }
+  if (s.good())
+    macros[name] = macro;
+  else
+    MessageBox(NULL, "I/O error while loading macro", 0, 0);
+  s.close();
+}
+
+void enabler_inputst::save_macro_to_file(const string &file, const string &name, const macro &macro) {
+  ofstream s(file.c_str());
+  s << name << endl;
+  for (macro::const_iterator group = macro.begin(); group != macro.end(); ++group) {
+    for (set<InterfaceKey>::const_iterator key = group->begin(); key != group->end(); ++key)
+      s << "\t\t" << bindingNames.left[*key] << endl;
+    s << "\tEnd of group" << endl;
+  }
+  s << "End of macro" << endl;
+  s.close();
+}
+
+list<string> enabler_inputst::list_macros() {
+  // First, check for unloaded macros
+  svector<char*> files;
+  find_files_by_pattern("data/init/macros/*.mak", files);
+  for (int i = 0; i < files.size(); i++) {
+    string file(files[i]);
+    delete files[i];
+    file = "data/init/macros/" + file;
+    load_macro_from_file(file);
+  }
+  // Then return all in-memory macros
+  list<string> ret;
+  for (map<string,macro>::iterator it = macros.begin(); it != macros.end(); ++it)
+    ret.push_back(it->first);
+  return ret;
+}
+
+void enabler_inputst::load_macro(string name) {
+  if (macros.find(name) != macros.end())
+    active_macro = macros[name];
+  else
+    macros.clear();
+}
+
+void enabler_inputst::save_macro(string name) {
+  macros[name] = active_macro;
+  save_macro_to_file("data/init/macros/" + filter_filename(name, '_') + ".mak", name, active_macro);
+}
+
+void enabler_inputst::delete_macro(string name) {
+  map<string,macro>::iterator it = macros.find(name);
+  if (it != macros.end()) macros.erase(it);
+}
+
+
+// Updating (adding to) the key-bindings
+void enabler_inputst::register_key(bool unicode, InterfaceKey key) {
+  key_registering = true;
+  register_to_key = key;
+  register_unicode = unicode;
+}
+
+bool enabler_inputst::is_registering() {
+  return key_registering;
+}
+
+
+list<EventMatch> enabler_inputst::list_keys(InterfaceKey key) {
+  list<EventMatch> ret;
+  // Oh, now this is inefficient.
+  for (multimap<EventMatch,InterfaceKey>::iterator it = keymap.begin(); it != keymap.end(); ++it)
+    if (it->second == key) ret.push_back(it->first);
+  return ret;
+}
+
+void enabler_inputst::remove_key(InterfaceKey key, EventMatch ev) {
+  for (multimap<EventMatch,InterfaceKey>::iterator it = keymap.find(ev);
+       it != keymap.end() && it->first == ev;
+       ++it) {
+    if (it->second == key) keymap.erase(it++);
+  }
 }

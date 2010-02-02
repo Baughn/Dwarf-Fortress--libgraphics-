@@ -4,8 +4,7 @@
 #include <map>
 
 template<typename A, typename B>
-class bimap {
-public:
+struct bimap {
   std::map<A,B> left;
   std::map<B,A> right;
 

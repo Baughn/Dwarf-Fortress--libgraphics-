@@ -4,6 +4,7 @@
 #include <string>
 using std::string;
 
+#include "g_basics.h"
 #include "platform.h"
 
 enum Texture
@@ -57,6 +58,7 @@ class graphicst
 		void addst(const char *str);
 		void erasescreen_clip();
 		void erasescreen();
+                void erasescreen_rect(int x1, int x2, int y1, int y2);
 		void renewscreen();
 		void setclipping(long x1,long x2,long y1,long y2);
 
@@ -103,5 +105,9 @@ class graphicst
 			}
 
 		void get_mouse_text_coords(long &mx,long &my);
+                void draw_border(int x1, int x2, int y1, int y2);
 };
+
+extern graphicst gps;
+
 #endif

@@ -49,6 +49,7 @@ enablerst enabler;
 extern initst init;
 
 #include "keybindings.h"
+#include "KeybindingScreen.h"
 
 #ifndef NO_FMOD
 // For musicsound.update();
@@ -291,6 +292,10 @@ static void eventLoop(GL_Window window)
           }
           SDL_ShowCursor(SDL_DISABLE);
         }
+        if (event.key.keysym.sym == SDLK_k) {
+          new KeybindingScreen();
+          break;
+        }
       case SDL_KEYUP:
       case SDL_QUIT:
         enabler.add_input(event, now);
@@ -511,17 +516,27 @@ void enablerst::do_frame()
   // run render-setup before the main loop if we just zoomed or they have
   // otherwise become uninitialized.
   bool do_render=false;
-  if (gframes_outstanding > 0 && (flag & ENABLERFLAG_RENDER)) {
-    do_render = true;
-    // Initiate graphics rendering, if appropriate
-    if (!skip_gframe)
-      render(window, setup);
-    // Mark this rendering as complete. It isn't really, but we'll complete it later.
-    flag &= ~ENABLERFLAG_RENDER;
+  if (flag & ENABLERFLAG_RENDER) {
+    if (gframes_outstanding > 0) {
+      do_render = true;
+      // Initiate graphics rendering, if appropriate
+      if (!skip_gframe)
+        render(window, setup);
+      // Mark this rendering as complete. It isn't really, but we'll complete it later.
+      flag &= ~ENABLERFLAG_RENDER;
+    }
+  } else {
+    gframes_outstanding = 0;
   }
+
+  // if (flag & ENABLERFLAG_MAXFPS)
+  //   puts("max");
+  // if (frames_outstanding > 0)
+  //   std::cout << "frames: " << frames_outstanding << '\n';
   
   // Run the main loop if appropriate
-  if (frames_outstanding > 0||(flag & ENABLERFLAG_MAXFPS)) {
+  if (frames_outstanding >= 1 ||(flag & ENABLERFLAG_MAXFPS)) {
+    // puts("loop");
     frames_outstanding -= 1;
     if (mainloop())
       is_program_looping = FALSE;
@@ -545,7 +560,7 @@ void enablerst::do_frame()
     loopvar = 0;
 
   // Sleep if appropriate
-//   printf("f: %g, g: %d\n", frames_outstanding, gframes_outstanding);
+  // printf("f: %g, g: %d\n", frames_outstanding, gframes_outstanding);
   if (gframes_outstanding <= 0 &&
       frames_outstanding <= 0) {
     // Sleep until the timer thread signals us

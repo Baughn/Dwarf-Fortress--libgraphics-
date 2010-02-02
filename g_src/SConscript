@@ -5,7 +5,8 @@ import os
 src_dll = ["basics.cpp","command_line.cpp","enabler_sdl.cpp","files.cpp",
            "find_files_posix.cpp","graphics.cpp","init.cpp","interface.cpp",
            "keybindings.cpp","music_and_sound_openal.cpp", "random.cpp",
-           "textlines.cpp","glew.c","ViewBase.cpp","enabler_input.cpp"]
+           "textlines.cpp","glew.c","enabler_input.cpp","ViewBase.cpp",
+           "KeybindingScreen.cpp"]
 
 dll  = '#libs/libgraphics.so'
 

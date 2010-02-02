@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <map>
 #include <set>
+#include <stdio.h>
 
 extern "C" {
 #include <zlib.h>
@@ -388,4 +389,8 @@ void copy_file(const string &src,const string &dst)
 		}
 	in_stream.close();
 	out_stream.close();
+}
+
+void replace_file(const string &src, const string &dst) {
+  rename(src.c_str(), dst.c_str());
 }

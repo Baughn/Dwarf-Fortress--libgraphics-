@@ -4,7 +4,7 @@
 
 using namespace std;
 
-bimap<InterfaceKeyType,std::string> bindingNames;
+bimap<InterfaceKey,std::string> bindingNames;
 bimap<SDLKey,std::string> sdlNames;
 
 
@@ -1134,6 +1134,11 @@ void keybinding_init() {
   bindingNames.insert(INTERFACEKEY_STRING_A253, "STRING_A253");
   bindingNames.insert(INTERFACEKEY_STRING_A254, "STRING_A254");
   bindingNames.insert(INTERFACEKEY_STRING_A255, "STRING_A255");
+
+  bindingNames.insert(INTERFACEKEY_RECORD_MACRO, "RECORD_MACRO");
+  bindingNames.insert(INTERFACEKEY_PLAY_MACRO, "PLAY_MACRO");
+  bindingNames.insert(INTERFACEKEY_SAVE_MACRO, "SAVE_MACRO");
+  bindingNames.insert(INTERFACEKEY_LOAD_MACRO, "LOAD_MACRO");
 
   sdlNames.insert(SDLK_BACKSPACE, "Backspace");
   sdlNames.insert(SDLK_TAB, "Tab");

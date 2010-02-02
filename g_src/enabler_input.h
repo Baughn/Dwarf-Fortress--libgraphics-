@@ -25,6 +25,7 @@ struct Event {
 
 enum MatchType { type_unicode, type_key, type_button };
 
+std::string translate_mod(Uint8 mod);
 
 struct EventMatch {
   MatchType type;
@@ -36,7 +37,7 @@ struct EventMatch {
     Uint8 button;
   };
   
-  bool operator== (EventMatch other) const {
+  bool operator== (const EventMatch &other) const {
     if (mod != other.mod) return false;
     if (type != other.type) return false;
     switch (type) {
@@ -46,7 +47,7 @@ struct EventMatch {
     }
   }
   
-  bool operator< (EventMatch other) const {
+  bool operator< (const EventMatch &other) const {
     if (mod != other.mod) return mod < other.mod;
     if (type != other.type) return type < other.type;
     switch (type) {
@@ -62,9 +63,13 @@ struct KeyEvent {
   EventMatch match;
 };
 
+typedef std::list<std::set<InterfaceKey> > macro;
+
 class enabler_inputst {
   std::set<InterfaceKey> key_translation(KeyEvent &e);
   Repeat key_repeat(InterfaceKey);
+  void load_macro_from_file(const std::string &file);
+  void save_macro_to_file(const std::string &file, const std::string &name, const macro &);
   
  public:
   // In practice.. do not use this one.
@@ -76,8 +81,25 @@ class enabler_inputst {
 
   void load_keybindings(const std::string &file);
   void save_keybindings(const std::string &file);
+  void save_keybindings();
   std::string GetKeyDisplay(int binding);
   std::string GetBindingDisplay(int binding);
+
+  // Macros
+  void record_input(); // Records input until such a time as you say stop
+  void record_stop(); // Stops recording, saving it as the active macro
+  bool is_recording();
+  void play_macro(); // Runs the active macro, if any
+  std::list<string> list_macros();
+  void load_macro(string name); // Loads some macro as the active one
+  void save_macro(string name); // Saves the active macro under some name
+  void delete_macro(string name);
+
+  // Updating the key-bindings
+  void register_key(bool unicode, InterfaceKey key); // Adds the next event to be generated to the keymap for this interfacekey. If unicode is true, ignores SDL syms; otherwise, ignores unicode. Mouse buttons work either way.
+  bool is_registering();
+  std::list<EventMatch> list_keys(InterfaceKey key); // Returns a list of events matching this interfacekey
+  void remove_key(InterfaceKey key, EventMatch ev); // Removes a particular matcher from the keymap.
 };
 
 

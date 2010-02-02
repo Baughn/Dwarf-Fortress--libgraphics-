@@ -158,6 +158,17 @@ void graphicst::erasescreen_clip()
 		}
 }
 
+void graphicst::erasescreen_rect(int x1, int x2, int y1, int y2)
+{
+  changecolor(0,0,0);
+  for (int x = x1; x <= x2; x++) {
+    for (int y = y1; y <= y2; y++) {
+      locate(y, x);
+      addchar(' ');
+    }
+  }
+}
+
 void graphicst::erasescreen()
 {
 	changecolor(0,0,0);
@@ -564,6 +575,23 @@ void graphicst::add_tile_grayscale(long texp,char cf,char cbr)
 		}
 }
 
+void graphicst::draw_border(int x1, int x2, int y1, int y2) {
+  // Upper and lower
+  for (int x = x1; x <= x2; x++) {
+    locate(y1, x);
+    addchar(' ');
+    locate(y2, x);
+    addchar(' ');
+  }
+  // Left and right
+  for (int y = y1+1; y < y2; y++) {
+    locate(y, x1);
+    addchar(' ');
+    locate(y, x2);
+    addchar(' ');
+  }
+}
+
 void render_things(enum render_phase phase)
 {
   bool clear = false;
@@ -581,6 +609,13 @@ void render_things(enum render_phase phase)
   if(currentscreen==&gview.view)return;
   
   currentscreen->render();
+  // HACK: Render REC when recording macros. Definitely want this screen-specific. Or do we?
+  if (enabler.is_recording()) {
+    gps.locate(init.display.grid_y-1, 20);
+    gps.changecolor(4,1,1);
+    gps.addst("REC");
+    gps.renewscreen();
+  }
   
   //DRAW EVERYTHING TO BACK BUFFER
   enabler.render_tiles(phase, clear);

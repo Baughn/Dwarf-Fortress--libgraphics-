@@ -945,4 +945,6 @@ void convert_to_rgb(float &r,float &g,float &b,char col,char bright);
 
 pair<int,int> window_to_grid(int x, int y);
 
+extern enablerst enabler;
+
 #endif //ENABLER_H

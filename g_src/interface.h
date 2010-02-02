@@ -1,9 +1,14 @@
 #ifndef INTERFACE_H
 #define INTERFACE_H
 
+#include <string>
+using std::string;
 #include <set>
+#include "svector.h"
 #include "ViewBase.h"
 #include "keybindings.h"
+#include "enabler.h"
+#include "music_and_sound_g.h"
 
 struct cursesmovie_headerst
 {
@@ -136,5 +141,7 @@ char standardstringentry(std::set<InterfaceKey> &events,char *str,int maxlen,uns
 char standardstringentry(std::set<InterfaceKey> &events,string &str,int maxlen,unsigned long flag);
 
 void drawborder(const char *str,char style=0,const char *colorstr=NULL);
+
+extern interfacest gview;
 
 #endif

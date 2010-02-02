@@ -359,4 +359,6 @@ class file_compressorst
 
 void clean_directory(const string &directory);
 void copy_file(const string &src,const string &dst);
+// Replaces dst with src, removing src in the process. Atomic if possible.
+void replace_file(const string &src, const string &dst);
 #endif

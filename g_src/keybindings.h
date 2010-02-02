@@ -1,13 +1,13 @@
 #ifndef KEYBINDINGS_H
 #define KEYBINDINGS_H
 
-#include "ViewBase.h"
-
 #include <SDL/SDL.h>
 #include <map>
 #include <string>
 
 #include "bimap.h"
+
+typedef long InterfaceKey;
 
 enum InterfaceKeyType {
  INTERFACEKEY_NONE=0,
@@ -1155,10 +1155,15 @@ enum InterfaceKeyType {
  INTERFACEKEY_STRING_A253,
  INTERFACEKEY_STRING_A254,
  INTERFACEKEY_STRING_A255,
- INTERFACEKEYNUM
+ INTERFACEKEYNUM,
+
+ INTERFACEKEY_RECORD_MACRO,
+ INTERFACEKEY_PLAY_MACRO,
+ INTERFACEKEY_SAVE_MACRO,
+ INTERFACEKEY_LOAD_MACRO
 };
 
-extern bimap<InterfaceKeyType,std::string> bindingNames;
+extern bimap<InterfaceKey,std::string> bindingNames;
 extern bimap<SDLKey,std::string> sdlNames;
 
 void keybinding_init();

@@ -38,6 +38,7 @@ using std::string;
 
 #include "keybindings.h"
 #include "interface.h"
+#include "KeybindingScreen.h"
 
 #include <list>
 #include <set>
@@ -917,6 +918,7 @@ char interfacest::loop() {
           if(currentscreen->movies_okay()) use_movie_input();
         if (era.count(INTERFACEKEY_HELP))
           currentscreen->help();
+        // Zoom commands
         if (era.count(INTERFACEKEY_ZOOM_IN))
           zoom_display(zoom_in);
         if (era.count(INTERFACEKEY_ZOOM_OUT))
@@ -925,6 +927,19 @@ char interfacest::loop() {
           zoom_display(zoom_toggle_gridzoom);
         if (era.count(INTERFACEKEY_ZOOM_RESET))
           zoom_display(zoom_reset);
+        // Macro commands
+        if (era.count(INTERFACEKEY_RECORD_MACRO)) {
+          if (enabler.is_recording())
+            enabler.record_stop();
+          else
+            enabler.record_input();
+        }
+        if (era.count(INTERFACEKEY_PLAY_MACRO))
+          enabler.play_macro();
+        if (era.count(INTERFACEKEY_SAVE_MACRO))
+          gview.addscreen(new MacroScreenSave(), INTERFACE_PUSH_AT_BACK, NULL);
+        if (era.count(INTERFACEKEY_LOAD_MACRO))
+          gview.addscreen(new MacroScreenLoad(), INTERFACE_PUSH_AT_BACK, NULL);
       }
     }
     break;
