@@ -49,7 +49,7 @@ By and large, 2D should be the most reliable, while STANDARD has a good combinat
 
 If you have a multi-core machine, 2DASYNC should be faster than 2D, and just as reliable. On a single-core it's slower. 2DHW should also be faster than 2D, but depends on having lots of video memory.
 
-[PRINT_MODE:2DHW]
+[PRINT_MODE:PROMPT]
 [SINGLE_BUFFER:NO]
 
 Change this to YES to keep the DF window on top of your other windows.

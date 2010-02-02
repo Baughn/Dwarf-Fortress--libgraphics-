@@ -117,6 +117,14 @@ void initst::begin()
 						if(l>100)l=100;
 						display.partial_print_count=(char)l;
 						}
+                                        if(token2=="PROMPT")
+                                                {
+                                                  int answer = MessageBox(NULL, "Using only 2D (Click no) is more reliable, but means you lose features and, often, speed. Edit data/init/init.txt PRINT_MODE to avoid this dialog box.", "Use OpenGL?", MB_YESNO);
+                                                  if (answer == IDYES)
+                                                    token2 = "STANDARD";
+                                                  else
+                                                    token2 = "2D";
+                                                }
 					if(token2=="FRAME_BUFFER")
 						{
 						display.flag.add_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER);
