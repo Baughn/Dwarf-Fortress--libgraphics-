@@ -19,6 +19,7 @@ extern initst init;
 static Time last_era = 0; // We can process at most one input event per era of one millisecond
 static multimap<Time,Event> timeline; // A timeline of pending key events (for next get_input)
 static set<EventMatch> pressed_keys; // Keys we consider "pressed"
+static int modState; // Modifier state
   
 // These do not change as part of the normal dynamics of DF, only at startup/when editing.
 static multimap<EventMatch,InterfaceKey> keymap;
@@ -154,13 +155,44 @@ static string translate_repeat(Repeat r) {
   }
 }
 
+// Update the modstate, since SDL_getModState doesn't /work/
+static void update_modstate(const SDL_Event &e) {
+  if (e.type == SDL_KEYUP) {
+    switch (e.key.keysym.sym) {
+    case SDLK_RSHIFT:
+    case SDLK_LSHIFT:
+      modState &= ~1;
+      break;
+    case SDLK_RCTRL:
+    case SDLK_LCTRL:
+      modState &= ~2;
+      break;
+    case SDLK_RALT:
+    case SDLK_LALT:
+      modState &= ~4;
+      break;
+    }
+  } else if (e.type == SDL_KEYDOWN) {
+    switch (e.key.keysym.sym) {
+    case SDLK_RSHIFT:
+    case SDLK_LSHIFT:
+      modState |= 1;
+      break;
+    case SDLK_RCTRL:
+    case SDLK_LCTRL:
+      modState |= 2;
+      break;
+    case SDLK_RALT:
+    case SDLK_LALT:
+      modState |= 4;
+      break;
+    }
+  }
+}
+
 // Converts SDL mod states to ours, collapsing left/right shift/alt/ctrl
 static Uint8 getModState() {
-  Uint8 mod = SDL_GetModState(), ret = 0;
-  if (mod & KMOD_SHIFT) ret |= 1;
-  if (mod & KMOD_CTRL) ret |= 2;
-  if (mod & KMOD_ALT) ret |= 4;
-  return ret;
+  return modState;
 }
 
 void enabler_inputst::load_keybindings(const string &file) {
@@ -331,6 +363,8 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
   list<KeyEvent> synthetics;
   set<EventMatch>::iterator pkit;
 
+  update_modstate(e);
+  
   // Convert modifier state changes
   if ((e.type == SDL_KEYUP || e.type == SDL_KEYDOWN) &&
       (e.key.keysym.sym == SDLK_RSHIFT ||
@@ -365,7 +399,11 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
         }
       }
     }
-    // Since it's not a modifier, we also pass on symbolic/button (always) and unicode (if defined) events
+    // Since it's not a modifier, we also pass on symbolic/button
+    // (always) and unicode (if defined) events
+    //
+    // However, since SDL ignores(?) ctrl and alt when translating to
+    // unicode, we want to ignore unicode events if those are set.
     KeyEvent real;
     real.release = (e.type == SDL_KEYUP || e.type == SDL_MOUSEBUTTONUP) ? true : false;
     real.match.mod = getModState();
@@ -381,7 +419,7 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
       real.match.key = e.key.keysym.sym;
       synthetics.push_back(real);
     }
-    if (e.type == SDL_KEYDOWN && e.key.keysym.unicode) {
+    if (e.type == SDL_KEYDOWN && e.key.keysym.unicode && getModState() < 2) {
       real.match.mod = KMOD_NONE;
       real.match.type = type_unicode;
       real.match.scancode = e.key.keysym.scancode;
@@ -463,6 +501,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
 void enabler_inputst::clear_input() {
   timeline.clear();
   pressed_keys.clear();
+  modState = 0;
 }
 
 set<InterfaceKey> enabler_inputst::get_input() {
