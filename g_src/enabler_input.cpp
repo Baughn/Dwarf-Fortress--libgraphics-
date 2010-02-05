@@ -645,7 +645,6 @@ void enabler_inputst::load_macro_from_file(const string &file) {
   cout << "Loading " << file << endl;
   char buf[100];
   s.getline(buf, 100);
-  puts(buf);
   string name(buf);
   if (macros.find(name) != macros.end()) return; // Already got it.
 
@@ -659,7 +658,6 @@ void enabler_inputst::load_macro_from_file(const string &file) {
       return;
     }
     string line(buf);
-    puts(buf);
     if (line == "End of macro") {
       if (group.size()) macro.push_back(group);
       break;
