@@ -48,6 +48,7 @@ class MacroScreenLoad : public viewscreenst {
   
  public:
   MacroScreenLoad();
+  virtual void logic();
   virtual void render();
   virtual void feed(std::set<InterfaceKey> &events);
 };
@@ -56,6 +57,7 @@ class MacroScreenSave : public viewscreenst {
   widgets::textbox id;
 public:
   MacroScreenSave();
+  virtual void logic();
   virtual void render();
   virtual void feed(std::set<InterfaceKey> &events);
 };

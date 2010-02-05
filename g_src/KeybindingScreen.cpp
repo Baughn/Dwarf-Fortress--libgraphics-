@@ -115,7 +115,7 @@ void KeybindingScreen::logic() {
     was_registering = false;
     reset_keyR();
   }
-  render();
+  enabler.flag|=ENABLERFLAG_RENDER;
   gps.renewscreen();
 }
 
@@ -240,11 +240,14 @@ void MacroScreenLoad::feed(set<InterfaceKey> &input) {
   } else {
     menu.feed(input);
   }
-  render();
-  gps.renewscreen();
+}
+
+void MacroScreenLoad::logic() {
+  enabler.flag|=ENABLERFLAG_RENDER;
 }
 
 void MacroScreenLoad::render() {
+  if (parent) parent->render();
   const int x1 = MAX(init.display.grid_x/2 - ((width + 2) / 2), 0);
   const int x2 = MIN(x1+width+1, init.display.grid_x-1);
   const int y1 = MAX(init.display.grid_y/2 - ((height + 2) / 2), 0);
@@ -255,8 +258,10 @@ void MacroScreenLoad::render() {
 }
 
 MacroScreenSave::MacroScreenSave() {
-  render();
-  gps.renewscreen();
+}
+
+void MacroScreenSave::logic() {
+  enabler.flag|=ENABLERFLAG_RENDER;
 }
 
 void MacroScreenSave::feed(set<InterfaceKey> &input) {
@@ -268,11 +273,10 @@ void MacroScreenSave::feed(set<InterfaceKey> &input) {
     breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
     return;
   }
-  render();
-  gps.renewscreen();
 }
 
 void MacroScreenSave::render() {
+  if (parent) parent->render();
   const int x1 = 3,
     x2 = init.display.grid_x-4,
     y1 = init.display.grid_y/2-1,
@@ -280,5 +284,6 @@ void MacroScreenSave::render() {
   gps.changecolor(0,3,1);
   gps.draw_border(x1, x2, y1, y2);
   id.render(x1+1,x2-1,y1+1,y2-1);
+  gps.renewscreen();
 }
 
