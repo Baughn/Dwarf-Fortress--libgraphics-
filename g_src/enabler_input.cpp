@@ -723,6 +723,9 @@ void enabler_inputst::save_macro(string name) {
 void enabler_inputst::delete_macro(string name) {
   map<string,macro>::iterator it = macros.find(name);
   if (it != macros.end()) macros.erase(it);
+  // TODO: Store the filename it was loaded from instead
+  string filename = "data/init/macros/" + filter_filename(name, '_') + ".mak";
+  remove(filename.c_str());
 }
 
 
