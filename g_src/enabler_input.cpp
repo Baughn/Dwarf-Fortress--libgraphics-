@@ -642,7 +642,6 @@ static string filter_filename(string name, char replacement) {
 
 void enabler_inputst::load_macro_from_file(const string &file) {
   ifstream s(file.c_str());
-  cout << "Loading " << file << endl;
   char buf[100];
   s.getline(buf, 100);
   string name(buf);
