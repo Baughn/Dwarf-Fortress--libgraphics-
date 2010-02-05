@@ -255,6 +255,7 @@ void MacroScreenLoad::render() {
   gps.changecolor(0,3,1);
   gps.draw_border(x1, x2, y1, y2);
   menu.render(x1+1, x2-1, y1+1, y2-1);
+  gps.renewscreen();
 }
 
 MacroScreenSave::MacroScreenSave() {
