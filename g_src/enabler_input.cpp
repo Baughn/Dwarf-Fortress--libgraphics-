@@ -364,7 +364,7 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
   set<EventMatch>::iterator pkit;
 
   update_modstate(e);
-  
+
   // Convert modifier state changes
   if ((e.type == SDL_KEYUP || e.type == SDL_KEYDOWN) &&
       (e.key.keysym.sym == SDLK_RSHIFT ||

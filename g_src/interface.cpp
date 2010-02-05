@@ -886,7 +886,12 @@ char interfacest::loop() {
       } else {
         // Feed input
         set<InterfaceKey> era = enabler.get_input();
-        if (era.size() == 0) break;
+        if (era.size() == 0)
+			{
+			if(enabler.mouse_lbut||
+				enabler.mouse_rbut)currentscreen->feed(era);
+			break;
+			}
         currentscreen->feed(era);
         if (era.count(INTERFACEKEY_TOGGLE_FULLSCREEN)) {
           enabler.toggle_fullscreen();

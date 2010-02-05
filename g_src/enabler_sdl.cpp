@@ -292,10 +292,6 @@ static void eventLoop(GL_Window window)
           }
           SDL_ShowCursor(SDL_DISABLE);
         }
-        if (event.key.keysym.sym == SDLK_k) {
-          new KeybindingScreen();
-          break;
-        }
       case SDL_KEYUP:
       case SDL_QUIT:
         enabler.add_input(event, now);

@@ -611,7 +611,7 @@ void render_things(enum render_phase phase)
   currentscreen->render();
   // HACK: Render REC when recording macros. Definitely want this screen-specific. Or do we?
   if (enabler.is_recording()) {
-    gps.locate(init.display.grid_y-1, 20);
+    gps.locate(0, 20);
     gps.changecolor(4,1,1);
     gps.addst("REC");
     gps.renewscreen();
