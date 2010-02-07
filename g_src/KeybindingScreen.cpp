@@ -115,8 +115,8 @@ void KeybindingScreen::logic() {
     was_registering = false;
     reset_keyR();
   }
-  enabler.flag|=ENABLERFLAG_RENDER;
-  gps.renewscreen();
+  // enabler.flag|=ENABLERFLAG_RENDER;
+  // gps.renewscreen();
 }
 
 void KeybindingScreen::enter_macros() {
@@ -176,7 +176,7 @@ void KeybindingScreen::reset_keyR() {
 
 void KeybindingScreen::render_macro() {
   drawborder("Macros");
-  macro.render(6, init.display.grid_x-1, 3, init.display.grid_y-1);
+  macro.render(6, init.display.grid_x-2, 3, init.display.grid_y-2);
 }
 
 void KeybindingScreen::render_key() {
@@ -185,12 +185,12 @@ void KeybindingScreen::render_key() {
     drawborder("Keybinding - currently registering new key");
   } else
     drawborder("Keybinding");
-  keyL.render(6, init.display.grid_x/2 - 1, 3, init.display.grid_y-1);
+  keyL.render(6, init.display.grid_x/2 - 1, 3, init.display.grid_y-2);
   if (mode == mode_keyL)
     keyR.bleach(true);
   else
     keyR.bleach(false);
-  keyR.render(init.display.grid_x/2 + 1, init.display.grid_x-1, 3, init.display.grid_y-1);
+  keyR.render(init.display.grid_x/2 + 1, init.display.grid_x-2, 3, init.display.grid_y-2);
 }
 
 // Render the main menu
@@ -224,8 +224,8 @@ MacroScreenLoad::MacroScreenLoad() {
     if (it->length() > width) width = it->length();
     menu.add(*it, *it);
   }
-  render();
-  gps.renewscreen();
+  // render();
+  // gps.renewscreen();
 }
 
 void MacroScreenLoad::feed(set<InterfaceKey> &input) {
@@ -243,7 +243,7 @@ void MacroScreenLoad::feed(set<InterfaceKey> &input) {
 }
 
 void MacroScreenLoad::logic() {
-  enabler.flag|=ENABLERFLAG_RENDER;
+  // enabler.flag|=ENABLERFLAG_RENDER;
 }
 
 void MacroScreenLoad::render() {
@@ -255,14 +255,14 @@ void MacroScreenLoad::render() {
   gps.changecolor(0,3,1);
   gps.draw_border(x1, x2, y1, y2);
   menu.render(x1+1, x2-1, y1+1, y2-1);
-  gps.renewscreen();
+  // gps.renewscreen();
 }
 
 MacroScreenSave::MacroScreenSave() {
 }
 
 void MacroScreenSave::logic() {
-  enabler.flag|=ENABLERFLAG_RENDER;
+  // enabler.flag|=ENABLERFLAG_RENDER;
 }
 
 void MacroScreenSave::feed(set<InterfaceKey> &input) {
@@ -285,6 +285,6 @@ void MacroScreenSave::render() {
   gps.changecolor(0,3,1);
   gps.draw_border(x1, x2, y1, y2);
   id.render(x1+1,x2-1,y1+1,y2-1);
-  gps.renewscreen();
+  // gps.renewscreen();
 }
 

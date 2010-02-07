@@ -1,5 +1,6 @@
 #include <SDL/SDL.h>
 #include <map>
+#include <vector>
 #include <iostream>
 #include <algorithm>
 #include <stdlib.h>
@@ -12,8 +13,6 @@ extern initst init;
 #include "files.h"
 #include "find_files.h"
 #include "svector.h"
-
-#include <boost/regex.hpp>
 
 // These change dynamically in the normal process of DF
 static Time last_era = 0; // We can process at most one input event per era of one millisecond
@@ -195,6 +194,32 @@ static Uint8 getModState() {
   return modState;
 }
 
+// Not sure what to call this, but it ain't using regexes.
+static bool parse_line(const string &line, const string &regex, vector<string> &parts) {
+  parts.clear();
+  parts.push_back(line);
+  int bytes;
+  for (int l = 0, r = 0; r < regex.length();) {
+    switch (regex[r]) {
+    case '*': // Read until ], : or the end of the line, but at least one character.
+      {
+        const int start = l;
+        for (; l < line.length() && (l == start || (line[l] != ']' && line[l] != ':')); l++)
+          ;
+        parts.push_back(line.substr(start, l - start));
+        r++;
+      }
+      break;
+    default:
+      if (line[l] != regex[r]) return false;
+      r++; l++;
+      break;
+    }
+  }
+  // We've made it this far, clearly the string parsed
+  return true;
+}
+
 void enabler_inputst::load_keybindings(const string &file) {
   cout << "Loading bindings from " << file << endl;
   interfacefile = file;
@@ -210,19 +235,17 @@ void enabler_inputst::load_keybindings(const string &file) {
     getline(s, line);
     lines.push_back(line);
   }
-  
-  static const boost::regex bind("\\[BIND:([^:]+):([^\\]]+)\\]");
-  //static const boost::regex macro("\\[MACRO:([^:]+):([^\\]]+)\\]");
 
-  static const boost::regex sym("\\[SYM:([^:]+):([^\\]]+)\\]");
-  static const boost::regex key("\\[KEY:(.+)\\]");
-  static const boost::regex button("\\[BUTTON:([^:]+):([^\\]]+)\\]");
+  static const string bind("[BIND:*:*]");
+  static const string sym("[SYM:*:*]");
+  static const string key("[KEY:*]");
+  static const string button("[BUTTON:*:*]");
 
-  boost::smatch match;
   list<string>::iterator line = lines.begin();
+  vector<string> match;
 
   while (line != lines.end()) {
-    if (boost::regex_search(*line, match, bind)) {
+    if (parse_line(*line, bind, match)) {
       map<string,InterfaceKey>::iterator it = bindingNames.right.find(match[1]);
       if (it != bindingNames.right.end()) {
         InterfaceKey binding = it->second;
@@ -242,7 +265,7 @@ void enabler_inputst::load_keybindings(const string &file) {
         while (line != lines.end()) {
           EventMatch matcher;
           // SDL Keys
-          if (boost::regex_search(*line, match, sym)) {
+          if (parse_line(*line, sym, match)) {
             map<string,SDLKey>::iterator it = sdlNames.right.find(match[2]);
             if (it != sdlNames.right.end()) {
               matcher.mod  = atoi(string(match[1]).c_str());
@@ -255,7 +278,7 @@ void enabler_inputst::load_keybindings(const string &file) {
             }
             ++line;           
           } // Unicode
-          else if (boost::regex_search(*line, match, key)) {
+          else if (parse_line(*line, key, match)) {
             matcher.type = type_unicode;
             matcher.unicode = decode_utf8(match[1]);
             matcher.mod = KMOD_NONE;
@@ -272,7 +295,7 @@ void enabler_inputst::load_keybindings(const string &file) {
             }
             ++line;
           } // Mouse buttons
-          else if (boost::regex_search(*line, match, button)) {
+          else if (parse_line(*line, button, match)) {
             matcher.type = type_button;
             string str = match[2];
             matcher.button = atoi(str.c_str());

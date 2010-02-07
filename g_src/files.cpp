@@ -10,6 +10,7 @@
 #include <map>
 #include <set>
 #include <stdio.h>
+#include <unistd.h>
 
 extern "C" {
 #include <zlib.h>
@@ -392,5 +393,8 @@ void copy_file(const string &src,const string &dst)
 }
 
 void replace_file(const string &src, const string &dst) {
+#ifdef WIN32
+  remove(dst.c_str());
+#endif
   rename(src.c_str(), dst.c_str());
 }

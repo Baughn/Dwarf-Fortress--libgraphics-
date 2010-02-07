@@ -511,8 +511,9 @@ void enablerst::do_frame()
   // Hack: Because various enabler values are set by the main loop, we can't
   // run render-setup before the main loop if we just zoomed or they have
   // otherwise become uninitialized.
+  // flag |= ENABLERFLAG_RENDER;
   bool do_render=false;
-  if (flag & ENABLERFLAG_RENDER) {
+  if (flag & ENABLERFLAG_RENDER || 1) {
     if (gframes_outstanding > 0) {
       do_render = true;
       // Initiate graphics rendering, if appropriate

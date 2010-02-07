@@ -608,12 +608,14 @@ void render_things(enum render_phase phase)
   //NO INTERFACE LEFT, LEAVE
   if(currentscreen==&gview.view)return;
   
-  currentscreen->render();
-  // HACK: Render REC when recording macros. Definitely want this screen-specific. Or do we?
-  if (enabler.is_recording()) {
-    gps.locate(0, 20);
-    gps.changecolor(4,1,1);
-    gps.addst("REC");
+  if (phase == setup) {
+    currentscreen->render();
+    // HACK: Render REC when recording macros. Definitely want this screen-specific. Or do we?
+    if (enabler.is_recording()) {
+      gps.locate(0, 20);
+      gps.changecolor(4,1,1);
+      gps.addst("REC");
+    }
     gps.renewscreen();
   }
   

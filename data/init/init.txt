@@ -49,7 +49,7 @@ By and large, 2D should be the most reliable, while STANDARD has a good combinat
 
 If you have a multi-core machine, 2DASYNC should be faster than 2D, and just as reliable. On a single-core it's slower. 2DHW should also be faster than 2D, but depends on having lots of video memory.
 
-[PRINT_MODE:2DASYNC]
+[PRINT_MODE:FRAME_BUFFER]
 [SINGLE_BUFFER:NO]
 
 Change this to YES to keep the DF window on top of your other windows.
@@ -58,11 +58,11 @@ Change this to YES to keep the DF window on top of your other windows.
 
 Change this to YES if you want to see an FPS counter at the top left.
 
-[FPS:NO]
+[FPS:YES]
 
 Use this to set the maximum frame rate during play.  The movies are always capped at 100.  A frame in this case is not graphical but related to the movement speed of a creature.  A healthy, unencumbered dwarven peasant takes one step every 10 frames.
 
-[FPS_CAP:100]
+[FPS_CAP:400]
 
 Use this to set the maximum graphical frame refresh rate during play.
 

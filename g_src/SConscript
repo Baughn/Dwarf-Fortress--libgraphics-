@@ -10,8 +10,8 @@ src_dll = ["basics.cpp","command_line.cpp","enabler_sdl.cpp","files.cpp",
 
 dll  = '#libs/libgraphics.so'
 
-optimize = False
-debug = True
+optimize = True
+debug = False
 profile = False
    
 # Propagate PATH. We'll just take our chances with non-repeatable builds.
@@ -33,7 +33,7 @@ env["CPPPATH"].append('#g_src/glext')
 env["CCFLAGS"].append('-DGLEW_STATIC') # Should only be needed on windows, but can't hurt.
 
 # Generic unix, including Linux
-env["LIBS"] += ['SDL_image', 'boost_regex']
+env["LIBS"] += ['SDL_image']
 env['ASFLAGS']="--32"
 env['LINKFLAGS'].append("-m32")
 env["CCFLAGS"].append("-m32")
@@ -50,7 +50,7 @@ if profile:
    env['LINKFLAGS'].append("-pg")
 
 if optimize:
-   env["CCFLAGS"]+=["-O2","-march=pentium3","-mfpmath=sse"]
+   env["CCFLAGS"]+=["-O3","-march=pentium3","-mfpmath=sse"]
 
 if debug:
    env["CCFLAGS"].append("-ggdb")
