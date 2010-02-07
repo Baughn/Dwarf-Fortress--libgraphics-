@@ -664,6 +664,7 @@ char enablerst::create_window_GL(GL_Window* window)
   int retval = -1;
   Uint32 flags = 0;
   SDL_Surface *screen = NULL;
+  static bool glewInitialized = false;
 	
   // Set up SDL to give us a context.
   if (use_opengl)
@@ -709,10 +710,13 @@ char enablerst::create_window_GL(GL_Window* window)
       SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
-    glewInit();
   }
     
   screen = SDL_SetVideoMode(window->init.width, window->init.height, window->init.bitsPerPixel, flags);
+  if (use_opengl && !glewInitialized) {
+    glewInit();
+    glewInitialized = true;
+  }
   if (screen == NULL) {
     destroy_window_GL(window);
     if (window->init.isFullScreen) {
