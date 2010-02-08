@@ -73,10 +73,10 @@ class enabler_inputst {
   
  public:
   // In practice.. do not use this one.
-  void add_input(SDL_Event &e, Uint32 now);
+  void add_input(SDL_Event &e, Time now);
   // Use this one. It's much nicer.
-  void add_input_refined(KeyEvent &e, Uint32 now);
-  std::set<InterfaceKey> get_input();
+  void add_input_refined(KeyEvent &e, Time now);
+  std::set<InterfaceKey> get_input(Time now);
   void clear_input();
 
   void load_keybindings(const std::string &file);

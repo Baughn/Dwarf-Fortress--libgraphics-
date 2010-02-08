@@ -879,13 +879,14 @@ char interfacest::loop() {
     //   handlemovie(0);
     // }
 
+    const Time now = SDL_GetTicks();
     for (;;) {
       if (flag & INTERFACEFLAG_RETAIN_NONZERO_INPUT) {
         flag&=~INTERFACEFLAG_RETAIN_NONZERO_INPUT;
         break;
       } else {
         // Feed input
-        set<InterfaceKey> era = enabler.get_input();
+        set<InterfaceKey> era = enabler.get_input(now);
         if (era.size() == 0)
 			{
 			if(enabler.mouse_lbut||

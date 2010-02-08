@@ -41,11 +41,11 @@ static string interfacefile;
 
 // Returns an unused era number no smaller than 'last'
 static Time next_era(Time clamp) {
-  if (last_era <= clamp) {
+  if (last_era < clamp) {
     last_era = clamp;
     return clamp;
-  } else
-    return last_era++;
+  } else 
+    return ++clamp;
 }
 
 static void update_keydisplay(InterfaceKey binding, string display) {
@@ -527,8 +527,12 @@ void enabler_inputst::clear_input() {
   modState = 0;
 }
 
-set<InterfaceKey> enabler_inputst::get_input() {
-  Time now = SDL_GetTicks();
+set<InterfaceKey> enabler_inputst::get_input(Time now) {
+  // We insert repeats relative to the current time, not when the
+  // events we're now returning were *supposed* to happen. However, we
+  // still need to make sure that events that started separate stay
+  // separate, thus this next-era call.
+  now = next_era(now);
 
   // We walk the timeline, returning all events occurring
   // simultaneously with the first event to occur, in the past, and
@@ -547,12 +551,12 @@ set<InterfaceKey> enabler_inputst::get_input() {
       break;
     case REPEAT_SLOW:
       if (ev.repeats > 1)
-        timeline.insert(pair<Time,Event>(it->first + init.input.repeat_time, ev));
+        timeline.insert(pair<Time,Event>(now + init.input.repeat_time, ev));
       else
-        timeline.insert(pair<Time,Event>(it->first + init.input.hold_time, ev));
+        timeline.insert(pair<Time,Event>(now + init.input.hold_time, ev));
       break;
     case REPEAT_FAST:
-      timeline.insert(pair<Time,Event>(it->first + init.input.repeat_time, ev));
+      timeline.insert(pair<Time,Event>(now + init.input.repeat_time, ev));
       break;
     }
     // Delete the event from the timeline and iterate
