@@ -26,21 +26,20 @@ env['CCFLAGS']=["-Dunix"]
 env['LIBS']=[]
 # If there's a library in the libs folder it will get linked over a system one.
 env['LIBPATH']=["#libs"]
-env['LINKFLAGS']=[]
+env['LINKFLAGS']=["-Wl,--as-needed",'-Wl,-rpath=\$$ORIGIN/libs','-Wl,-static','-lSDL','-lSDL_image','-lsndfile','-Wl,-Bdynamic']
 
 # GLEW
 env["CPPPATH"].append('#g_src/glext')
 env["CCFLAGS"].append('-DGLEW_STATIC') # Should only be needed on windows, but can't hurt.
 
 # Generic unix, including Linux
-env["LIBS"] += ['SDL_image']
 env['ASFLAGS']="--32"
 env['LINKFLAGS'].append("-m32")
 env["CCFLAGS"].append("-m32")
 env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
 env.ParseConfig('pkg-config openal --cflags --libs')
-env.ParseConfig('pkg-config sndfile --cflags --libs')
-env.ParseConfig('pkg-config sdl --cflags --libs')
+env.ParseConfig('pkg-config sndfile --static --cflags')
+env.ParseConfig('pkg-config sdl --static --cflags')
 env.ParseConfig('pkg-config zlib --cflags --libs')
 env.ParseConfig('pkg-config glu --cflags --libs')
 
