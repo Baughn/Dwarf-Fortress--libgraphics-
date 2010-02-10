@@ -125,13 +125,16 @@ void initst::begin()
                                                   else
                                                     token2 = "2D";
                                                 }
-#ifdef unix
                                         if(token2=="TEXT") {
+#ifdef CURSES
                                           display.flag.add_flag(INIT_DISPLAY_FLAG_TEXT);
                                           display.flag.add_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT);
                                           display.partial_print_count=0;
-                                        }
+#else
+                                          MessageBox(NULL, "Text mode not supported on your platform, using 2D", 0, 0);
+                                          token2 = "2D";
 #endif
+                                        }
 					if(token2=="FRAME_BUFFER")
 						{
 						display.flag.add_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER);

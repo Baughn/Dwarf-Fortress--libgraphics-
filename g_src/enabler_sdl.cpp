@@ -55,16 +55,7 @@ extern initst init;
 #include "music_and_sound_g.h"
 extern musicsoundst musicsound;
 #endif
-
-extern "C" {
-#ifdef unix
-# undef COLOR_BLUE
-# undef COLOR_CYAN
-# undef COLOR_RED
-# undef COLOR_YELLOW
-# include <ncurses.h>
-#endif
-}
+#include "curses.h"
 
 using namespace std;
 
@@ -272,6 +263,7 @@ static void zoom_display_delayed(enum zoom_commands command) {
   }
 }
 
+#ifdef CURSES
 // Reads from getch, collapsing utf-8 encoding to the actual unicode
 // character.  Ncurses symbols (left arrow, etc.) are returned as
 // positive values, unicode as negative. Error returns 0.
@@ -336,6 +328,7 @@ static void eventLoop_ncurses() {
     enabler.do_frame();
   }
 }
+#endif
 
 static void eventLoop_SDL(GL_Window window)
 {
@@ -558,7 +551,9 @@ int enablerst::loop(void)
 	{
 	  // At this point we should have a window that is setup to render DF.
           if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
+#ifdef CURSES
             eventLoop_ncurses();
+#endif
           } else {
             textures.upload_textures();
             SDL_EnableUNICODE(1);
@@ -658,8 +653,10 @@ void enablerst::render(GL_Window &window, enum render_phase phase)
   if (phase == complete) {
     if (use_opengl) 
       SDL_GL_SwapBuffers();
+#ifdef CURSES
     else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT))
       refresh();
+#endif
     else
       SDL_Flip(SDL_GetVideoSurface());
   }
@@ -755,7 +752,7 @@ char enablerst::create_window_GL(GL_Window* window)
   SDL_Surface *screen = NULL;
   static bool glewInitialized = false;
 
-#ifdef unix
+#ifdef CURSES
   // If we're using ncurses output, we completely short-circuit SDL windowing.
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
     initscr();
@@ -2125,7 +2122,7 @@ int main (int argc, char* argv[])
 
   SDL_Quit();
 
-#ifdef unix
+#ifdef CURSES
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT))
     endwin();
 #endif

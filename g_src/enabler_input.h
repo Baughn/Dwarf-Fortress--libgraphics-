@@ -8,6 +8,7 @@
 
 #include "ViewBase.h"
 #include "keybindings.h"
+#include "curses.h"
 
 typedef Uint32 Time;
 
@@ -84,7 +85,9 @@ class enabler_inputst {
   // Use this one. It's much nicer.
   void add_input_refined(KeyEvent &e, Time now);
   // Made specifically for curses. <0 = unicode, >0 = ncurses symbols.
+#ifdef CURSES
   void add_input_ncurses(int key, Time now, bool esc);
+#endif
   std::set<InterfaceKey> get_input(Time now);
   void clear_input();
 

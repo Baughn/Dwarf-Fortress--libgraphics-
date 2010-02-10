@@ -13,16 +13,7 @@ extern initst init;
 #include "files.h"
 #include "find_files.h"
 #include "svector.h"
-
-extern "C" {
-#ifdef unix
-# undef COLOR_BLUE
-# undef COLOR_CYAN
-# undef COLOR_RED
-# undef COLOR_YELLOW
-# include <ncurses.h>
-#endif
-}
+#include "curses.h"
 
 
 // These change dynamically in the normal process of DF
@@ -498,6 +489,7 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
 // 1 and up are ncurses symbols, as returned by getch.
 // -1 and down are unicode values.
 // esc is true if this key was part of an escape sequence.
+#ifdef CURSES
 void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   now = next_era(now);
 
@@ -583,6 +575,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     }
   }
 }
+#endif
 
 void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
   // We may be registering a new mapping, in which case we skip the

@@ -41,16 +41,8 @@
 
 #include "interface.h"
 
-extern "C" {
-#include "GL/glew.h"
-#ifdef unix
-# undef COLOR_BLUE
-# undef COLOR_CYAN
-# undef COLOR_RED
-# undef COLOR_YELLOW
-# include <ncurses.h>
-#endif
-}
+#include "curses.h"
+
 using namespace std;
 
 
@@ -300,6 +292,7 @@ void graphicst::display()
     force_full_display_count--;
 }
 
+#ifdef CURSES
 // Map from DF color to ncurses color
 static int ncurses_map_color(int color) {
   if (color < 0) abort();
@@ -360,6 +353,7 @@ static int charmap[256] = {
   0x2261, 0xB1, 0x2265, 0x2264, 0x2320, 0x2321, 0xF7, 0x2248,
     0xB0, 0x2219, 0xB7, 0x221A, 0x207F, 0xB2, 0x25A0, 0xA0
 };
+#endif
 
 void graphicst::renewscreen()
 {
@@ -394,6 +388,7 @@ void graphicst::renewscreen()
         }
     }
 
+#ifdef CURSES
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {    
     int x2,y2;
     for(x2=0;x2<init.display.grid_x;x2++)
@@ -421,7 +416,9 @@ void graphicst::renewscreen()
             }
           }
       }
-  } else {
+  } else
+#endif
+    {
     display();
     enabler.flag|=ENABLERFLAG_RENDER;
   }
