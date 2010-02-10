@@ -125,6 +125,13 @@ void initst::begin()
                                                   else
                                                     token2 = "2D";
                                                 }
+#ifdef unix
+                                        if(token2=="TEXT") {
+                                          display.flag.add_flag(INIT_DISPLAY_FLAG_TEXT);
+                                          display.flag.add_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT);
+                                          display.partial_print_count=0;
+                                        }
+#endif
 					if(token2=="FRAME_BUFFER")
 						{
 						display.flag.add_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER);

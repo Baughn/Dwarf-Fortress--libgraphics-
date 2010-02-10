@@ -14,6 +14,17 @@ extern initst init;
 #include "find_files.h"
 #include "svector.h"
 
+extern "C" {
+#ifdef unix
+# undef COLOR_BLUE
+# undef COLOR_CYAN
+# undef COLOR_RED
+# undef COLOR_YELLOW
+# include <ncurses.h>
+#endif
+}
+
+
 // These change dynamically in the normal process of DF
 static Time last_era = 0; // We can process at most one input event per era of one millisecond
 static multimap<Time,Event> timeline; // A timeline of pending key events (for next get_input)
@@ -71,26 +82,34 @@ static void assertgood(ifstream &s) {
 
 // Decodes an UTF-8 encoded string into a /single/ UTF-8 character,
 // discarding any overflow. Returns 0 on parse error.
-static int decode_utf8(const string &s) {
+int decode_utf8(const string &s) {
   int unicode = 0, length, i;
   if (s.length() == 0) return 0;
-  else if ((s[0] & 0x80) == 0) { // 1-byte, ascii series
-    unicode = s[0];
-    length = 1;
+  length = decode_utf8_predict_length(s[0]);
+  switch (length) {
+  case 1: unicode = s[0]; break;
+  case 2: unicode = s[0] & 0x1f; break;
+  case 3: unicode = s[0] & 0x0f; break;
+  case 4: unicode = s[0] & 0x07; break;
+  default: return 0;
   }
-  else if ((s[0] & 0xe0) == 0xc0) { // 2-byte utf-8
-    unicode = s[0] & 0x1f;
-    length = 2;
-  }
-  else if ((s[0] & 0xf0) == 0xe0) { // 3-byte utf-8
-    unicode = s[0] & 0x0f;
-    length = 3;
-  }
-  else if ((s[0] & 0xf8) == 0xf0) { // 4-byte utf-8
-    unicode = s[0] & 0x07;
-    length = 4;
-  }
-  else return 0; // Broken text
+  // else if ((s[0] & 0x80) == 0) { // 1-byte, ascii series
+  //   unicode = s[0];
+  //   length = 1;
+  // }
+  // else if ((s[0] & 0xe0) == 0xc0) { // 2-byte utf-8
+  //   unicode = s[0] & 0x1f;
+  //   length = 2;
+  // }
+  // else if ((s[0] & 0xf0) == 0xe0) { // 3-byte utf-8
+  //   unicode = s[0] & 0x0f;
+  //   length = 3;
+  // }
+  // else if ((s[0] & 0xf8) == 0xf0) { // 4-byte utf-8
+  //   unicode = s[0] & 0x07;
+  //   length = 4;
+  // }
+  // else return 0; // Broken text
 
   // Concatenate the follow-up bytes
   if (s.length() < length) return 0;
@@ -101,9 +120,18 @@ static int decode_utf8(const string &s) {
   return unicode;
 }
 
+// Returns the length of an utf-8 sequence, based on its first byte
+int decode_utf8_predict_length(char byte) {
+  if ((byte & 0x80) == 0) return 1;
+  if ((byte & 0xe0) == 0xc0) return 2;
+  if ((byte & 0xf0) == 0xe0) return 3;
+  if ((byte & 0xf8) == 0xf0) return 4;
+  return 0; // Invalid start byte
+}
+
 // Encode an arbitrary unicode value as a string. Returns an empty
 // string if the value is out of range.
-static string encode_utf8(int unicode) {
+string encode_utf8(int unicode) {
   string s;
   int i;
   if (unicode < 0 || unicode > 0x10ffff) return ""; // Out of range for utf-8
@@ -466,6 +494,96 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
   }
 }
 
+// Input encoding:
+// 1 and up are ncurses symbols, as returned by getch.
+// -1 and down are unicode values.
+// esc is true if this key was part of an escape sequence.
+void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
+  now = next_era(now);
+
+  // TODO: Deal with shifted arrow keys, etc. See man 5 terminfo and tgetent.
+  
+  EventMatch sdl, uni; // Each key may provoke an unicode event, an "SDL-key" event, or both
+  sdl.type = type_key;
+  uni.type = type_unicode;
+  sdl.scancode = uni.scancode = 0; // We don't use this.. hang on, who does? ..nobody. FIXME!
+  sdl.mod = uni.mod = 0;
+  sdl.key = SDLK_UNKNOWN;
+  uni.unicode = 0;
+
+  if (esc) { // Escape sequence, meaning alt was held. I hope.
+    sdl.mod = uni.mod = MOD_ALT;
+  }
+
+  if (key == -10) { // Return
+    sdl.key = SDLK_RETURN;
+    uni.unicode = '\n';
+  } else if (key == -9) { // Tab
+    sdl.key = SDLK_TAB;
+    uni.unicode = '\t';
+  } else if (key == -27) { // If we see esc here, it's the actual esc key. Hopefully.
+    sdl.key = SDLK_ESCAPE;
+  } else if (key < 0 && key >= -26) { // Control-a through z (but not ctrl-j, or ctrl-i)
+    sdl.mod |= MOD_CTRL;
+    sdl.key = (SDLKey)(SDLK_a + (-key) - 1);
+  } else if (key <= -32 && key >= -127) { // ASCII character set
+    uni.unicode = -key;
+    sdl.key = (SDLKey)-key; // Most of this maps directly to SDL keys, except..
+    if (sdl.key > 64 && sdl.key < 91) { // Uppercase
+      sdl.key = (SDLKey)(sdl.key + 33); // Maps to lowercase, and
+      sdl.mod |= MOD_SHIFT; // Add shift.
+    }
+  } else if (key < -127) { // Unicode, no matching SDL keys
+    uni.unicode = -key;
+  } else if (key > 0) { // Symbols such as arrow-keys, etc, no matching unicode.
+    switch (key) {
+    case KEY_DOWN: sdl.key = SDLK_DOWN; break;
+    case KEY_UP: sdl.key = SDLK_UP; break;
+    case KEY_LEFT: sdl.key = SDLK_LEFT; break;
+    case KEY_RIGHT: sdl.key = SDLK_RIGHT; break;
+    case KEY_BACKSPACE: sdl.key = SDLK_BACKSPACE; break;
+    case KEY_F(1): sdl.key = SDLK_F1; break;
+    case KEY_F(2): sdl.key = SDLK_F2; break;
+    case KEY_F(3): sdl.key = SDLK_F3; break;
+    case KEY_F(4): sdl.key = SDLK_F4; break;
+    case KEY_F(5): sdl.key = SDLK_F5; break;
+    case KEY_F(6): sdl.key = SDLK_F6; break;
+    case KEY_F(7): sdl.key = SDLK_F7; break;
+    case KEY_F(8): sdl.key = SDLK_F8; break;
+    case KEY_F(9): sdl.key = SDLK_F9; break;
+    case KEY_F(10): sdl.key = SDLK_F10; break;
+    case KEY_F(11): sdl.key = SDLK_F11; break;
+    case KEY_F(12): sdl.key = SDLK_F12; break;
+    case KEY_F(13): sdl.key = SDLK_F13; break;
+    case KEY_F(14): sdl.key = SDLK_F14; break;
+    case KEY_F(15): sdl.key = SDLK_F15; break;
+    case KEY_DC: sdl.key = SDLK_DELETE; break;
+    case KEY_NPAGE: sdl.key = SDLK_PAGEDOWN; break;
+    case KEY_PPAGE: sdl.key = SDLK_PAGEUP; break;
+    case KEY_ENTER: sdl.key = SDLK_RETURN; break;
+    }
+  }
+  
+  KeyEvent kev; kev.release = false;
+  Event e; e.r = REPEAT_NOT; e.repeats = 0;
+  if (sdl.key) {
+    kev.match = sdl;
+    set<InterfaceKey> events = key_translation(kev);
+    for (set<InterfaceKey>::iterator it = events.begin(); it != events.end(); ++it) {
+      e.k = *it;
+      timeline.insert(pair<Time,Event>(now,e));
+    }
+  }
+  if (uni.key) {
+    kev.match = uni;
+    set<InterfaceKey> events = key_translation(kev);
+    for (set<InterfaceKey>::iterator it = events.begin(); it != events.end(); ++it) {
+      e.k = *it;
+      timeline.insert(pair<Time,Event>(now,e));
+    }
+  }
+}
+
 void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
   // We may be registering a new mapping, in which case we skip the
   // rest of this function.
@@ -564,7 +682,7 @@ set<InterfaceKey> enabler_inputst::get_input(Time now) {
     timeline.erase(it2);
   }
 #ifdef DEBUG
-  if (input.size()) {
+  if (input.size() && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
     cout << "Returning input:\n";
     set<InterfaceKey>::iterator it;
     for (it = input.begin(); it != input.end(); ++it)
