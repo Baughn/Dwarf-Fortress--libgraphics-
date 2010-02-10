@@ -38,6 +38,7 @@ extern "C" {
 #endif
 }
 
+
 #include "endian.h"
 #include "files.h"
 
@@ -56,6 +57,17 @@ extern initst init;
 #include "music_and_sound_g.h"
 extern musicsoundst musicsound;
 #endif
+
+extern "C" {
+#ifdef unix
+# undef COLOR_BLUE
+# undef COLOR_CYAN
+# undef COLOR_RED
+# undef COLOR_YELLOW
+# include <ncurses.h>
+#endif
+}
+
 extern graphicst gps;
 
 // Function prototypes.
@@ -262,7 +274,72 @@ static void zoom_display_delayed(enum zoom_commands command) {
   }
 }
 
-static void eventLoop(GL_Window window)
+// Reads from getch, collapsing utf-8 encoding to the actual unicode
+// character.  Ncurses symbols (left arrow, etc.) are returned as
+// positive values, unicode as negative. Error returns 0.
+static int getch_utf8() {
+  int byte = getch();
+  if (byte == ERR) return 0;
+  if (byte > 0xff) return byte;
+  int len = decode_utf8_predict_length(byte);
+  if (!len) return 0;
+  string input(len,0); input[0] = byte;
+  for (int i = 1; i < len; i++) input[i] = getch();
+  return -decode_utf8(input);
+}
+
+static void reset_window_ncurses() {
+  int w, h;
+  getmaxyx(stdscr, h, w);
+  enabler.desired_windowed_width = enabler.window_width = init.display.small_grid_x = w;
+  enabler.desired_windowed_height = enabler.window_height = init.display.small_grid_y = h;
+
+  gridrectst *rect; int i=0;
+  // FIXME: THere's just one gridrect, and it's time DF accepted this.
+  while (rect = enabler.get_gridrect(i++))
+    rect->allocate(w, h);
+  // Reset.. possibly nothing.. for the new window size
+  enabler.reset_gl();
+  ne_toggle_fullscreen();
+}
+
+static void eventLoop_ncurses() {
+  // Initialize the window
+  int height, width;
+  getmaxyx(stdscr, height, width);
+  reset_window_ncurses();
+    
+  while (loopvar) {
+    // Check for window size change
+    int h2, w2;
+    getmaxyx(stdscr, h2, w2);
+    if (h2 != height || w2 != width) {
+      height = h2; width = w2;
+      reset_window_ncurses();
+    }
+
+    // Deal with input
+    Uint32 now = SDL_GetTicks();
+    enabler.now = now;
+    // Read keyboard input, if any, and transform to artificial SDL
+    // events for enabler_input.
+    int key;
+    while ((key = getch_utf8())) {
+      bool esc = false;
+      if (key == -27) { // esc
+        int second = getch_utf8();
+        if (second) { // That was an escape sequence
+          esc = true;
+          key = second;
+        }
+      }
+      enabler.add_input_ncurses(key, now, esc);
+    }
+    enabler.do_frame();
+  }
+}
+
+static void eventLoop_SDL(GL_Window window)
 {
   // Initialize the zoom
   reset_window();
@@ -429,8 +506,16 @@ int enablerst::loop(void)
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_2D)) {
     puts("Using 2D mode");
     use_opengl = false;
-  } else
+  }
+#ifdef unix
+  else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
+    puts("Using ncurses mode");
+    use_opengl = false;
+  }
+#endif
+  else {
     use_opengl = true;
+  }
   
   // Fill Out Window
   ZeroMemory (&window, sizeof (GL_Window));               // Make Sure Memory Is Zeroed
@@ -473,11 +558,15 @@ int enablerst::loop(void)
 	}
       else
 	{
-	  // At this point we should have a window that is setup to render OpenGL.
-	  textures.upload_textures();
-          SDL_EnableUNICODE(1);
-	  eventLoop(window);
-	  textures.remove_uploaded_textures();
+	  // At this point we should have a window that is setup to render DF.
+          if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
+            eventLoop_ncurses();
+          } else {
+            textures.upload_textures();
+            SDL_EnableUNICODE(1);
+            eventLoop_SDL(window);
+            textures.remove_uploaded_textures();
+          }
 
 	  // Destroy the active window.
 	  destroy_window_GL(&window);	
@@ -571,6 +660,8 @@ void enablerst::render(GL_Window &window, enum render_phase phase)
   if (phase == complete) {
     if (use_opengl) 
       SDL_GL_SwapBuffers();
+    else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT))
+      refresh();
     else
       SDL_Flip(SDL_GetVideoSurface());
   }
@@ -665,7 +756,20 @@ char enablerst::create_window_GL(GL_Window* window)
   Uint32 flags = 0;
   SDL_Surface *screen = NULL;
   static bool glewInitialized = false;
-	
+
+#ifdef unix
+  // If we're using ncurses output, we completely short-circuit SDL windowing.
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
+    initscr();
+    raw();
+    noecho();
+    keypad(stdscr, true);
+    nodelay(stdscr, true);
+    start_color();
+    curs_set(0);
+    return true;
+  }
+#endif
   // Set up SDL to give us a context.
   if (use_opengl)
     flags |= SDL_HWSURFACE | SDL_OPENGL;
@@ -689,18 +793,18 @@ char enablerst::create_window_GL(GL_Window* window)
     window->init.width = desired_windowed_width;
     window->init.height = desired_windowed_height;
   }
-	
+  
   // Disable key repeat and set window title.
   SDL_EnableKeyRepeat(0, 0);
   SDL_WM_SetCaption(window->init.title, NULL);
-
+  
   SDL_Surface *icon = IMG_Load("icon.png");
   if (icon != NULL) {
     SDL_WM_SetIcon(icon, NULL);
     // The icon's surface doesn't get used passed this point.
     SDL_FreeSurface(icon); 
   }
-
+  
   if (use_opengl) {
     // Setup opengl attributes
     SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 0);
@@ -708,10 +812,10 @@ char enablerst::create_window_GL(GL_Window* window)
       SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 0);
     else
       SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
+    
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
   }
-    
+  
   screen = SDL_SetVideoMode(window->init.width, window->init.height, window->init.bitsPerPixel, flags);
   if (use_opengl && !glewInitialized) {
     glewInit();
@@ -729,7 +833,7 @@ char enablerst::create_window_GL(GL_Window* window)
       return false;
     }
   }
-
+  
   if (use_opengl) {
     // Make sure we actually got what we asked for
     int test=0;
@@ -737,11 +841,11 @@ char enablerst::create_window_GL(GL_Window* window)
     if (test != ((init.display.flag.has_flag(INIT_DISPLAY_FLAG_SINGLE_BUFFER)) ? 0 : 1))
       std::cerr << "SDL_GL_DOUBLEBUFFER failed\n";
   }
-	
+  
   reshape_GL(window->init.width, window->init.height);
   if (use_opengl)
     glClear(GL_COLOR_BUFFER_BIT);
-	
+  
   // Initialize the gridrects
   for (int i=0; i<gridrect.size(); i++)
     gridrect[i]->init_gl();
@@ -842,7 +946,7 @@ void gridrectst::render(render_phase phase, bool clear)
 {
   if (enabler.use_opengl)
     render_gl(phase, clear);
-  else if (phase == complete) // There is absolutely no point in trying to phase things in 2D
+  else if (phase == complete) // No point trying to phase things outside opengl
     render_2d(clear);
 }
 
@@ -927,7 +1031,7 @@ void gridrectst::dirty(int x, int y, int w, int h) {
     }
   }
 }
-
+ 
 void gridrectst::render_2d(bool clear) {
   SDL_Surface *screen = SDL_GetVideoSurface();
 
@@ -1966,10 +2070,19 @@ void text_system_file_infost::get_text(text_infost &text)
 int main (int argc, char* argv[])
 {
 #if !defined(__APPLE__) && defined(unix)
-  gtk_init(&argc, &argv);
+  bool ok = gtk_init_check(&argc, &argv);
+  if (!ok) {
+    puts("Display initialization failed, DF will crash if asked to use the screen.");
+  }
 #endif
 
   init.begin();
+#if !defined(__APPLE__) && defined(unix)
+  if (!ok && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
+    puts("Display not found and PRINT_MODE not set to TEXT, aborting.");
+    exit(EXIT_FAILURE);
+  }
+#endif
   
 #ifdef linux
   if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF)) {
@@ -1980,7 +2093,7 @@ int main (int argc, char* argv[])
 #endif
 
   // Initialise relevant SDL subsystems.
-  int retval = SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO);
+  int retval = SDL_Init(SDL_INIT_TIMER | (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT) ? 0 : SDL_INIT_VIDEO));
   // Report failure.
   if (retval != 0) {
     report_error("SDL initialization failure", SDL_GetError());
@@ -2002,6 +2115,11 @@ int main (int argc, char* argv[])
   int result = enabler.loop();
 
   SDL_Quit();
+
+#ifdef unix
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT))
+    endwin();
+#endif
   
   return result;
 }

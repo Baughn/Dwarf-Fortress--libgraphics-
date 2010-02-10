@@ -14,7 +14,6 @@
 #include <zlib.h>
 
 #include "svector.h"
-using std::string;
 
 #include "random.h"
 
@@ -44,7 +43,16 @@ using std::string;
 
 extern "C" {
 #include "GL/glew.h"
+#ifdef unix
+# undef COLOR_BLUE
+# undef COLOR_CYAN
+# undef COLOR_RED
+# undef COLOR_YELLOW
+# include <ncurses.h>
+#endif
 }
+using namespace std;
+
 
 #pragma comment( lib, "opengl32.lib" )			// Search For OpenGL32.lib While Linking
 #pragma comment( lib, "glu32.lib" )				// Search For GLu32.lib While Linking
@@ -159,7 +167,7 @@ void graphicst::erasescreen_clip()
 }
 
 void graphicst::erasescreen_rect(int x1, int x2, int y1, int y2)
-{
+{ 
   changecolor(0,0,0);
   for (int x = x1; x <= x2; x++) {
     for (int y = y1; y <= y2; y++) {
@@ -188,37 +196,6 @@ void graphicst::erasescreen()
 
 void graphicst::display()
 {
-	if(display_frames && !enabler.doing_buffer_draw())
-		{
-		long i;
-		LONGLONG total_frames=0;
-		LONGLONG total_time=0;
-		for(i=1;i<print_index;i++)
-			{
-			total_time+=print_time[i].QuadPart-print_time[i-1].QuadPart;
-			total_frames++;
-			}
-		for(i=print_index+1;i<100;i++)
-			{
-			total_time+=print_time[i].QuadPart-print_time[i-1].QuadPart;
-			total_frames++;
-			}
-		if(print_index!=0)
-			{
-			total_time+=print_time[0].QuadPart-print_time[99].QuadPart;
-			total_frames++;
-			}
-		if(total_time>0&&total_frames==99)
-			{
-			long fps=total_frames*100*enabler.main_qprate.QuadPart/total_time;
-			string str="FPS: ";
-			add_long_to_string(fps,str);
-			changecolor(7,3,1);
-			locate(0,0);
-			addst(str);
-			}
-		}
-
 	gridrectst *rect=enabler.get_gridrect(rect_id);
 
 	if(init.display.flag.has_flag(INIT_DISPLAY_FLAG_BLACK_SPACE))rect->black_space=1;
@@ -311,27 +288,134 @@ void graphicst::display()
 	if(force_full_display_count>0)force_full_display_count--;
 }
 
+static std::map<std::pair<int,int>,int> color_pairs; // For curses. MOVEME.
+
+// Map from DF color to ncurses color
+static int ncurses_map_color(int color) {
+  if (color < 0) abort();
+  switch (color) {
+  case 0: return 0;
+  case 1: return 4;
+  case 2: return 2;
+  case 3: return 6;
+  case 4: return 1;
+  case 5: return 5;
+  case 6: return 3;
+  case 7: return 7;
+  default: return ncurses_map_color(color - 7);
+  }
+}
+
+int graphicst::lookup_pair(pair<int,int> color) {
+  map<pair<int,int>,int>::iterator it = color_pairs.find(color);
+  if (it != color_pairs.end()) return it->second;
+  // We don't already have it. Generate a new pair if possible.
+  if (color_pairs.size() < COLOR_PAIRS - 1) {
+    const short pair = color_pairs.size() + 1;
+    init_pair(pair, ncurses_map_color(color.first), ncurses_map_color(color.second));
+    color_pairs[color] = pair;
+    return pair;
+  }
+  // We don't have it, and there's no space for more. Panic!
+  endwin();
+  puts("Ran out of space for color pairs! Ask Baughn to implement a fallback!");
+  exit(EXIT_FAILURE);
+}
+
+// see: http://dwarffortresswiki.net/index.php/Character_table
+static int charmap[256] = {
+  0x0000, 0x263A, 0x263B, 0x2665, 0x2666, 0x2663, 0x2660, 0x2022,
+    0x25D8, 0x25CB, 0x25D9, 0x2642, 0x2640, 0x266A, 0x266B, 0x263C,
+  0x25BA, 0x25C4, 0x2195, 0x203C, 0x00B6, 0x00A7, 0x25AC, 0x21A8,
+    0x2191, 0x2193, 0x2192, 0x2190, 0x221F, 0x2194, 0x25B2, 0x25BC,
+  /* 0x20 */
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0x2302,
+  /* 0x80 */
+  0xC7, 0xFC, 0xE9, 0xE2, 0xE4, 0xE0, 0xE5, 0xE7,
+    0xEA, 0xEB, 0xE8, 0xEF, 0xEE, 0xEC, 0xC4, 0xC5,
+  0xC9, 0xE6, 0xC6, 0xF4, 0xF6, 0xF2, 0xFB, 0xF9,
+    0xFF, 0xD6, 0xDC, 0xA2, 0xA3, 0xA5, 0x20A7, 0x192,
+  0xE1, 0xED, 0xF3, 0xFA, 0xF1, 0xD1, 0xAA, 0xBA,
+    0xBF, 0x2310, 0xAC, 0xBD, 0xBC, 0xA1, 0xAB, 0xBB,
+  0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556,
+    0x2555, 0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510,
+  0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F,
+    0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x2567,
+  0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B,
+    0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590, 0x2580,
+  0x3B1, 0xDF/*yay*/, 0x393, 0x3C0, 0x3A3, 0x3C3, 0xB5, 0x3C4,
+    0x3A6, 0x398, 0x3A9, 0x3B4, 0x221E, 0x3C6, 0x35B, 0x2229,
+  0x2261, 0xB1, 0x2265, 0x2264, 0x2320, 0x2321, 0xF7, 0x2248,
+    0xB0, 0x2219, 0xB7, 0x221A, 0x207F, 0xB2, 0x25A0, 0xA0
+};
+
 void graphicst::renewscreen()
 {
-	#ifdef ENABLER
-		display();
-		enabler.flag|=ENABLERFLAG_RENDER;
-	#endif
+  if(display_frames && !enabler.doing_buffer_draw())
+    {
+      long i;
+      LONGLONG total_frames=0;
+      LONGLONG total_time=0;
+      for(i=1;i<print_index;i++)
+        {
+          total_time+=print_time[i].QuadPart-print_time[i-1].QuadPart;
+          total_frames++;
+        }
+      for(i=print_index+1;i<100;i++)
+        {
+          total_time+=print_time[i].QuadPart-print_time[i-1].QuadPart;
+          total_frames++;
+        }
+      if(print_index!=0)
+        {
+          total_time+=print_time[0].QuadPart-print_time[99].QuadPart;
+          total_frames++;
+        }
+      if(total_time>0&&total_frames==99)
+        {
+          long fps=total_frames*100*enabler.main_qprate.QuadPart/total_time;
+          string str="FPS: ";
+          add_long_to_string(fps,str);
+          changecolor(7,3,1);
+          locate(0,0);
+          addst(str);
+        }
+    }
 
-	#ifdef CURSES
-		int x2,y2;
-		for(x2=0;x2<init.display.grid_x;x2++)
-			{
-			for(y2=0;y2<init.display.grid_y;y2++)
-				{
-				move(y2,x2);
-				set_color(screen[x2][y2][1],screen[x2][y2][2],screen[x2][y2][3]);
-				addch(screen[x2][y2][0]);
-				}
-			}
-
-		refresh();
-	#endif
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {    
+    int x2,y2;
+    static unsigned char screen_old[MAX_GRID_X][MAX_GRID_Y][4]; // For partial printing in curses. MOVEME.
+    for(x2=0;x2<init.display.grid_x;x2++)
+      {
+        for(y2=0;y2<init.display.grid_y;y2++)
+          {
+            const int ch   = screen[x2][y2][0];
+            const int fg   = screen[x2][y2][1];
+            const int bg   = screen[x2][y2][2];
+            const int bold = screen[x2][y2][3];
+            if (screen_old[x2][y2][0] != ch ||
+                screen_old[x2][y2][1] != fg ||
+                screen_old[x2][y2][2] != bg ||
+                screen_old[x2][y2][3] != bold) {
+              screen_old[x2][y2][0] = ch;
+              screen_old[x2][y2][1] = fg;
+              screen_old[x2][y2][2] = bg;
+              screen_old[x2][y2][3] = bold;
+              const string utf8 = encode_utf8(charmap[ch] ? charmap[ch] : ch);
+              const int pair = lookup_pair(make_pair<int,int>(fg,bg));
+              attron(COLOR_PAIR(pair));
+              if (bold) attron(A_BOLD);
+              mvprintw(y2, x2, "%s", utf8.c_str());
+              if (bold) attroff(A_BOLD);
+            }
+          }
+      }
+  } else {
+    display();
+    enabler.flag|=ENABLERFLAG_RENDER;
+  }
 }
 
 void graphicst::setclipping(long x1,long x2,long y1,long y2)
@@ -620,5 +704,6 @@ void render_things(enum render_phase phase)
   }
   
   //DRAW EVERYTHING TO BACK BUFFER
-  enabler.render_tiles(phase, clear);
+  if (!init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT))
+    enabler.render_tiles(phase, clear);
 }

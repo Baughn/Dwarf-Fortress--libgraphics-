@@ -2,6 +2,7 @@
 #define GRAPHICS_H
 
 #include <string>
+#include <map>
 using std::string;
 
 #include "g_basics.h"
@@ -15,6 +16,7 @@ enum Texture
 
 class graphicst
 {
+  int lookup_pair(std::pair<int,int> color);
 	public:
 		long screenx,screeny;
 		short screenf,screenb;

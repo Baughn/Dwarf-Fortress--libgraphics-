@@ -364,7 +364,7 @@ struct texture_fullid {
   float r, g, b;
   float br, bg, bb;
 
-  bool operator< (struct texture_fullid other) const {
+  bool operator< (const struct texture_fullid &other) const {
     if (texpos != other.texpos) return texpos < other.texpos;
     if (r != other.r) return r < other.r;
     if (g != other.g) return g < other.g;
@@ -381,11 +381,11 @@ class gridrectst
 
   void render_gl(render_phase, bool clear);
   void render_2d(bool clear);
+  void render_curses(bool clear);
 
   // A tile cache for 2D mode
   map<texture_fullid, SDL_Surface*> tile_cache;
-  SDL_Surface *tile_cache_lookup(texture_fullid& id);
-
+  SDL_Surface *tile_cache_lookup(texture_fullid &id);
   
  public:
   long id;

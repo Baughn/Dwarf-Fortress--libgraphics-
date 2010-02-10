@@ -26,6 +26,13 @@ struct Event {
 enum MatchType { type_unicode, type_key, type_button };
 
 std::string translate_mod(Uint8 mod);
+int decode_utf8(const std::string &s);
+int decode_utf8_predict_length(char byte);
+std::string encode_utf8(int unicode);
+
+#define MOD_SHIFT 1
+#define MOD_CTRL 2
+#define MOD_ALT 4
 
 struct EventMatch {
   MatchType type;
@@ -76,6 +83,8 @@ class enabler_inputst {
   void add_input(SDL_Event &e, Time now);
   // Use this one. It's much nicer.
   void add_input_refined(KeyEvent &e, Time now);
+  // Made specifically for curses. <0 = unicode, >0 = ncurses symbols.
+  void add_input_ncurses(int key, Time now, bool esc);
   std::set<InterfaceKey> get_input(Time now);
   void clear_input();
 
