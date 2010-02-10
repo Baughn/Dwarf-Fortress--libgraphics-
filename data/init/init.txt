@@ -51,7 +51,7 @@ If you have a multi-core machine, 2DASYNC should be faster than 2D, and just as 
 
 Linux/OS X users may also use PRINT_MODE:TEXT for primitive ncurses output.
 
-[PRINT_MODE:STANDARD]
+[PRINT_MODE:2D]
 [SINGLE_BUFFER:NO]
 
 Change this to YES to keep the DF window on top of your other windows.

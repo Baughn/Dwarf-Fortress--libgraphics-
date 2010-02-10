@@ -66,6 +66,15 @@ extern interfacest gview;
 void process_object_lines(textlinesst &lines,string &chktype);
 
 
+static std::map<std::pair<int,int>,int> color_pairs; // For curses. MOVEME.
+static unsigned char screen_old[MAX_GRID_X][MAX_GRID_Y][4]; // For partial printing.
+static long screentexpos_old[MAX_GRID_X][MAX_GRID_Y];
+static char screentexpos_addcolor_old[MAX_GRID_X][MAX_GRID_Y];
+static unsigned char screentexpos_grayscale_old[MAX_GRID_X][MAX_GRID_Y];
+static unsigned char screentexpos_cf_old[MAX_GRID_X][MAX_GRID_Y];
+static unsigned char screentexpos_cbr_old[MAX_GRID_X][MAX_GRID_Y];
+
+
 
 
 void graphicst::locate(long y,long x)
@@ -196,99 +205,100 @@ void graphicst::erasescreen()
 
 void graphicst::display()
 {
-	gridrectst *rect=enabler.get_gridrect(rect_id);
+  gridrectst *rect=enabler.get_gridrect(rect_id);
 
-	if(init.display.flag.has_flag(INIT_DISPLAY_FLAG_BLACK_SPACE))rect->black_space=1;
-	else rect->black_space=0;
+  if(init.display.flag.has_flag(INIT_DISPLAY_FLAG_BLACK_SPACE))rect->black_space=1;
+  else rect->black_space=0;
 
-	long localbufsize=rect->dimx*rect->dimy;
-	long d=0;
+  long localbufsize=rect->dimx*rect->dimy;
+  long d=0;
 
-	if(enabler.create_full_screen)
-		{
-		rect->dispx=init.font.large_font_dispx;
-		rect->dispy=init.font.large_font_dispy;
-		}
-	else
-		{
-		rect->dispx=init.font.small_font_dispx;
-		rect->dispy=init.font.small_font_dispy;
-		}
+  if(enabler.create_full_screen)
+    {
+      rect->dispx=init.font.large_font_dispx;
+      rect->dispy=init.font.large_font_dispy;
+    }
+  else
+    {
+      rect->dispx=init.font.small_font_dispx;
+      rect->dispy=init.font.small_font_dispy;
+    }
 
-	long *c_buffer_texpos;
-	float *c_buffer_r;
-	float *c_buffer_g;
-	float *c_buffer_b;
-	float *c_buffer_br;
-	float *c_buffer_bg;
-	float *c_buffer_bb;
+  long *c_buffer_texpos;
+  float *c_buffer_r;
+  float *c_buffer_g;
+  float *c_buffer_b;
+  float *c_buffer_br;
+  float *c_buffer_bg;
+  float *c_buffer_bb;
+  
+  int x2,y2;
+  for (x2=0; x2<init.display.grid_x; x2++) {
+    for (y2=0; y2<init.display.grid_y; y2++,d++) {
+      if (d>=localbufsize) break;
+      // Partial printing (and color-conversion): Big-ass if.
+      if (screen[x2][y2][0] == screen_old[x2][y2][0] &&
+          screen[x2][y2][1] == screen_old[x2][y2][1] &&
+          screen[x2][y2][2] == screen_old[x2][y2][2] &&
+          screen[x2][y2][3] == screen_old[x2][y2][3] &&
+          screentexpos[x2][y2] == screentexpos_old[x2][y2] &&
+          screentexpos_addcolor[x2][y2] == screentexpos_addcolor_old[x2][y2] &&
+          screentexpos_grayscale[x2][y2] == screentexpos_grayscale_old[x2][y2] &&
+          screentexpos_cf[x2][y2] == screentexpos_cf_old[x2][y2] &&
+          screentexpos_cbr[x2][y2] == screentexpos_cbr_old[x2][y2] &&
+          !force_full_display_count) { // Nothing's changed
+      } else {
+        // Okay, the buffer has changed. First update the old-buffer.
+        screen_old[x2][y2][0] = screen[x2][y2][0];
+        screen_old[x2][y2][1] = screen[x2][y2][1];
+        screen_old[x2][y2][2] = screen[x2][y2][2];
+        screen_old[x2][y2][3] = screen[x2][y2][3];
+        screentexpos_old[x2][y2] = screentexpos[x2][y2];
+        screentexpos_addcolor_old[x2][y2] = screentexpos_addcolor[x2][y2];
+        screentexpos_grayscale_old[x2][y2] = screentexpos_grayscale[x2][y2];
+        screentexpos_cf_old[x2][y2] = screentexpos_cf[x2][y2];
+        screentexpos_cbr_old[x2][y2] = screentexpos_cbr[x2][y2];
+        // Now, then. We need to convert the buffer contents to texture positions and RGB colors..
 
-	short x2,y2;
-	for(x2=0;x2<init.display.grid_x;x2++)
-		{
-		for(y2=0;y2<init.display.grid_y;y2++,d++)
-			{
-			if(d>=localbufsize)break;
+        c_buffer_texpos = &(rect->buffer_texpos[d]);
+        c_buffer_r = &(rect->buffer_r[d]);
+        c_buffer_g = &(rect->buffer_g[d]);
+        c_buffer_b = &(rect->buffer_b[d]);
+        c_buffer_br = &(rect->buffer_br[d]);
+        c_buffer_bg = &(rect->buffer_bg[d]);
+        c_buffer_bb = &(rect->buffer_bb[d]);
 
-			c_buffer_texpos=&(rect->buffer_texpos[d]);
-			c_buffer_r=&(rect->buffer_r[d]);
-			c_buffer_g=&(rect->buffer_g[d]);
-			c_buffer_b=&(rect->buffer_b[d]);
-			c_buffer_br=&(rect->buffer_br[d]);
-			c_buffer_bg=&(rect->buffer_bg[d]);
-			c_buffer_bb=&(rect->buffer_bb[d]);
+        // Mark this tile as "drawing required".
+        if (rect->s_buffer_count[d] < 0) // If 0 or above, it's already in.
+          rect->s_buffer_tiles.push_front(d);
+        rect->s_buffer_count[d] = init.display.partial_print_count;
+        
+        //CONVERT COLORS
+        convert_to_rgb(*c_buffer_br,*c_buffer_bg,*c_buffer_bb,screen[x2][y2][2],0);
+        
+        if (screentexpos[x2][y2]!=0) {
+          if(screentexpos_grayscale[x2][y2]) {
+            convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screentexpos_cf[x2][y2],screentexpos_cbr[x2][y2]);
+          } else if (screentexpos_addcolor[x2][y2]) {
+            convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screen[x2][y2][1],screen[x2][y2][3]);
+          } else {
+            *c_buffer_r=1;
+            *c_buffer_g=1;
+            *c_buffer_b=1;
+          }
+          *c_buffer_texpos=screentexpos[x2][y2];
+        } else {
+          convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screen[x2][y2][1],screen[x2][y2][3]);
+          if(enabler.create_full_screen)*c_buffer_texpos=init.font.large_font_texpos[screen[x2][y2][0]];
+          else *c_buffer_texpos=init.font.small_font_texpos[screen[x2][y2][0]];
+        }
+      }
+    }
+  }
 
-			//CONVERT COLORS
-			convert_to_rgb(*c_buffer_br,*c_buffer_bg,*c_buffer_bb,screen[x2][y2][2],0);
-
-			if(screentexpos[x2][y2]!=0)
-				{
-				if(screentexpos_grayscale[x2][y2])
-					{
-					convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screentexpos_cf[x2][y2],screentexpos_cbr[x2][y2]);
-					}
-				else if(screentexpos_addcolor[x2][y2])
-					{
-					convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screen[x2][y2][1],screen[x2][y2][3]);
-					}
-				else
-					{
-					*c_buffer_r=1;
-					*c_buffer_g=1;
-					*c_buffer_b=1;
-					}
-				*c_buffer_texpos=screentexpos[x2][y2];
-				}
-			else
-				{
-				convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screen[x2][y2][1],screen[x2][y2][3]);
-				if(enabler.create_full_screen)*c_buffer_texpos=init.font.large_font_texpos[screen[x2][y2][0]];
-				else *c_buffer_texpos=init.font.small_font_texpos[screen[x2][y2][0]];
-				}
-
-			if(force_full_display_count==0&&init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT))
-				{
-				if(*c_buffer_texpos==rect->s_buffer_texpos[d]&&
-					*c_buffer_r==rect->s_buffer_r[d]&&
-					*c_buffer_g==rect->s_buffer_g[d]&&
-					*c_buffer_b==rect->s_buffer_b[d]&&
-					*c_buffer_br==rect->s_buffer_br[d]&&
-					*c_buffer_bg==rect->s_buffer_bg[d]&&
-					*c_buffer_bb==rect->s_buffer_bb[d])
-					{
-					if(rect->s_buffer_count[d]<=0)*c_buffer_texpos=-1;
-					else rect->s_buffer_count[d]--;
-					}
-				else rect->s_buffer_count[d]=init.display.partial_print_count;
-				}
-			else rect->s_buffer_count[d]=0;
-			}
-		}
-
-	if(force_full_display_count>0)force_full_display_count--;
+  if (force_full_display_count > 0)
+    force_full_display_count--;
 }
-
-static std::map<std::pair<int,int>,int> color_pairs; // For curses. MOVEME.
 
 // Map from DF color to ncurses color
 static int ncurses_map_color(int color) {
@@ -386,7 +396,6 @@ void graphicst::renewscreen()
 
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {    
     int x2,y2;
-    static unsigned char screen_old[MAX_GRID_X][MAX_GRID_Y][4]; // For partial printing in curses. MOVEME.
     for(x2=0;x2<init.display.grid_x;x2++)
       {
         for(y2=0;y2<init.display.grid_y;y2++)

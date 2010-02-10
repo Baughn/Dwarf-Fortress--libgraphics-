@@ -24,8 +24,6 @@ extern "C" {
 #include "svector.h"
 #include "random.h"
 
-using std::string;
-
 #include "basics.h"
 
 #include "g_basics.h"
@@ -68,7 +66,7 @@ extern "C" {
 #endif
 }
 
-extern graphicst gps;
+using namespace std;
 
 // Function prototypes.
 char beginroutine(void);
@@ -1017,8 +1015,7 @@ SDL_Surface *gridrectst::tile_cache_lookup(texture_fullid &id) {
   }
 }
 
-// Reset the partial-printing colors for all tiles underlying a
-// certain rectangle, so they'll be redrawn
+// Force redrawing all tiles underlying a certain rectangle.
 void gridrectst::dirty(int x, int y, int w, int h) {
   pair<int,int> ul = window_to_grid(x,y),
     lr = window_to_grid(x+w, y+h);
@@ -1027,7 +1024,7 @@ void gridrectst::dirty(int x, int y, int w, int h) {
   for (int posx = ul.first; posx <= lr.first; posx++) {
     for (int posy = ul.second; posy <= lr.second; posy++) {
       int tile = posx * dimy + posy;
-      s_buffer_texpos[tile] = -1;
+      s_buffer_count[tile] = init.display.partial_print_count;
     }
   }
 }
@@ -1049,33 +1046,30 @@ void gridrectst::render_2d(bool clear) {
   
   // Render the grid
   int tile = 0;
-  int posx = origin_x, posy = origin_y;
+  int count = 0;
   SDL_Rect dst; dst.w = dispx; dst.h = dispy;
-  for (int x = 0; x < dimx; x++, posx += dispx) {
-    posy = origin_y;
-    for (int y = 0; y < dimy; y++, tile++, posy += dispy) {
-      long texpos = buffer_texpos[tile];
-      if (texpos == -1) continue; // Tile not dirty
-      // Dirty. Update dirty buffer.
-      s_buffer_texpos[tile] = buffer_texpos[tile];
-      s_buffer_r[tile]      = buffer_r[tile];
-      s_buffer_g[tile]      = buffer_g[tile];
-      s_buffer_b[tile]      = buffer_b[tile];
-      s_buffer_br[tile]     = buffer_br[tile];
-      s_buffer_bg[tile]     = buffer_bg[tile];
-      s_buffer_bb[tile]     = buffer_bb[tile];
-      // Find and display cached tile
-      texture_fullid texid = { texpos,
-                               buffer_r[tile],
-                               buffer_g[tile],
-                               buffer_b[tile],
-                               buffer_br[tile],
-                               buffer_bg[tile],
-                               buffer_bb[tile] };
-      SDL_Surface *texture = tile_cache_lookup(texid);
-      dst.x = posx; dst.y = posy;
-      SDL_BlitSurface(texture, NULL, screen, &dst);
-    }
+  for (list<int>::iterator it = s_buffer_tiles.begin(); it != s_buffer_tiles.end();) {
+    count++;
+    const int tile = *it;
+    const long texpos = buffer_texpos[tile];
+    const int posx = (tile / dimy) * dispx;
+    const int posy = (tile % dimy) * dispy;
+    // Find and display cached tile
+    texture_fullid texid = { texpos,
+                             buffer_r[tile],
+                             buffer_g[tile],
+                             buffer_b[tile],
+                             buffer_br[tile],
+                             buffer_bg[tile],
+                             buffer_bb[tile] };
+    SDL_Surface *texture = tile_cache_lookup(texid);
+    dst.x = posx; dst.y = posy;
+    SDL_BlitSurface(texture, NULL, screen, &dst);
+    // Remove tile from partial-display list
+    if (--s_buffer_count[tile] < 0)
+      s_buffer_tiles.erase(it++);
+    else
+      ++it;
   }
 }
 
@@ -1091,7 +1085,6 @@ void gridrectst::render_gl(render_phase phase, bool clear) {
   switch (phase) {
   case setup:
     {
-
       if (accum_buffer) {
         // Copy the previous frame's buffer back in
         glAccum(GL_RETURN, 1);
@@ -1161,62 +1154,11 @@ void gridrectst::render_gl(render_phase phase, bool clear) {
 
       printGLError();
 
-      // Build arrays. Vertex array is separated out, as it can be skipped in standard or VBO mode.
-      long tex_pos;
-      int edge_l=0, edge_r=1,edge_u,edge_d;
-      long px,py;
-      long d=0;
+      GLfloat *ptr_vertex_w = &ptr_vertex[0];
       GLfloat *ptr_bg_color_w  = &ptr_bg_color[0];
       GLfloat *ptr_fg_color_w = &ptr_fg_color[0];
       GLfloat *ptr_tex_w = &ptr_tex[0];
-      const struct gl_texpos *txt = enabler.textures.gl_texpos;
-
-      // Vertex array
-      if (framebuffer || accum_buffer || !vertices_initialized || init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
-        vertices_initialized = true;
-        tile_count = 0;
-        GLfloat *ptr_vertex_w = &ptr_vertex[0];
-        for(px=0;px<dimx;px++,edge_l++,edge_r++)
-          {
-            edge_u=0;
-            edge_d=1;
-            for(py=0;py<dimy;py++,d++,edge_u++,edge_d++)
-              {
-                tex_pos=buffer_texpos[d];
-            
-                if(tex_pos==-1) { // Check whether the tile is dirty
-                  continue; // Not dirty
-                } // Don't update dirty buffer here, as this code is not always executed
-            
-                // Set vertex locations
-                *(ptr_vertex_w++) = edge_l; // Upper left
-                *(ptr_vertex_w++) = edge_u;
-                *(ptr_vertex_w++) = edge_r; // Upper right
-                *(ptr_vertex_w++) = edge_u;
-                *(ptr_vertex_w++) = edge_r; // Lower right
-                *(ptr_vertex_w++) = edge_d;
-            
-                *(ptr_vertex_w++) = edge_l; // Upper left
-                *(ptr_vertex_w++) = edge_u;
-                *(ptr_vertex_w++) = edge_r; // Lower right
-                *(ptr_vertex_w++) = edge_d;
-                *(ptr_vertex_w++) = edge_l; // Lower left
-                *(ptr_vertex_w++) = edge_d;
-
-                // One tile down
-                ++tile_count;
-              }
-          }
-        // Upload vertex array. This rarely happens.
-        if (vbo_refs[0]) {
-          glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
-          glBufferDataARB(GL_ARRAY_BUFFER_ARB, tile_count*sizeof(GLfloat)*6*2, &ptr_vertex[0], GL_STATIC_DRAW_ARB);
-        }
-        
-        // Reset variables
-        edge_l=0; edge_r=1;
-        d=0;
-      }
+      const gl_texpos *txt = enabler.textures.gl_texpos;
 
       // Map VBOs for writing
       if (vbo_refs[0]) {
@@ -1233,89 +1175,161 @@ void gridrectst::render_gl(render_phase phase, bool clear) {
         assert(ptr_tex_w);
       }
 
-      // FG, BG and tex-coord arrays
-      for(px=0;px<dimx;px++,edge_l++,edge_r++)
-        {
-          edge_u=0;
-          edge_d=1;
-          for(py=0;py<dimy;py++,d++,edge_u++,edge_d++)
-            {
-              if(trinum>0)
-                {
-                  if(py>=1&&py<=init.display.grid_y-2&&px>=init.display.grid_x-55&&px<=init.display.grid_x-26)continue;
-                }
-
-              tex_pos=buffer_texpos[d];
+      // In the partial-print scenario, we build every array from
+      // scratch on every frame, from the partial-print list.
+      if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
+        tile_count = 0;
+        for (list<int>::iterator it = s_buffer_tiles.begin(); it != s_buffer_tiles.end();) {
+          tile_count++;
+          const int tile = *it;
+          const int tex_pos = buffer_texpos[tile];
+          const int posx = tile / dimy;
+          const int posy = tile % dimy;
+          const int edge_l = posx,
+            edge_r = posx+1,
+            edge_u = posy,
+            edge_d = posy+1;
+          // Set vertex locations
+          *(ptr_vertex_w++) = edge_l; // Upper left
+          *(ptr_vertex_w++) = edge_u;
+          *(ptr_vertex_w++) = edge_r; // Upper right
+          *(ptr_vertex_w++) = edge_u;
+          *(ptr_vertex_w++) = edge_r; // Lower right
+          *(ptr_vertex_w++) = edge_d;
           
-              if(tex_pos==-1) { // Check whether the tile is dirty
-                continue; // Not dirty
-              } else {
-                // Dirty. Update dirty buffer.
-                s_buffer_texpos[d]=buffer_texpos[d];
-                s_buffer_r[d]=buffer_r[d];
-                s_buffer_g[d]=buffer_g[d];
-                s_buffer_b[d]=buffer_b[d];
-                s_buffer_br[d]=buffer_br[d];
-                s_buffer_bg[d]=buffer_bg[d];
-                s_buffer_bb[d]=buffer_bb[d];
-              }
+          *(ptr_vertex_w++) = edge_l; // Upper left
+          *(ptr_vertex_w++) = edge_u;
+          *(ptr_vertex_w++) = edge_r; // Lower right
+          *(ptr_vertex_w++) = edge_d;
+          *(ptr_vertex_w++) = edge_l; // Lower left
+          *(ptr_vertex_w++) = edge_d;
 
-              // Background colors
-              for (int i=0; i<6; i++) {
-                // We need one color component for each vertex, even if
-                // only one is actually used with flat shading.
-                //
-                // Toady: I'm sure you can think of useful ways to use smooth shading..
-                *(ptr_bg_color_w++) = buffer_br[d];
-                *(ptr_bg_color_w++) = buffer_bg[d];
-                *(ptr_bg_color_w++) = buffer_bb[d];
-                *(ptr_bg_color_w++) = 1.0; // Alpha, but basically padding.
-              }
-              // Foreground colors
-              for (int i=0; i<6; i++) {
-                // Same story as for the background.
-                *(ptr_fg_color_w++) = buffer_r[d];
-                *(ptr_fg_color_w++) = buffer_g[d];
-                *(ptr_fg_color_w++) = buffer_b[d];
-                *(ptr_fg_color_w++) = 1.0; // Padding. Or alpha. You decide.
-              }
+          // Background colors
+          // We use flat shading, so only the color of the last vertex
+          // in a triangle counts
+          for (int i=0; i<2; i++) {
+            ptr_bg_color_w += 8;
+            *(ptr_bg_color_w++) = buffer_br[tile];
+            *(ptr_bg_color_w++) = buffer_bg[tile];
+            *(ptr_bg_color_w++) = buffer_bb[tile];
+            *(ptr_bg_color_w++) = 1.0; // Alpha, but basically padding.
+          }
+          // Foreground colors
+          for (int i=0; i<2; i++) {
+            // Same story as for the background.
+            ptr_fg_color_w += 8;
+            *(ptr_fg_color_w++) = buffer_r[tile];
+            *(ptr_fg_color_w++) = buffer_g[tile];
+            *(ptr_fg_color_w++) = buffer_b[tile];
+            *(ptr_fg_color_w++) = 1.0; // Padding. Or alpha. You decide.
+          }
+          // Textures
+          *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
+          *(ptr_tex_w++) = txt[tex_pos].bottom;
+          *(ptr_tex_w++) = txt[tex_pos].right;  // Upper right
+          *(ptr_tex_w++) = txt[tex_pos].bottom;
+          *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
+          *(ptr_tex_w++) = txt[tex_pos].top;
+          
+          *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
+          *(ptr_tex_w++) = txt[tex_pos].bottom;
+          *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
+          *(ptr_tex_w++) = txt[tex_pos].top;
+          *(ptr_tex_w++) = txt[tex_pos].left;   // Lower left
+          *(ptr_tex_w++) = txt[tex_pos].top;
 
-              if (tex_pos<0||tex_pos>=enabler.textures.textureCount())
-                {
-                  //         std::cerr << "Assumptions broken!\n";
-                  *(ptr_tex_w++) = 0; // Upper left
-                  *(ptr_tex_w++) = 0;
-                  *(ptr_tex_w++) = 1; // Upper right
-                  *(ptr_tex_w++) = 0;
-                  *(ptr_tex_w++) = 1; // Lower right
-                  *(ptr_tex_w++) = 1;
-
-                  *(ptr_tex_w++) = 0; // Upper left
-                  *(ptr_tex_w++) = 0;
-                  *(ptr_tex_w++) = 1; // Lower right
-                  *(ptr_tex_w++) = 1;
-                  *(ptr_tex_w++) = 0; // Lower left
-                  *(ptr_tex_w++) = 1;
-                }
-              else
-                {
-                  // Textures
-                  *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
-                  *(ptr_tex_w++) = txt[tex_pos].bottom;
-                  *(ptr_tex_w++) = txt[tex_pos].right;  // Upper right
-                  *(ptr_tex_w++) = txt[tex_pos].bottom;
-                  *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
-                  *(ptr_tex_w++) = txt[tex_pos].top;
-
-                  *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
-                  *(ptr_tex_w++) = txt[tex_pos].bottom;
-                  *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
-                  *(ptr_tex_w++) = txt[tex_pos].top;
-                  *(ptr_tex_w++) = txt[tex_pos].left;   // Lower left
-                  *(ptr_tex_w++) = txt[tex_pos].top;
-                }
-            }
+          // Tile done. Erase it from the partial-print list (maybe), and loop.
+          if (--s_buffer_count[tile] < 0)
+            s_buffer_tiles.erase(it++);
+          else
+            ++it;
         }
+      } else {
+        // We're not partial-printing, so we'll update the texture and
+        // color arrays from the partial-print list each frame.
+        if (!vertices_initialized) {
+          // Since the vertex array changes very rarely when not
+          // partial-printing, we update it in here.
+          tile_count = dimx * dimy;
+          for (int tile = 0; tile < tile_count; tile++) {
+            const int posx = tile / dimy;
+            const int posy = tile % dimy;
+            const int edge_l = posx,
+              edge_r = posx+1,
+              edge_u = posy,
+              edge_d = posy+1;
+            // Set vertex locations
+            *(ptr_vertex_w++) = edge_l; // Upper left
+            *(ptr_vertex_w++) = edge_u;
+            *(ptr_vertex_w++) = edge_r; // Upper right
+            *(ptr_vertex_w++) = edge_u;
+            *(ptr_vertex_w++) = edge_r; // Lower right
+            *(ptr_vertex_w++) = edge_d;
+            
+            *(ptr_vertex_w++) = edge_l; // Upper left
+            *(ptr_vertex_w++) = edge_u;
+            *(ptr_vertex_w++) = edge_r; // Lower right
+            *(ptr_vertex_w++) = edge_d;
+            *(ptr_vertex_w++) = edge_l; // Lower left
+            *(ptr_vertex_w++) = edge_d;
+          }
+          // Upload vertex array. This rarely happens.
+          if (vbo_refs[0]) {
+            glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
+            glBufferDataARB(GL_ARRAY_BUFFER_ARB, tile_count*sizeof(GLfloat)*6*2, &ptr_vertex[0], GL_STATIC_DRAW_ARB);
+          }
+          vertices_initialized = true;
+        }
+        // Finally, update the color and tex-coord arrays from the
+        // partial-printing list
+        for (list<int>::iterator it = s_buffer_tiles.begin(); it != s_buffer_tiles.end();) {
+          const int tile = *it;
+          const int tex_pos = buffer_texpos[tile];
+          ptr_bg_color_w = &ptr_bg_color[tile*4*6];
+          ptr_fg_color_w = &ptr_fg_color[tile*4*6];
+          ptr_tex_w = &ptr_tex[tile*2*6];
+
+          // Background colors
+          // We use flat shading, so only the color of the last vertex
+          // in a triangle counts
+          for (int i=0; i<2; i++) {
+            ptr_bg_color_w += 8;
+            *(ptr_bg_color_w++) = buffer_br[tile];
+            *(ptr_bg_color_w++) = buffer_bg[tile];
+            *(ptr_bg_color_w++) = buffer_bb[tile];
+            *(ptr_bg_color_w++) = 1.0; // Alpha, but basically padding.
+          }
+          // Foreground colors
+          for (int i=0; i<2; i++) {
+            // Same story as for the background.
+            ptr_fg_color_w += 8;
+            *(ptr_fg_color_w++) = buffer_r[tile];
+            *(ptr_fg_color_w++) = buffer_g[tile];
+            *(ptr_fg_color_w++) = buffer_b[tile];
+            *(ptr_fg_color_w++) = 1.0; // Padding. Or alpha. You decide.
+          }
+          // Textures
+          *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
+          *(ptr_tex_w++) = txt[tex_pos].bottom;
+          *(ptr_tex_w++) = txt[tex_pos].right;  // Upper right
+          *(ptr_tex_w++) = txt[tex_pos].bottom;
+          *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
+          *(ptr_tex_w++) = txt[tex_pos].top;
+          
+          *(ptr_tex_w++) = txt[tex_pos].left;   // Upper left
+          *(ptr_tex_w++) = txt[tex_pos].bottom;
+          *(ptr_tex_w++) = txt[tex_pos].right;  // Lower right
+          *(ptr_tex_w++) = txt[tex_pos].top;
+          *(ptr_tex_w++) = txt[tex_pos].left;   // Lower left
+          *(ptr_tex_w++) = txt[tex_pos].top;
+
+          // Tile done. Erase it from the partial-print list (maybe), and loop.
+          if (--s_buffer_count[tile] < 0)
+            s_buffer_tiles.erase(it++);
+          else
+            ++it;
+        }
+      }
 
       printGLError();
 
@@ -1699,16 +1713,11 @@ void gridrectst::allocate(long newdimx,long newdimy)
       buffer_br.resize(dimx*dimy);
       buffer_bg.resize(dimx*dimy);
       buffer_bb.resize(dimx*dimy);
-      s_buffer_texpos.resize(dimx*dimy);
-      s_buffer_r.resize(dimx*dimy);
-      s_buffer_g.resize(dimx*dimy);
-      s_buffer_b.resize(dimx*dimy);
-      s_buffer_br.resize(dimx*dimy);
-      s_buffer_bg.resize(dimx*dimy);
-      s_buffer_bb.resize(dimx*dimy);
       s_buffer_count.resize(dimx*dimy);
-      std::fill(s_buffer_texpos.begin(), s_buffer_texpos.end(), -1);
-      std::fill(s_buffer_count.begin(), s_buffer_count.end(), 0);
+      // use_s_buffer_tiles = true;
+      // s_buffer_tiles_size = 0;
+      s_buffer_tiles.clear();
+      std::fill(s_buffer_count.begin(), s_buffer_count.end(), -1);
     }
   // Make sure to reallocate GL buffers if it's running
   if (gl_initialized)

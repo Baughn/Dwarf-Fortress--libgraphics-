@@ -1,5 +1,8 @@
 //#define NO_FMOD
 
+#include <string>
+using std::string;
+
 #ifndef BITS
 
 #define BITS

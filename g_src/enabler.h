@@ -19,10 +19,12 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <list>
 
 using std::vector;
 using std::pair;
 using std::map;
+using std::list;
 
 #include "svector.h"
 #include "endian.h"
@@ -405,14 +407,10 @@ class gridrectst
   vector<float> buffer_br;
   vector<float> buffer_bg;
   vector<float> buffer_bb;
-  vector<long> s_buffer_texpos;
-  vector<float> s_buffer_r;
-  vector<float> s_buffer_g;
-  vector<float> s_buffer_b;
-  vector<float> s_buffer_br;
-  vector<float> s_buffer_bg;
-  vector<float> s_buffer_bb;
   vector<char> s_buffer_count;
+  /* bool use_s_buffer_tiles; */
+  /* int s_buffer_tiles_size; */
+  list<int> s_buffer_tiles; // A fixed-size list of tiles with buffer_count >= 0.
 
   long dispx,dispy;
   char black_space;
