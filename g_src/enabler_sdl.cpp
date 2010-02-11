@@ -109,8 +109,8 @@ static int frame_last = 0, gframe_last = 0; // SDL_GetTick returns
 int enablerst::calculate_fps() { return calculated_fps; }
 int enablerst::calculate_gfps() { return calculated_gfps; }
 
-static void do_update_fps(queue<int> &q, int &sum, int &last, int max, int &calc) {
-  if (q.size() >= max) {
+static void do_update_fps(queue<int> &q, int &sum, int &last, int &calc) {
+  while (q.size() && sum > 10000) {
     sum -= q.front();
     q.pop();
   }
@@ -123,10 +123,10 @@ static void do_update_fps(queue<int> &q, int &sum, int &last, int max, int &calc
 }
 
 static void update_fps() {
-  do_update_fps(frame_timings, frame_sum, frame_last, init.display.dwarf_frame_rate.QuadPart * 5, calculated_fps);
+  do_update_fps(frame_timings, frame_sum, frame_last, calculated_fps);
 }
 static void update_gfps() {
-  do_update_fps(gframe_timings, gframe_sum, gframe_last, init.display.g_frame_rate.QuadPart * 5, calculated_gfps);
+  do_update_fps(gframe_timings, gframe_sum, gframe_last, calculated_gfps);
 }
 
 
