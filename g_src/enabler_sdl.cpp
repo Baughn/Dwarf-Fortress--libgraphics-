@@ -100,6 +100,36 @@ static std::queue<enum zoom_commands> zoom_command_buffer;
 // A general "buffers dirty, don't render this frame" flag
 static bool skip_gframe = true;
 
+// For graphicst: <fps,g_fps>
+static int calculated_fps = 0, calculated_gfps = 0;
+static queue<int> frame_timings, gframe_timings; // Milisecond lengths of the last few frames
+static int frame_sum = 0, gframe_sum = 0;
+static int frame_last = 0, gframe_last = 0; // SDL_GetTick returns
+
+int enablerst::calculate_fps() { return calculated_fps; }
+int enablerst::calculate_gfps() { return calculated_gfps; }
+
+static void do_update_fps(queue<int> &q, int &sum, int &last, int max, int &calc) {
+  if (q.size() >= max) {
+    sum -= q.front();
+    q.pop();
+  }
+  const int now = SDL_GetTicks();
+  const int interval = now - last;
+  q.push(interval);
+  sum += interval;
+  last = now;
+  calc = q.size() * 1000 / sum;
+}
+
+static void update_fps() {
+  do_update_fps(frame_timings, frame_sum, frame_last, init.display.dwarf_frame_rate.QuadPart * 5, calculated_fps);
+}
+static void update_gfps() {
+  do_update_fps(gframe_timings, gframe_sum, gframe_last, init.display.g_frame_rate.QuadPart * 5, calculated_gfps);
+}
+
+
 //Used during image export
 double old_grid_zoom_req;
 bool old_zoom_grid;
@@ -508,6 +538,7 @@ int enablerst::loop(void)
     use_opengl = true;
   }
   
+  
   // Fill Out Window
   ZeroMemory (&window, sizeof (GL_Window));               // Make Sure Memory Is Zeroed
   window.init.title			= (char*)GAME_TITLE_STRING; // Window Title
@@ -617,6 +648,7 @@ void enablerst::do_frame()
   if (frames_outstanding >= 1 ||(flag & ENABLERFLAG_MAXFPS)) {
     // puts("loop");
     frames_outstanding -= 1;
+    update_fps();
     if (mainloop())
       is_program_looping = FALSE;
   }
@@ -628,6 +660,7 @@ void enablerst::do_frame()
     if (gps.force_full_display_count > 0)
       render(window, setup);
     render(window, complete);
+    update_gfps();
     current_render_count++;
     secondary_render_count++;
     gframes_outstanding--;

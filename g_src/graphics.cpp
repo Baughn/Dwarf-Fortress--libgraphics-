@@ -359,33 +359,11 @@ void graphicst::renewscreen()
 {
   if(display_frames && !enabler.doing_buffer_draw())
     {
-      long i;
-      LONGLONG total_frames=0;
-      LONGLONG total_time=0;
-      for(i=1;i<print_index;i++)
-        {
-          total_time+=print_time[i].QuadPart-print_time[i-1].QuadPart;
-          total_frames++;
-        }
-      for(i=print_index+1;i<100;i++)
-        {
-          total_time+=print_time[i].QuadPart-print_time[i-1].QuadPart;
-          total_frames++;
-        }
-      if(print_index!=0)
-        {
-          total_time+=print_time[0].QuadPart-print_time[99].QuadPart;
-          total_frames++;
-        }
-      if(total_time>0&&total_frames==99)
-        {
-          long fps=total_frames*100*enabler.main_qprate.QuadPart/total_time;
-          string str="FPS: ";
-          add_long_to_string(fps,str);
-          changecolor(7,3,1);
-          locate(0,0);
-          addst(str);
-        }
+      ostringstream fps;
+      fps << "FPS: " << enabler.calculate_fps() << " (" << enabler.calculate_gfps() << ")";
+      changecolor(7,3,1);
+      locate(0,0);
+      addst(fps.str());
     }
 
 #ifdef CURSES
