@@ -49,7 +49,6 @@ using namespace std;
 #pragma comment( lib, "opengl32.lib" )			// Search For OpenGL32.lib While Linking
 #pragma comment( lib, "glu32.lib" )				// Search For GLu32.lib While Linking
 
-extern initst init;
 extern enablerst enabler;
 extern texture_handlerst texture;
 extern graphicst gps;
@@ -67,58 +66,21 @@ static unsigned char screentexpos_cf_old[MAX_GRID_X][MAX_GRID_Y];
 static unsigned char screentexpos_cbr_old[MAX_GRID_X][MAX_GRID_Y];
 
 
-
-
-void graphicst::locate(long y,long x)
-{
-	if(x<0||x>=init.display.grid_x||y<0||y>=init.display.grid_y)
-		{
-		screenx=init.display.grid_x/2;
-		screeny=init.display.grid_y/2;
-		return;
-		}
-
-	screenx=x;
-	screeny=y;
-}
-
-void graphicst::changecolor(short f,short b,char bright)
-{
-	screenf=f;
-	screenb=b;
-	screenbright=bright;
-}
-
-void graphicst::addchar(unsigned char c,char advance)
-{
-	if(screenx>=clipx[0]&&screenx<=clipx[1]&&
-		screeny>=clipy[0]&&screeny<=clipy[1])
-		{
-		screen[screenx][screeny][0]=c;
-		screen[screenx][screeny][1]=screenf;
-		screen[screenx][screeny][2]=screenb;
-		screen[screenx][screeny][3]=screenbright;
-
-		screentexpos[screenx][screeny]=0;
-		}
-	if(advance)screenx++;
-}
-
 void graphicst::addcoloredst(const char *str,const char *colorstr)
 {
 	int s;
 	for(s=0;s<strlen(str)&&screenx<init.display.grid_x;s++)
-		{
-		if(screenx<0)
-			{
-			s-=screenx;
-			screenx=0;
-			if(s>=strlen(str))break;
-			}
-
-		changecolor((colorstr[s] & 7),((colorstr[s] & 56))>>3,((colorstr[s] & 64))>>6);
-		addchar(str[s]);
-		}
+          {
+            if(screenx<0)
+              {
+                s-=screenx;
+                screenx=0;
+                if(s>=strlen(str))break;
+              }
+            
+            changecolor((colorstr[s] & 7),((colorstr[s] & 56))>>3,((colorstr[s] & 64))>>6);
+            addchar(str[s]);
+          }
 }
 
 void graphicst::addst(const string &str)

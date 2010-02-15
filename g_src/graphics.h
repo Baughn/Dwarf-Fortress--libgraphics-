@@ -52,9 +52,32 @@ class graphicst
 			original_rect=1;
 			}
 
-		void locate(long y,long x);
-		void changecolor(short f,short b,char bright);
-		void addchar(unsigned char c,char advance=1);
+                void locate(long y,long x)
+                {
+                  // No point in clamping here, addchar clamps too.
+                  screenx=x;
+                  screeny=y;
+                }
+                void changecolor(short f,short b,char bright)
+                {
+                  screenf=f;
+                  screenb=b;
+                  screenbright=bright;
+                }
+                void addchar(unsigned char c,char advance=1)
+                {
+                  if(screenx>=clipx[0]&&screenx<=clipx[1]&&
+                     screeny>=clipy[0]&&screeny<=clipy[1])
+                    {
+                      screen[screenx][screeny][0]=c;
+                      screen[screenx][screeny][1]=screenf;
+                      screen[screenx][screeny][2]=screenb;
+                      screen[screenx][screeny][3]=screenbright;
+                      
+                      screentexpos[screenx][screeny]=0;
+                    }
+                  if(advance)screenx++;
+                }
 		void addcoloredst(const char *str,const char *colorstr);
 		void addst(const string &str);
 		void addst(const char *str);
