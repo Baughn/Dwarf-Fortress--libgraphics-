@@ -790,7 +790,7 @@ class enablerst : public enabler_inputst
   char create_full_screen;
   char inactive_mode;
   void reshape_GL(int width,int height);
-  void render(GL_Window &window, enum render_phase);
+  void render(enum render_phase);
   void render_tiles(enum render_phase, bool clear);
   void graphicsinit();
   long gridrect_create(long dimx,long dimy);
@@ -934,11 +934,11 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
     reset_gl(&window);
   }
 
-	bool prep_for_image_export();
-	void post_image_export();
-
-        int calculate_fps();
-        int calculate_gfps();
+  bool prep_for_image_export();
+  void post_image_export();
+  
+  int calculate_fps();
+  int calculate_gfps();
 };
 
 void convert_to_rgb(float &r,float &g,float &b,char col,char bright);

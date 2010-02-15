@@ -63,7 +63,6 @@ using namespace std;
 char beginroutine(void);
 char mainloop(void);
 void endroutine(void);
-void ne_toggle_fullscreen(void);
 
 static int loopvar = 1;
 
@@ -153,15 +152,54 @@ pair<int,int> window_to_grid(int x, int y) {
 }
 
 
-static void resize_grid(int width, int height, bool resizing) {
+// Resize the internal grid to some requested value. Returns the
+// actual grid size, in case of clamping.
+static pair<int,int> resize_grid(const int w_req, const int h_req) {
+  const int w = MAX(MIN(w_req,MAX_GRID_X),MIN_GRID_X);
+  const int h = MAX(MIN(h_req,MAX_GRID_Y),MIN_GRID_Y);
+  if (w == init.display.grid_x && h == init.display.grid_y)
+    return pair<int,int>(w,h); // Nothing to do
+  if (enabler.create_full_screen) {
+    init.display.large_grid_x = w;
+    init.display.large_grid_y = h;
+  } else {
+    init.display.small_grid_x = w;
+    init.display.small_grid_y = h;
+  }
+  init.display.grid_x = w;
+  init.display.grid_y = h;
+  gridrectst *rect; int i=0;
+
+  // FIXME: There's just one gridrect, and it's time DF accepted this.
+  while (rect = enabler.get_gridrect(i)) {
+    i++;
+    rect->allocate(w, h);
+    if (i > 1) puts("Hey, wait, we have multiple gridrects? Dazzled and confused, but trying to continue.");
+  }
+
+  // Inform graphicst
+  // if (gps.original_rect)
+  gps.force_full_display_count=1;
+  gps.prepare_rect(1);
+  return pair<int,int>(w,h);
+}
+
+static void reset_window_ncurses() {
+  int w, h;
+  getmaxyx(stdscr, h, w);
+  // Fake the window size. Though I'm pretty sure it isn't used anywhere.
+  enabler.desired_windowed_width = enabler.window_width = init.display.small_grid_x = w;
+  enabler.desired_windowed_height = enabler.window_height = init.display.small_grid_y = h;
+  // Inform DF
+  resize_grid(w, h);
+}
+
+static void resize_grid_sdl(const int width, const int height, const bool resizing) {
   skip_gframe = true;
+  gps.force_full_display_count = 1;
   // The grid must fit inside the window. We ensure this by zooming
   // out if it'd otherwise become smaller than 80x25, or in if it'd
-  // become larger than 200x200.
-  if (enabler.create_full_screen) {
-    width = enabler.window.init.width;
-    height = enabler.window.init.height;
-  }
+  // become larger than 256x256.
 
   // Figure out how large a grid we're being asked for.
   const int font_w = enabler.create_full_screen ? init.font.large_font_dispx : init.font.small_font_dispx;
@@ -172,13 +210,13 @@ static void resize_grid(int width, int height, bool resizing) {
 #ifdef DEBUG
   printf("Asked for %dx%d grid\n", desired_grid_x, desired_grid_y);
 #endif
-  int new_grid_x = MAX(MIN(desired_grid_x,MAX_GRID_X),80),
-      new_grid_y = MAX(MIN(desired_grid_y,MAX_GRID_Y),25);
+  int new_grid_x = MAX(MIN(desired_grid_x,MAX_GRID_X),MIN_GRID_X),
+      new_grid_y = MAX(MIN(desired_grid_y,MAX_GRID_Y),MIN_GRID_Y);
   double min_zoom = 0, max_zoom = 1000;
   min_zoom = MAX(min_zoom, (double)width / (font_w * MAX_GRID_X));
   min_zoom = MAX(min_zoom, (double)height / (font_h * MAX_GRID_Y));
-  max_zoom = MIN(max_zoom, (double)width / (font_w * 80));
-  max_zoom = MIN(max_zoom, (double)height / (font_h * 25));
+  max_zoom = MIN(max_zoom, (double)width / (font_w * MIN_GRID_X));
+  max_zoom = MIN(max_zoom, (double)height / (font_h * MIN_GRID_Y));
 
   if (max_zoom < min_zoom) {
     puts("I can't handle a window like this. Get a grip.");
@@ -194,36 +232,20 @@ static void resize_grid(int width, int height, bool resizing) {
 #ifdef DEBUG
   printf("Setting to %dx%d, grid %dx%d, zoom %f\n", width, height, new_grid_x,new_grid_y,grid_zoom);
 #endif
-  if (enabler.create_full_screen) {
-    init.display.large_grid_x = new_grid_x;
-    init.display.large_grid_y = new_grid_y;
-  } else {
-    init.display.small_grid_x = new_grid_x;
-    init.display.small_grid_y = new_grid_y;
+  if (!enabler.create_full_screen) {
     enabler.desired_windowed_width = enabler.window_width = width;
     enabler.desired_windowed_height = enabler.window_height = height;
   }
-  gridrectst *rect; int i=0;
-  // FIXME: THere's just one gridrect, and it's time DF accepted this.
-  while (rect = enabler.get_gridrect(i)) {
-    i++;
-    rect->allocate(new_grid_x, new_grid_y);
-  }
   // Reset GL and SDL for the new window size
- if (resizing)
-   enabler.reset_gl();
- ne_toggle_fullscreen();
+  if (resizing)
+    enabler.reset_gl();
+  // Inform DF
+  resize_grid(new_grid_x, new_grid_y);
 }
 
-static void reset_window() {
-  if (enabler.create_full_screen)
-    resize_grid(-1,-1, false);
-  else
-    resize_grid(enabler.desired_windowed_width, enabler.desired_windowed_height, false);
-}
-
-static void resize_window(int width, int height) {
-  resize_grid(width, height, true);
+static void reset_window_sdl() {
+  SDL_Surface *s = SDL_GetVideoSurface();
+  resize_grid_sdl(s->w, s->h, false);
 }
 
 void zoom_display(enum zoom_commands command) {
@@ -249,14 +271,14 @@ static void zoom_display_delayed(enum zoom_commands command) {
     deputs("Resetting zoom");
     grid_zoom_req = 1.0;
     zoom_steps = 0;
-    reset_window();
+    reset_window_sdl();
     break;
   case zoom_in:
     if (zoom_grid) {
       grid_zoom_req *= zoom_factor; zoom_steps++;
       if (0 == zoom_steps) // Avoid perturbations
         grid_zoom_req = 1.0;
-      reset_window();
+      reset_window_sdl();
       if (grid_zoom == old_grid_zoom && grid_zoom < grid_zoom_req) { // Can't zoom in this direction right now
         grid_zoom_req = old_req;
         zoom_steps = old_zoom_steps;
@@ -275,7 +297,7 @@ static void zoom_display_delayed(enum zoom_commands command) {
       zoom_steps--;
       if (0 == zoom_steps)
         grid_zoom_req = 1.0;
-      reset_window();
+      reset_window_sdl();
       if (grid_zoom == old_grid_zoom && grid_zoom > grid_zoom_req) {
         grid_zoom_req = old_req;
         zoom_steps = old_zoom_steps;
@@ -308,21 +330,6 @@ static int getch_utf8() {
   return -decode_utf8(input);
 }
 
-static void reset_window_ncurses() {
-  int w, h;
-  getmaxyx(stdscr, h, w);
-  enabler.desired_windowed_width = enabler.window_width = init.display.small_grid_x = w;
-  enabler.desired_windowed_height = enabler.window_height = init.display.small_grid_y = h;
-
-  gridrectst *rect; int i=0;
-  // FIXME: THere's just one gridrect, and it's time DF accepted this.
-  while (rect = enabler.get_gridrect(i++))
-    rect->allocate(w, h);
-  // Reset.. possibly nothing.. for the new window size
-  enabler.reset_gl();
-  ne_toggle_fullscreen();
-}
-
 static void eventLoop_ncurses() {
   // Initialize the window
   int height, width;
@@ -331,12 +338,7 @@ static void eventLoop_ncurses() {
     
   while (loopvar) {
     // Check for window size change
-    int h2, w2;
-    getmaxyx(stdscr, h2, w2);
-    if (h2 != height || w2 != width) {
-      height = h2; width = w2;
-      reset_window_ncurses();
-    }
+    reset_window_ncurses();
 
     // Deal with input
     Uint32 now = SDL_GetTicks();
@@ -362,13 +364,14 @@ static void eventLoop_ncurses() {
 
 static void eventLoop_SDL(GL_Window window)
 {
-  // Initialize the zoom
-  reset_window();
   
   SDL_Event event;
-  SDL_Surface *screen = NULL;
+  SDL_Surface *screen = SDL_GetVideoSurface();
   Uint32 mouse_lastused = 0;
   SDL_ShowCursor(SDL_DISABLE);
+
+  // Initialize the grid
+  resize_grid_sdl(screen->w, screen->h, true);
 
   while (loopvar) {
     Uint32 now = SDL_GetTicks();
@@ -483,7 +486,8 @@ static void eventLoop_SDL(GL_Window window)
         } //init mouse on
         break;
       case SDL_VIDEORESIZE:
-        resize_window(event.resize.w, event.resize.h);
+        cout << "resize " << event.resize.w << " " << event.resize.h << endl;
+        resize_grid_sdl(event.resize.w, event.resize.h, true);
         break;
       } // switch (event.type)
     } //while have event
@@ -631,7 +635,7 @@ void enablerst::do_frame()
       do_render = true;
       // Initiate graphics rendering, if appropriate
       if (!skip_gframe)
-        render(window, setup);
+        render(setup);
       // Mark this rendering as complete. It isn't really, but we'll complete it later.
       flag &= ~ENABLERFLAG_RENDER;
     }
@@ -658,8 +662,8 @@ void enablerst::do_frame()
     // If we're supposed to clear the window, then the data from before this mainloop
     // is not out of date; redo the setup
     if (gps.force_full_display_count > 0)
-      render(window, setup);
-    render(window, complete);
+      render(setup);
+    render(complete);
     update_gfps();
     current_render_count++;
     secondary_render_count++;
@@ -680,7 +684,7 @@ void enablerst::do_frame()
   }
 }
 
-void enablerst::render(GL_Window &window, enum render_phase phase)
+void enablerst::render(enum render_phase phase)
 {
   render_things(phase);
   if (phase == complete) {
@@ -707,9 +711,9 @@ void enablerst::toggle_fullscreen(GL_Window* window)
 	
 
   reset_gl(window);
-  render(*window, setup);
-  render(*window, complete);
-  reset_window();
+  reset_window_sdl();
+  render(setup);
+  render(complete);
 }
 
 void enablerst::reset_gl(GL_Window* window) {
@@ -777,7 +781,7 @@ void report_error(const char *error_preface, const char *error_message)
   delete [] buf;
 }
 
-// This function creates our OpenGL(?) window.
+// This function creates our SDL (possibly also OpenGL) window.
 char enablerst::create_window_GL(GL_Window* window)
 {
   int retval = -1;
@@ -843,7 +847,7 @@ char enablerst::create_window_GL(GL_Window* window)
     
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
   }
-  
+
   screen = SDL_SetVideoMode(window->init.width, window->init.height, window->init.bitsPerPixel, flags);
   if (use_opengl && !glewInitialized) {
     glewInit();
@@ -873,9 +877,8 @@ char enablerst::create_window_GL(GL_Window* window)
   reshape_GL(window->init.width, window->init.height);
   if (use_opengl)
     glClear(GL_COLOR_BUFFER_BIT);
-  
-  // Initialize the gridrects
-  for (int i=0; i<gridrect.size(); i++)
+  // Reinitialize the gridrect opengl contexts
+  for (int i=0; i < gridrect.size(); i++)
     gridrect[i]->init_gl();
   return true;
 }
@@ -883,11 +886,12 @@ char enablerst::create_window_GL(GL_Window* window)
 // Destroy The OpenGL Window & Release Resources
 char enablerst::destroy_window_GL(GL_Window* window)
 {
+  // There's no need to do anything; things are reinitialized at
+  // need. Still..
+
   // Uninitialize the gridrects
   for (int i=0; i<gridrect.size(); i++)
     gridrect[i]->uninit_gl();
-  // There's no need to destroy the window; the call to SDL_SetVideoMode
-  // will recreate it as needed.
   return true;
 }
 
@@ -2971,11 +2975,11 @@ bool enablerst::prep_for_image_export()
 {
 	old_grid_zoom_req=grid_zoom_req;
 	grid_zoom_req=1;
-	reset_window();
+	reset_window_sdl();
 	if(grid_zoom!=1)
 		{
 		grid_zoom_req=old_grid_zoom_req;
-		reset_window();
+		reset_window_sdl();
 
 		errorlog_string("Image export not possible because of zoom/window settings");
 		return false;
@@ -2991,5 +2995,5 @@ void enablerst::post_image_export()
 {
 	zoom_grid=old_zoom_grid;
 	grid_zoom_req=old_grid_zoom_req;
-	reset_window();
+	reset_window_sdl();
 }

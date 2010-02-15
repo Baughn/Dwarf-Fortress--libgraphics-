@@ -223,7 +223,7 @@ void graphicst::display()
   float *c_buffer_br;
   float *c_buffer_bg;
   float *c_buffer_bb;
-  
+
   int x2,y2;
   for (x2=0; x2<init.display.grid_x; x2++) {
     for (y2=0; y2<init.display.grid_y; y2++,d++) {
@@ -287,9 +287,6 @@ void graphicst::display()
       }
     }
   }
-
-  if (force_full_display_count > 0)
-    force_full_display_count--;
 }
 
 #ifdef CURSES
@@ -369,31 +366,51 @@ void graphicst::renewscreen()
 #ifdef CURSES
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {    
     int x2,y2;
-    for(x2=0;x2<init.display.grid_x;x2++)
-      {
-        for(y2=0;y2<init.display.grid_y;y2++)
-          {
+    if (force_full_display_count > 0) {
+      force_full_display_count--;
+      for (x2=0;x2<init.display.grid_x;x2++) {
+          for(y2=0;y2<init.display.grid_y;y2++) {
             const int ch   = screen[x2][y2][0];
             const int fg   = screen[x2][y2][1];
             const int bg   = screen[x2][y2][2];
             const int bold = screen[x2][y2][3];
-            if (screen_old[x2][y2][0] != ch ||
-                screen_old[x2][y2][1] != fg ||
-                screen_old[x2][y2][2] != bg ||
-                screen_old[x2][y2][3] != bold) {
-              screen_old[x2][y2][0] = ch;
-              screen_old[x2][y2][1] = fg;
-              screen_old[x2][y2][2] = bg;
-              screen_old[x2][y2][3] = bold;
-              const string utf8 = encode_utf8(charmap[ch] ? charmap[ch] : ch);
-              const int pair = lookup_pair(make_pair<int,int>(fg,bg));
-              attron(COLOR_PAIR(pair));
-              if (bold) attron(A_BOLD);
-              mvprintw(y2, x2, "%s", utf8.c_str());
-              if (bold) attroff(A_BOLD);
-            }
+            screen_old[x2][y2][0] = ch;
+            screen_old[x2][y2][1] = fg;
+            screen_old[x2][y2][2] = bg;
+            screen_old[x2][y2][3] = bold;
+            const string utf8 = encode_utf8(charmap[ch] ? charmap[ch] : ch);
+            const int pair = lookup_pair(make_pair<int,int>(fg,bg));
+            attron(COLOR_PAIR(pair));
+            if (bold) attron(A_BOLD);
+            mvprintw(y2, x2, "%s", utf8.c_str());
+            if (bold) attroff(A_BOLD);
           }
       }
+    } else {
+      for (x2=0;x2<init.display.grid_x;x2++) {
+        for(y2=0;y2<init.display.grid_y;y2++) {
+          const int ch   = screen[x2][y2][0];
+          const int fg   = screen[x2][y2][1];
+          const int bg   = screen[x2][y2][2];
+          const int bold = screen[x2][y2][3];
+          if (screen_old[x2][y2][0] != ch ||
+              screen_old[x2][y2][1] != fg ||
+              screen_old[x2][y2][2] != bg ||
+              screen_old[x2][y2][3] != bold) {
+            screen_old[x2][y2][0] = ch;
+            screen_old[x2][y2][1] = fg;
+            screen_old[x2][y2][2] = bg;
+            screen_old[x2][y2][3] = bold;
+            const string utf8 = encode_utf8(charmap[ch] ? charmap[ch] : ch);
+            const int pair = lookup_pair(make_pair<int,int>(fg,bg));
+            attron(COLOR_PAIR(pair));
+            if (bold) attron(A_BOLD);
+            mvprintw(y2, x2, "%s", utf8.c_str());
+            if (bold) attroff(A_BOLD);
+          }
+        }
+      }
+    }
   } else
 #endif
     {
@@ -561,25 +578,23 @@ void graphicst::get_mouse_text_coords(long &mx,long &my)
 
 void graphicst::prepare_rect(char n_orig)
 {
-	if(rect_id!=-1)
-		{
-		gridrectst *gr=enabler.get_gridrect(rect_id);
-		if(gr!=NULL)gr->allocate(init.display.grid_x,init.display.grid_y);
-		else rect_id=-1;
-		}
+  if(rect_id!=-1) {
+    gridrectst *gr=enabler.get_gridrect(rect_id);
+    if(gr!=NULL)gr->allocate(init.display.grid_x,init.display.grid_y);
+    else rect_id=-1;
+  }
 
-	if(rect_id==-1)
-		{
-		rect_id=enabler.gridrect_create(init.display.grid_x,init.display.grid_y);
-		}
+  if(rect_id==-1) {
+    rect_id=enabler.gridrect_create(init.display.grid_x,init.display.grid_y);
+  }
 
-	original_rect=n_orig;
-
-	setclipping(0,init.display.grid_x-1,0,init.display.grid_y-1);
-
-	erasescreen();
-
-	force_full_display_count=4;
+  original_rect=n_orig;
+  
+  setclipping(0,init.display.grid_x-1,0,init.display.grid_y-1);
+  
+  erasescreen();
+  
+  force_full_display_count=4;
 }
 
 void graphicst::prepare_graphics()
@@ -684,7 +699,7 @@ void render_things(enum render_phase phase)
       gps.changecolor(4,1,1);
       gps.addst("REC");
     }
-    gps.renewscreen();
+    // gps.renewscreen();
   }
   
   //DRAW EVERYTHING TO BACK BUFFER
