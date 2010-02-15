@@ -486,7 +486,6 @@ static void eventLoop_SDL(GL_Window window)
         } //init mouse on
         break;
       case SDL_VIDEORESIZE:
-        cout << "resize " << event.resize.w << " " << event.resize.h << endl;
         resize_grid_sdl(event.resize.w, event.resize.h, true);
         break;
       } // switch (event.type)

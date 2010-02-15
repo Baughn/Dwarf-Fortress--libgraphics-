@@ -661,7 +661,7 @@ void render_things(enum render_phase phase)
       gps.changecolor(4,1,1);
       gps.addst("REC");
     }
-    // gps.renewscreen();
+    gps.renewscreen();
   }
   
   //DRAW EVERYTHING TO BACK BUFFER
