@@ -431,6 +431,14 @@ static void eventLoop_SDL(GL_Window window)
         gps.force_full_display_count++;
         break;
       case SDL_MOUSEMOTION:
+        // Deal with the mouse hiding bit
+        mouse_lastused = enabler.now;
+        if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
+          // turn on mouse picture
+          enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
+        } else {
+          SDL_ShowCursor(SDL_ENABLE);
+        }
         // Is the mouse over the screen surface?
         if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
           if (event.motion.x >= origin_x && event.motion.x < origin_x + size_x &&
@@ -467,11 +475,6 @@ static void eventLoop_SDL(GL_Window window)
               enabler.mouse_x = event.motion.x;
               enabler.mouse_y = event.motion.y;
             }
-            mouse_lastused = enabler.now;
-            if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
-              // turn on mouse picture
-              enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
-            } else SDL_ShowCursor(SDL_ENABLE);
           } else {
             enabler.oldmouse_x = -1;
             enabler.oldmouse_y = -1;

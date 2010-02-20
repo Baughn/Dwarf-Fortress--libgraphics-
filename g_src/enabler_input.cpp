@@ -2,9 +2,12 @@
 #include <map>
 #include <vector>
 #include <iostream>
+#include <sstream>
 #include <algorithm>
 #include <stdlib.h>
 using namespace std;
+
+#include <boost/foreach.hpp>
 
 #include "enabler_input.h"
 #include "init.h"
@@ -16,16 +19,56 @@ extern initst init;
 #include "curses.h"
 
 
+// The timeline events we actually pass back from get_input. Well, no,
+// that's just k, but..
+struct Event {
+  Repeat r;
+  InterfaceKey k;
+  int repeats; // Starts at 0, increments once per repeat
+  int serial;
+  int time;
+
+  bool operator== (const Event &other) const {
+    if (r != other.r) return false;
+    if (k != other.k) return false;
+    if (repeats != other.repeats) return false;
+    if (serial != other.serial) return false;
+    if (time != other.time) return false;
+    return true;
+  }
+
+  // We sort by time first, and then serial number.
+  // The order of the other bits is unimportant.
+  bool operator< (const Event &o) const {
+    if (time != o.time) return time < o.time;
+    if (serial != o.serial) return serial < o.serial;
+    if (r != o.r) return r < o.r;
+    if (k != o.k) return k < o.k;
+    if (repeats != o.repeats) return repeats < o.repeats;
+    return false;
+  }
+};
+
+// Used to decide which key-binding to display. As a heuristic, we
+// prefer whichever display string is shortest.
+struct less_sz {
+  bool operator() (const string &a, const string &b) const {
+    if (a.size() < b.size()) return true;
+    if (a.size() > b.size()) return false;
+    return a < b;
+  }
+};
+
 // These change dynamically in the normal process of DF
-static Time last_era = 0; // We can process at most one input event per era of one millisecond
-static multimap<Time,Event> timeline; // A timeline of pending key events (for next get_input)
+static int last_serial = 0; // Input serial number, to differentiate distinct physical presses
+static set<Event> timeline; // A timeline of pending key events (for next get_input)
 static set<EventMatch> pressed_keys; // Keys we consider "pressed"
 static int modState; // Modifier state
   
 // These do not change as part of the normal dynamics of DF, only at startup/when editing.
 static multimap<EventMatch,InterfaceKey> keymap;
 static map<InterfaceKey,Repeat> repeatmap;
-static map<InterfaceKey,string> keydisplay; // Used only for display, not for meaning
+static map<InterfaceKey,set<string,less_sz> > keydisplay; // Used only for display, not for meaning
 
 // Macro recording
 static bool macro_recording = false;
@@ -41,23 +84,21 @@ static bool register_unicode; // Whether to ignore unicode or, if not, SDL symbo
 static string interfacefile;
 
 
-// Returns an unused era number no smaller than 'last'
-static Time next_era(Time clamp) {
-  if (last_era < clamp) {
-    last_era = clamp;
-    return clamp;
-  } else 
-    return ++clamp;
+// Returns an unused serial number
+static Time next_serial() {
+  return ++last_serial;
 }
 
 static void update_keydisplay(InterfaceKey binding, string display) {
-  // As a heuristic, we use whichever display string is shortest
   // Need to filter out space/tab, for obvious reasons.
   if (display == " ") display = "Space";
   if (display == "\t") display = "Tab";
-  map<InterfaceKey,string>::iterator it = keydisplay.find(binding);
-  if (it == keydisplay.end() || it->second.length() > display.length()) {
-    keydisplay[binding] = display;
+  map<InterfaceKey,set<string,less_sz> >::iterator it = keydisplay.find(binding);
+  if (it == keydisplay.end()) {
+    set<string,less_sz> s; s.insert(display);
+    keydisplay[binding] = s;
+  } else {
+    keydisplay[binding].insert(display);
   }
 }
 
@@ -84,23 +125,6 @@ int decode_utf8(const string &s) {
   case 4: unicode = s[0] & 0x07; break;
   default: return 0;
   }
-  // else if ((s[0] & 0x80) == 0) { // 1-byte, ascii series
-  //   unicode = s[0];
-  //   length = 1;
-  // }
-  // else if ((s[0] & 0xe0) == 0xc0) { // 2-byte utf-8
-  //   unicode = s[0] & 0x1f;
-  //   length = 2;
-  // }
-  // else if ((s[0] & 0xf0) == 0xe0) { // 3-byte utf-8
-  //   unicode = s[0] & 0x0f;
-  //   length = 3;
-  // }
-  // else if ((s[0] & 0xf8) == 0xf0) { // 4-byte utf-8
-  //   unicode = s[0] & 0x07;
-  //   length = 4;
-  // }
-  // else return 0; // Broken text
 
   // Concatenate the follow-up bytes
   if (s.length() < length) return 0;
@@ -160,8 +184,24 @@ string translate_mod(Uint8 mod) {
   return ret;
 }
 
-static string display(Uint8 mod, string rest) {
-  return translate_mod(mod) + rest;
+static string display(const EventMatch &match) {
+  ostringstream ret;
+  ret << translate_mod(match.mod);
+  switch (match.type) {
+  case type_unicode: ret << (char)match.unicode; break;
+  case type_key: {
+    map<SDLKey,string>::iterator it = sdlNames.left.find(match.key);
+    if (it != sdlNames.left.end())
+      ret << it->second;
+    else
+      ret << "SDL+" << (int)match.key;
+    break;
+  }
+  case type_button:
+    ret << "Button " << (int)match.button;
+    break;
+  }
+  return ret.str();
 }
 
 static string translate_repeat(Repeat r) {
@@ -173,7 +213,7 @@ static string translate_repeat(Repeat r) {
   }
 }
 
-// Update the modstate, since SDL_getModState doesn't /work/
+// Update the modstate, since SDL_getModState doesn't /work/ for alt
 static void update_modstate(const SDL_Event &e) {
   if (e.type == SDL_KEYUP) {
     switch (e.key.keysym.sym) {
@@ -291,7 +331,7 @@ void enabler_inputst::load_keybindings(const string &file) {
               matcher.type = type_key;
               matcher.key  = it->second;
               keymap.insert(pair<EventMatch,InterfaceKey>(matcher, (InterfaceKey)binding));
-              update_keydisplay(binding, display(matcher.mod, match[2]));
+              update_keydisplay(binding, display(matcher));
             } else {
               cout << "Unknown SDLKey: " << match[2] << endl;
             }
@@ -307,7 +347,7 @@ void enabler_inputst::load_keybindings(const string &file) {
                 // This unicode key is part of the latin-1 mapped portion of unicode, so we can
                 // actually display it. Nice.
                 char c[2] = {matcher.unicode, 0};
-                update_keydisplay(binding, display(matcher.mod, string(c)));
+                update_keydisplay(binding, display(matcher));
               }
             } else {
               cout << "Broken unicode: " << *line << endl;
@@ -321,7 +361,7 @@ void enabler_inputst::load_keybindings(const string &file) {
             if (matcher.button) {
               matcher.mod  = atoi(string(match[1]).c_str());
               keymap.insert(pair<EventMatch,InterfaceKey>(matcher, (InterfaceKey)binding));
-              update_keydisplay(binding, "Button " + match[2]);
+              update_keydisplay(binding, display(matcher));
             } else {
               cout << "Broken button (should be [BUTTON:#:#]): " << *line << endl;
             }
@@ -397,10 +437,8 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
   // - Generally speaking, when modifiers are hit/released, we discard those
   //   events and generate press/release events for all pressed non-modifiers.
   // - It's possible for multiple events to be generated on the same tick.
-  //   However, in reality they're distinct keypresses, and not simultaneous at
-  //   all. We fix this up by making sure 'now' is always later than the last time.
-
-  now = next_era(now);
+  //   These are of course separate keypresses, and must be kept separate.
+  //   That's what the serial is for.
   
   list<KeyEvent> synthetics;
   set<EventMatch>::iterator pkit;
@@ -470,8 +508,8 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
     }
     if (e.type == SDL_QUIT) {
       // This one, we insert directly into the timeline.
-      Event e = {REPEAT_NOT, (InterfaceKey)INTERFACEKEY_OPTIONS};
-      timeline.insert(pair<Time,Event>(now, e));
+      Event e = {REPEAT_NOT, (InterfaceKey)INTERFACEKEY_OPTIONS, 0, next_serial(), now};
+      timeline.insert(e);
     }
   }
 
@@ -491,8 +529,6 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
 // esc is true if this key was part of an escape sequence.
 #ifdef CURSES
 void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
-  now = next_era(now);
-
   // TODO: Deal with shifted arrow keys, etc. See man 5 terminfo and tgetent.
   
   EventMatch sdl, uni; // Each key may provoke an unicode event, an "SDL-key" event, or both
@@ -555,23 +591,25 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     case KEY_ENTER: sdl.key = SDLK_RETURN; break;
     }
   }
-  
+
+  // Key repeat is handled by the terminal, and we don't get release
+  // events anyway.
   KeyEvent kev; kev.release = false;
-  Event e; e.r = REPEAT_NOT; e.repeats = 0;
+  Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now;
   if (sdl.key) {
-    kev.match = sdl;
-    set<InterfaceKey> events = key_translation(kev);
-    for (set<InterfaceKey>::iterator it = events.begin(); it != events.end(); ++it) {
-      e.k = *it;
-      timeline.insert(pair<Time,Event>(now,e));
+    set<InterfaceKey> events = key_translation(sdl);
+    BOOST_FOREACH(InterfaceKey k, events) {
+      e.serial = next_serial();
+      e.k = k;
+      timeline.insert(e);
     }
   }
-  if (uni.key) {
-    kev.match = uni;
-    set<InterfaceKey> events = key_translation(kev);
-    for (set<InterfaceKey>::iterator it = events.begin(); it != events.end(); ++it) {
-      e.k = *it;
-      timeline.insert(pair<Time,Event>(now,e));
+  if (uni.unicode) {
+    set<InterfaceKey> events = key_translation(uni);
+    BOOST_FOREACH(InterfaceKey k, events) {
+      e.serial = next_serial();
+      e.k = k;
+      timeline.insert(e);
     }
   }
 }
@@ -585,6 +623,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
         (e.match.type == type_key && !register_unicode) ||
         (e.match.type == type_button)) {
       keymap.insert(pair<EventMatch,InterfaceKey>(e.match,register_to_key));
+      update_keydisplay(register_to_key, display(e.match));
       key_registering = false;
     }
     return;
@@ -594,22 +633,25 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
   // a release, we remove any pending repeats, but not those that
   // haven't repeated yet (which are on their first cycle); those we
   // just set to non-repeating.
-  set<InterfaceKey> keys = key_translation(e);
+  set<InterfaceKey> keys = key_translation(e.match);
   if (e.release) {
-    multimap<Time,Event>::iterator it = timeline.begin();
+    set<Event>::iterator it = timeline.begin();
     while (it != timeline.end()) {
-      multimap<Time,Event>::iterator el = it++;
-      if (keys.count(el->second.k)) {
-        if (el->second.repeats) {
+      set<Event>::iterator el = it++;
+      if (keys.count(el->k)) {
+        if (el->repeats) {
           timeline.erase(el);
         } else {
-          el->second.r = REPEAT_NOT;
+          Event new_el = *el;
+          new_el.r = REPEAT_NOT;
+          timeline.erase(el);
+          timeline.insert(new_el);
         }
       }
     }
   } else {
     set<InterfaceKey>::iterator key;
-    // As policy, when the user hits a non-repeating key we want to
+    // As policy, when the user hits a non-repeating key we'd want to
     // also cancel any keys that are currently repeating. This allows
     // for easy recovery from stuck keys.
     //
@@ -618,9 +660,10 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
     // accepted at the moment, there is no way we can know if it's
     // okay to cancel repeats unless /all/ the bindings are
     // non-repeating.
-    for (key = keys.begin(); key != keys.end(); ++key) {
-      Event e = {key_repeat(*key), *key, 0};
-      timeline.insert(pair<Time,Event>(now,e));
+    const int serial = next_serial();
+    BOOST_FOREACH(InterfaceKey k, keys) {
+      Event e = {key_repeat(k), k, 0, serial, now};
+      timeline.insert(e);
     }
     // if (cancel_ok) {
     //   // Set everything on the timeline to non-repeating
@@ -636,43 +679,45 @@ void enabler_inputst::clear_input() {
   timeline.clear();
   pressed_keys.clear();
   modState = 0;
+  last_serial = 0;
 }
 
 set<InterfaceKey> enabler_inputst::get_input(Time now) {
-  // We insert repeats relative to the current time, not when the
-  // events we're now returning were *supposed* to happen. However, we
-  // still need to make sure that events that started separate stay
-  // separate, thus this next-era call.
-  now = next_era(now);
-
-  // We walk the timeline, returning all events occurring
-  // simultaneously with the first event to occur, in the past, and
-  // inserting repeats as appropriate.
+  // We walk the timeline, returning all events corresponding to a
+  // single physical keypress, and inserting repeats relative to the
+  // current time, not when the events we're now returning were
+  // *supposed* to happen.
   set<InterfaceKey> input;
-  multimap<Time,Event>::iterator it = timeline.begin();
-  if (it == timeline.end()) return input;
-  Time current_now = it->first;
-  while (it != timeline.end() && it->first <= now && it->first == current_now) {
-    Event ev = it->second;
-    input.insert(ev.k);
+  set<Event>::iterator ev = timeline.begin();
+  if (ev == timeline.end() || ev->time > now)
+    return input; // No input (yet).
+
+  const Time first_time = ev->time;
+  const int first_serial = ev->serial;
+  while (ev != timeline.end() && ev->time == first_time && ev->serial == first_serial) {
+    input.insert(ev->k);
     // Schedule a repeat
-    ev.repeats++;
-    switch (ev.r) {
+    Event next = *ev;
+    next.repeats++;
+    switch (next.r) {
     case REPEAT_NOT:
       break;
     case REPEAT_SLOW:
-      if (ev.repeats > 1)
-        timeline.insert(pair<Time,Event>(now + init.input.repeat_time, ev));
-      else
-        timeline.insert(pair<Time,Event>(now + init.input.hold_time, ev));
+      if (next.repeats > 1) {
+        next.time = now + init.input.repeat_time;
+        timeline.insert(next);
+      } else {
+        next.time = now + init.input.hold_time;
+        timeline.insert(next);
+      }
       break;
     case REPEAT_FAST:
-      timeline.insert(pair<Time,Event>(now + init.input.repeat_time, ev));
+      next.time = now + init.input.repeat_time;
+      timeline.insert(next);
       break;
     }
     // Delete the event from the timeline and iterate
-    multimap<Time,Event>::iterator it2 = it++;
-    timeline.erase(it2);
+    timeline.erase(ev++);
   }
 #ifdef DEBUG
   if (input.size() && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
@@ -698,20 +743,20 @@ set<InterfaceKey> enabler_inputst::get_input(Time now) {
   return input;
 }
 
-set<InterfaceKey> enabler_inputst::key_translation(KeyEvent &e) {
+set<InterfaceKey> enabler_inputst::key_translation(EventMatch &match) {
   set<InterfaceKey> bindings;
   pair<multimap<EventMatch,InterfaceKey>::iterator,multimap<EventMatch,InterfaceKey>::iterator> its;
   
-  for (its = keymap.equal_range(e.match); its.first != its.second; ++its.first)
+  for (its = keymap.equal_range(match); its.first != its.second; ++its.first)
     bindings.insert((its.first)->second);
 
   return bindings;
 }
 
 string enabler_inputst::GetKeyDisplay(int binding) {
-  map<InterfaceKey,string>::iterator it = keydisplay.find(binding);
-  if (it != keydisplay.end())
-    return it->second;
+  map<InterfaceKey,set<string,less_sz> >::iterator it = keydisplay.find(binding);
+  if (it != keydisplay.end() && it->second.size())
+    return *it->second.begin();
   else {
     cout << "Missing binding displayed: " + bindingNames.left[binding] << endl;
     return "?";
@@ -748,13 +793,12 @@ bool enabler_inputst::is_recording() {
 }
 
 void enabler_inputst::play_macro() {
-  macro::iterator it;
-  set<InterfaceKey>::iterator it2;
-  for (it = active_macro.begin(); it != active_macro.end(); ++it) {
-    Uint32 era = next_era(0);
-    for (it2 = it->begin(); it2 != it->end(); ++it2) {
-      Event e = {REPEAT_NOT,*it2,0};
-      timeline.insert(make_pair<Time,Event>(era,e));
+  const Time now = SDL_GetTicks();
+  BOOST_FOREACH(set<InterfaceKey> sim, active_macro) {
+    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.serial = next_serial(); e.time = now;
+    BOOST_FOREACH(InterfaceKey k, sim) {
+      e.k = k;
+      timeline.insert(e);
     }
   }
 }
@@ -892,4 +936,8 @@ void enabler_inputst::remove_key(InterfaceKey key, EventMatch ev) {
        ++it) {
     if (it->second == key) keymap.erase(it++);
   }
+  // Also remove the key from key displaying, assuming we can find it
+  map<InterfaceKey,set<string,less_sz> >::iterator it = keydisplay.find(key);
+  if (it != keydisplay.end())
+    it->second.erase(display(ev));
 }
