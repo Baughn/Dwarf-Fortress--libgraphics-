@@ -18,12 +18,6 @@ enum Repeat {
   REPEAT_FAST  // Repeat instantly, without waiting for the first-repeat interval.
 };
 
-struct Event {
-  Repeat r;
-  InterfaceKey k;
-  int repeats; // Starts at 0, increments once per repeat
-};
-
 enum MatchType { type_unicode, type_key, type_button };
 
 std::string translate_mod(Uint8 mod);
@@ -74,7 +68,7 @@ struct KeyEvent {
 typedef std::list<std::set<InterfaceKey> > macro;
 
 class enabler_inputst {
-  std::set<InterfaceKey> key_translation(KeyEvent &e);
+  std::set<InterfaceKey> key_translation(EventMatch &match);
   Repeat key_repeat(InterfaceKey);
   void load_macro_from_file(const std::string &file);
   void save_macro_to_file(const std::string &file, const std::string &name, const macro &);
