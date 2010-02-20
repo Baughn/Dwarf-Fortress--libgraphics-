@@ -2,6 +2,7 @@
 #include <map>
 #include <vector>
 #include <iostream>
+#include <sstream>
 #include <algorithm>
 #include <stdlib.h>
 using namespace std;
@@ -48,6 +49,16 @@ struct Event {
   }
 };
 
+// Used to decide which key-binding to display. As a heuristic, we
+// prefer whichever display string is shortest.
+struct less_sz {
+  bool operator() (const string &a, const string &b) const {
+    if (a.size() < b.size()) return true;
+    if (a.size() > b.size()) return false;
+    return a < b;
+  }
+};
+
 // These change dynamically in the normal process of DF
 static int last_serial = 0; // Input serial number, to differentiate distinct physical presses
 static set<Event> timeline; // A timeline of pending key events (for next get_input)
@@ -57,7 +68,7 @@ static int modState; // Modifier state
 // These do not change as part of the normal dynamics of DF, only at startup/when editing.
 static multimap<EventMatch,InterfaceKey> keymap;
 static map<InterfaceKey,Repeat> repeatmap;
-static map<InterfaceKey,string> keydisplay; // Used only for display, not for meaning
+static map<InterfaceKey,set<string,less_sz> > keydisplay; // Used only for display, not for meaning
 
 // Macro recording
 static bool macro_recording = false;
@@ -79,13 +90,15 @@ static Time next_serial() {
 }
 
 static void update_keydisplay(InterfaceKey binding, string display) {
-  // As a heuristic, we use whichever display string is shortest
   // Need to filter out space/tab, for obvious reasons.
   if (display == " ") display = "Space";
   if (display == "\t") display = "Tab";
-  map<InterfaceKey,string>::iterator it = keydisplay.find(binding);
-  if (it == keydisplay.end() || it->second.length() > display.length()) {
-    keydisplay[binding] = display;
+  map<InterfaceKey,set<string,less_sz> >::iterator it = keydisplay.find(binding);
+  if (it == keydisplay.end()) {
+    set<string,less_sz> s; s.insert(display);
+    keydisplay[binding] = s;
+  } else {
+    keydisplay[binding].insert(display);
   }
 }
 
@@ -171,8 +184,24 @@ string translate_mod(Uint8 mod) {
   return ret;
 }
 
-static string display(Uint8 mod, string rest) {
-  return translate_mod(mod) + rest;
+static string display(const EventMatch &match) {
+  ostringstream ret;
+  ret << translate_mod(match.mod);
+  switch (match.type) {
+  case type_unicode: ret << (char)match.unicode; break;
+  case type_key: {
+    map<SDLKey,string>::iterator it = sdlNames.left.find(match.key);
+    if (it != sdlNames.left.end())
+      ret << it->second;
+    else
+      ret << "SDL+" << (int)match.key;
+    break;
+  }
+  case type_button:
+    ret << "Button " << (int)match.button;
+    break;
+  }
+  return ret.str();
 }
 
 static string translate_repeat(Repeat r) {
@@ -302,7 +331,7 @@ void enabler_inputst::load_keybindings(const string &file) {
               matcher.type = type_key;
               matcher.key  = it->second;
               keymap.insert(pair<EventMatch,InterfaceKey>(matcher, (InterfaceKey)binding));
-              update_keydisplay(binding, display(matcher.mod, match[2]));
+              update_keydisplay(binding, display(matcher));
             } else {
               cout << "Unknown SDLKey: " << match[2] << endl;
             }
@@ -318,7 +347,7 @@ void enabler_inputst::load_keybindings(const string &file) {
                 // This unicode key is part of the latin-1 mapped portion of unicode, so we can
                 // actually display it. Nice.
                 char c[2] = {matcher.unicode, 0};
-                update_keydisplay(binding, display(matcher.mod, string(c)));
+                update_keydisplay(binding, display(matcher));
               }
             } else {
               cout << "Broken unicode: " << *line << endl;
@@ -332,7 +361,7 @@ void enabler_inputst::load_keybindings(const string &file) {
             if (matcher.button) {
               matcher.mod  = atoi(string(match[1]).c_str());
               keymap.insert(pair<EventMatch,InterfaceKey>(matcher, (InterfaceKey)binding));
-              update_keydisplay(binding, "Button " + match[2]);
+              update_keydisplay(binding, display(matcher));
             } else {
               cout << "Broken button (should be [BUTTON:#:#]): " << *line << endl;
             }
@@ -594,6 +623,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
         (e.match.type == type_key && !register_unicode) ||
         (e.match.type == type_button)) {
       keymap.insert(pair<EventMatch,InterfaceKey>(e.match,register_to_key));
+      update_keydisplay(register_to_key, display(e.match));
       key_registering = false;
     }
     return;
@@ -724,9 +754,9 @@ set<InterfaceKey> enabler_inputst::key_translation(EventMatch &match) {
 }
 
 string enabler_inputst::GetKeyDisplay(int binding) {
-  map<InterfaceKey,string>::iterator it = keydisplay.find(binding);
-  if (it != keydisplay.end())
-    return it->second;
+  map<InterfaceKey,set<string,less_sz> >::iterator it = keydisplay.find(binding);
+  if (it != keydisplay.end() && it->second.size())
+    return *it->second.begin();
   else {
     cout << "Missing binding displayed: " + bindingNames.left[binding] << endl;
     return "?";
@@ -906,4 +936,8 @@ void enabler_inputst::remove_key(InterfaceKey key, EventMatch ev) {
        ++it) {
     if (it->second == key) keymap.erase(it++);
   }
+  // Also remove the key from key displaying, assuming we can find it
+  map<InterfaceKey,set<string,less_sz> >::iterator it = keydisplay.find(key);
+  if (it != keydisplay.end())
+    it->second.erase(display(ev));
 }
