@@ -11,7 +11,7 @@ src_dll = ["basics.cpp","command_line.cpp","enabler_sdl.cpp","files.cpp",
 dll  = '#libs/libgraphics.so'
 
 optimize = True
-debug = False
+debug = True
 profile = False
    
 # Propagate PATH. We'll just take our chances with non-repeatable builds.
