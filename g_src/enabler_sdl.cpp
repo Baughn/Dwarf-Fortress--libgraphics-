@@ -166,8 +166,8 @@ static pair<int,int> resize_grid(const int w_req, const int h_req) {
     init.display.small_grid_x = w;
     init.display.small_grid_y = h;
   }
-  init.display.grid_x = w;
-  init.display.grid_y = h;
+  init.display.grid_x = init.display.orig_grid_x = w;
+  init.display.grid_y = init.display.orig_grid_y = h;
   gridrectst *rect; int i=0;
 
   // FIXME: There's just one gridrect, and it's time DF accepted this.
