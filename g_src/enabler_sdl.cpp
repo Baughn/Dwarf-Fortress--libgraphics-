@@ -184,6 +184,7 @@ static pair<int,int> resize_grid(const int w_req, const int h_req) {
   return pair<int,int>(w,h);
 }
 
+#ifdef CURSES
 static void reset_window_ncurses() {
   int w, h;
   getmaxyx(stdscr, h, w);
@@ -193,6 +194,7 @@ static void reset_window_ncurses() {
   // Inform DF
   resize_grid(w, h);
 }
+#endif //CURSES
 
 static void resize_grid_sdl(const int width, const int height, const bool resizing) {
   skip_gframe = true;

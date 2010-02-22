@@ -25,9 +25,9 @@ int decode_utf8(const std::string &s);
 int decode_utf8_predict_length(char byte);
 std::string encode_utf8(int unicode);
 
-#define MOD_SHIFT 1
-#define MOD_CTRL 2
-#define MOD_ALT 4
+#define DFMOD_SHIFT 1
+#define DFMOD_CTRL 2
+#define DFMOD_ALT 4
 
 struct EventMatch {
   MatchType type;

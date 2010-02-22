@@ -542,7 +542,10 @@ void graphicst::prepare_rect(char n_orig)
 {
   if(rect_id!=-1) {
     gridrectst *gr=enabler.get_gridrect(rect_id);
-    if(gr!=NULL)gr->allocate(init.display.grid_x,init.display.grid_y);
+    if(gr!=NULL)
+		{
+		gr->allocate(init.display.grid_x,init.display.grid_y);
+		}
     else rect_id=-1;
   }
 

@@ -7,8 +7,6 @@
 #include <stdlib.h>
 using namespace std;
 
-#include <boost/foreach.hpp>
-
 #include "enabler_input.h"
 #include "init.h"
 extern initst init;
@@ -540,7 +538,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   uni.unicode = 0;
 
   if (esc) { // Escape sequence, meaning alt was held. I hope.
-    sdl.mod = uni.mod = MOD_ALT;
+    sdl.mod = uni.mod = DFMOD_ALT;
   }
 
   if (key == -10) { // Return
@@ -552,14 +550,14 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   } else if (key == -27) { // If we see esc here, it's the actual esc key. Hopefully.
     sdl.key = SDLK_ESCAPE;
   } else if (key < 0 && key >= -26) { // Control-a through z (but not ctrl-j, or ctrl-i)
-    sdl.mod |= MOD_CTRL;
+    sdl.mod |= DFMOD_CTRL;
     sdl.key = (SDLKey)(SDLK_a + (-key) - 1);
   } else if (key <= -32 && key >= -127) { // ASCII character set
     uni.unicode = -key;
     sdl.key = (SDLKey)-key; // Most of this maps directly to SDL keys, except..
     if (sdl.key > 64 && sdl.key < 91) { // Uppercase
       sdl.key = (SDLKey)(sdl.key + 33); // Maps to lowercase, and
-      sdl.mod |= MOD_SHIFT; // Add shift.
+      sdl.mod |= DFMOD_SHIFT; // Add shift.
     }
   } else if (key < -127) { // Unicode, no matching SDL keys
     uni.unicode = -key;
@@ -598,17 +596,17 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now;
   if (sdl.key) {
     set<InterfaceKey> events = key_translation(sdl);
-    BOOST_FOREACH(InterfaceKey k, events) {
+    for (set<InterfaceKey>::iterator k = events.begin(); k != events.end(); ++k) {
       e.serial = next_serial();
-      e.k = k;
+      e.k = *k;
       timeline.insert(e);
     }
   }
   if (uni.unicode) {
     set<InterfaceKey> events = key_translation(uni);
-    BOOST_FOREACH(InterfaceKey k, events) {
+    for (set<InterfaceKey>::iterator k = events.begin(); k != events.end(); ++k) {
       e.serial = next_serial();
-      e.k = k;
+      e.k = *k;
       timeline.insert(e);
     }
   }
@@ -661,8 +659,8 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
     // okay to cancel repeats unless /all/ the bindings are
     // non-repeating.
     const int serial = next_serial();
-    BOOST_FOREACH(InterfaceKey k, keys) {
-      Event e = {key_repeat(k), k, 0, serial, now};
+    for (set<InterfaceKey>::iterator k = keys.begin(); k != keys.end(); ++k) {
+      Event e = {key_repeat(*k), *k, 0, serial, now};
       timeline.insert(e);
     }
     // if (cancel_ok) {
@@ -794,10 +792,10 @@ bool enabler_inputst::is_recording() {
 
 void enabler_inputst::play_macro() {
   const Time now = SDL_GetTicks();
-  BOOST_FOREACH(set<InterfaceKey> sim, active_macro) {
+  for (macro::iterator sim = active_macro.begin(); sim != active_macro.end(); ++sim) {
     Event e; e.r = REPEAT_NOT; e.repeats = 0; e.serial = next_serial(); e.time = now;
-    BOOST_FOREACH(InterfaceKey k, sim) {
-      e.k = k;
+    for (set<InterfaceKey>::iterator k = sim->begin(); k != sim->end(); ++k) {
+      e.k = *k;
       timeline.insert(e);
     }
   }
