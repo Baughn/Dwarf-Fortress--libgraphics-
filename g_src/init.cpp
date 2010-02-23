@@ -349,14 +349,15 @@ void initst::begin()
 				if(!token.compare("FPS_CAP"))
 					{
 					long fps=convert_string_to_long(token2);
-					if(fps>10000)fps=10000;
+					if(fps>1000)fps=1000;
+                                        if(fps==0)fps=2147483647;
 					if(fps<1)fps=1;
 					display.dwarf_frame_rate.QuadPart=enabler.qpfr.QuadPart/fps;
 					}
 				if(!token.compare("G_FPS_CAP"))
 					{
 					long fps=convert_string_to_long(token2);
-					if(fps>10000)fps=10000;
+					if(fps>50)fps=50;
 					if(fps<1)fps=1;
 					display.g_frame_rate.QuadPart=enabler.qpfr.QuadPart/fps;
 					enabler.g_qprate=display.g_frame_rate;
