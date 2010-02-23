@@ -150,16 +150,16 @@ void initst::begin()
 					if(token2=="VBO")
 						{
 						display.flag.add_flag(INIT_DISPLAY_FLAG_VBO);
-						display.flag.add_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT);
+						// display.flag.add_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT);
 						display.partial_print_count=0;
 						}
-                                        if(token2=="2D")
+                                        if(token2=="2DSW")
                                                 {
                                                 display.flag.add_flag(INIT_DISPLAY_FLAG_2D);
 						display.flag.add_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT);
                                                 display.partial_print_count=0;
                                                 }
-                                        if(token2=="2DHW")
+                                        if(token2=="2D")
                                                 {
                                                 display.flag.add_flag(INIT_DISPLAY_FLAG_2D);
                                                 display.flag.add_flag(INIT_DISPLAY_FLAG_2DHW);
@@ -169,6 +169,7 @@ void initst::begin()
                                         if(token2=="2DASYNC")
                                                 {
                                                 display.flag.add_flag(INIT_DISPLAY_FLAG_2D);
+                                                display.flag.add_flag(INIT_DISPLAY_FLAG_2DHW);
                                                 display.flag.add_flag(INIT_DISPLAY_FLAG_2DASYNC);
 						display.flag.add_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT);
                                                 display.partial_print_count=0;

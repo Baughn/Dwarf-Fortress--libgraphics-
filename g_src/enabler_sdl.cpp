@@ -1005,7 +1005,7 @@ SDL_Surface *gridrectst::tile_cache_lookup(texture_fullid &id) {
                                                 0);
       if (!color) {
         use_hw = false;
-        MessageBox (NULL, "Unable to create texture in video memory. Performance will suffer. Don't use 2DHW, or don't use graphical tiles.", "Out of VRAM", MB_OK | MB_ICONEXCLAMATION);
+        MessageBox (NULL, "Unable to create texture in video memory. Performance will suffer. Use 2DSW, or don't use graphical tiles.", "Out of VRAM", MB_OK | MB_ICONEXCLAMATION);
       }
     }
     if (!use_hw) {
