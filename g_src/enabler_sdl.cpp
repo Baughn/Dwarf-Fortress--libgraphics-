@@ -1192,26 +1192,35 @@ void gridrectst::render_gl(render_phase phase, bool clear) {
 
       printGLError();
 
-      GLfloat *ptr_vertex_w = &ptr_vertex[0];
-      GLfloat *ptr_bg_color_w  = &ptr_bg_color[0];
-      GLfloat *ptr_fg_color_w = &ptr_fg_color[0];
-      GLfloat *ptr_tex_w = &ptr_tex[0];
+      GLfloat *ptr_vertex = &buf_vertex[0];
+      GLfloat *ptr_bg_color;
+      GLfloat *ptr_fg_color;
+      GLfloat *ptr_tex;
       const gl_texpos *txt = enabler.textures.gl_texpos;
-
+      
       // Map VBOs for writing
       if (vbo_refs[0]) {
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[1]);
-        ptr_bg_color_w = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
-        assert(ptr_bg_color_w);
+        ptr_bg_color = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
+        assert(ptr_bg_color);
 
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
-        ptr_fg_color_w = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
-        assert(ptr_fg_color_w);
+        ptr_fg_color = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
+        assert(ptr_fg_color);
 
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
-        ptr_tex_w = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
-        assert(ptr_tex_w);
+        ptr_tex = (GLfloat*)glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
+        assert(ptr_tex);
+      } else { // Or don't.
+        ptr_bg_color  = &buf_bg_color[0];
+        ptr_fg_color = &buf_fg_color[0];
+        ptr_tex = &buf_tex[0];
       }
+
+      GLfloat *ptr_vertex_w = ptr_vertex;
+      GLfloat *ptr_bg_color_w = ptr_bg_color;
+      GLfloat *ptr_fg_color_w = ptr_fg_color;
+      GLfloat *ptr_tex_w = ptr_tex;
 
       // In the partial-print scenario, we build every array from
       // scratch on every frame, from the partial-print list.
@@ -1314,7 +1323,7 @@ void gridrectst::render_gl(render_phase phase, bool clear) {
           // Upload vertex array. This rarely happens.
           if (vbo_refs[0]) {
             glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[0]); // Vertices
-            glBufferDataARB(GL_ARRAY_BUFFER_ARB, tile_count*sizeof(GLfloat)*6*2, &ptr_vertex[0], GL_STATIC_DRAW_ARB);
+            glBufferDataARB(GL_ARRAY_BUFFER_ARB, tile_count*sizeof(GLfloat)*6*2, ptr_vertex, GL_STATIC_DRAW_ARB);
           }
           vertices_initialized = true;
         }
@@ -1467,9 +1476,9 @@ void gridrectst::render_gl(render_phase phase, bool clear) {
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[3]);
         glTexCoordPointer(2, GL_FLOAT, 0, 0);
       } else {
-        glVertexPointer(2, GL_FLOAT, 0, &ptr_vertex[0]);
-        glColorPointer(4, GL_FLOAT, 0, &ptr_bg_color[0]);
-        glTexCoordPointer(2, GL_FLOAT, 0, &ptr_tex[0]);
+        glVertexPointer(2, GL_FLOAT, 0, &buf_vertex[0]);
+        glColorPointer(4, GL_FLOAT, 0, &buf_bg_color[0]);
+        glTexCoordPointer(2, GL_FLOAT, 0, &buf_tex[0]);
       }
         
       
@@ -1493,7 +1502,7 @@ void gridrectst::render_gl(render_phase phase, bool clear) {
         glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo_refs[2]);
         glColorPointer(4, GL_FLOAT, 0, 0);
       } else {
-        glColorPointer(4, GL_FLOAT, 0, &ptr_fg_color[0]);
+        glColorPointer(4, GL_FLOAT, 0, &buf_fg_color[0]);
       }
       printGLError();
 
@@ -1557,6 +1566,10 @@ void gridrectst::render_gl(render_phase phase, bool clear) {
 void gridrectst::init_gl() {
   static bool shown=false; // It's a bit hacky, but we want to only show the message once
   if (!enabler.use_opengl) return;
+  if (dimx == 0 || dimy == 0) {
+    cout << "Error: Dimensions set to zero, aborting opengl initialization\n";
+    return;
+  }
   if (gl_initialized) uninit_gl();
   vertices_initialized = false;
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO) && GLEW_ARB_vertex_buffer_object) {
@@ -1602,9 +1615,10 @@ void gridrectst::init_gl() {
   unmap0:
     if (!ok) {
       puts("Mapping VBOs failed, falling back to standard mode with client-side arrays");
-      printf("(GL error: %x\n", err);
+      printf("GL Error: 0x%x\n", err);
       glDeleteBuffersARB(4, vbo_refs);
       vbo_refs[0]=0;
+      init.display.flag.remove_flag(INIT_DISPLAY_FLAG_VBO);
     }
   } else {
 #ifndef DEBUG
@@ -1675,11 +1689,11 @@ void gridrectst::init_gl() {
 #ifdef DEBUG
   printf("Room for %d vertices allocated\n", dimx*dimy*6);
 #endif
-  ptr_vertex.resize(dimx*dimy*6*2);   // dimx*dimy tiles,
+  buf_vertex.resize(dimx*dimy*6*2);   // dimx*dimy tiles,
   if (!vbo_refs[0]) { // We don't need these in VBO mode
-    ptr_fg_color.resize(dimx*dimy*6*4); // six vertices,
-    ptr_bg_color.resize(dimx*dimy*6*4+8); // two vertex components or
-    ptr_tex.resize(dimx*dimy*6*2+4);      // four colors per vertex
+    buf_fg_color.resize(dimx*dimy*6*4); // six vertices,
+    buf_bg_color.resize(dimx*dimy*6*4+8); // two vertex components or
+    buf_tex.resize(dimx*dimy*6*2+4);      // four colors per vertex
   }
   shown = true;
   gl_initialized = true;
