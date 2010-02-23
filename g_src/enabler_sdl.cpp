@@ -634,7 +634,7 @@ void enablerst::do_frame()
   // otherwise become uninitialized.
   // flag |= ENABLERFLAG_RENDER;
   bool do_render=false;
-  if (flag & ENABLERFLAG_RENDER || 1) {
+  if (flag & ENABLERFLAG_RENDER) {
     if (gframes_outstanding > 0) {
       do_render = true;
       // Initiate graphics rendering, if appropriate
