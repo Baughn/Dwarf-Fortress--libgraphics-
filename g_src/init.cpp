@@ -159,7 +159,7 @@ void initst::begin()
 						display.flag.add_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT);
                                                 display.partial_print_count=0;
                                                 }
-                                        if(token2=="2D")
+                                        if(token2=="2D" || token2=="2DHW")
                                                 {
                                                 display.flag.add_flag(INIT_DISPLAY_FLAG_2D);
                                                 display.flag.add_flag(INIT_DISPLAY_FLAG_2DHW);
