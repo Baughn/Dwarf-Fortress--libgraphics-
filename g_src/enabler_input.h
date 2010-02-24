@@ -77,7 +77,7 @@ class enabler_inputst {
   // In practice.. do not use this one.
   void add_input(SDL_Event &e, Time now);
   // Use this one. It's much nicer.
-  void add_input_refined(KeyEvent &e, Time now);
+  void add_input_refined(KeyEvent &e, Time now, int serial);
   // Made specifically for curses. <0 = unicode, >0 = ncurses symbols.
 #ifdef CURSES
   void add_input_ncurses(int key, Time now, bool esc);

@@ -437,10 +437,9 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
   // - It's possible for multiple events to be generated on the same tick.
   //   These are of course separate keypresses, and must be kept separate.
   //   That's what the serial is for.
-  
-  list<KeyEvent> synthetics;
-  set<EventMatch>::iterator pkit;
 
+  set<EventMatch>::iterator pkit;
+  list<pair<KeyEvent, int> > synthetics;
   update_modstate(e);
 
   // Convert modifier state changes
@@ -456,12 +455,12 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
       KeyEvent synth;
       synth.release = true;
       synth.match = *pkit;
-      synthetics.push_back(synth);
+      synthetics.push_back(make_pair<KeyEvent,int>(synth, next_serial()));
       // Re-press them, with new modifiers, if they aren't unicode. We can't re-translate unicode.
       if (synth.match.type != type_unicode) {
         synth.release = false;
         synth.match.mod = getModState();
-        synthetics.push_back(synth);
+        synthetics.push_back(make_pair<KeyEvent,int>(synth, next_serial()));
       }
     }
   } else {
@@ -473,7 +472,7 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
           KeyEvent synth;
           synth.release = true;
           synth.match = *pkit;
-          synthetics.push_back(synth);
+          synthetics.push_back(make_pair<KeyEvent,int>(synth, next_serial()));
         }
       }
     }
@@ -482,6 +481,8 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
     //
     // However, since SDL ignores(?) ctrl and alt when translating to
     // unicode, we want to ignore unicode events if those are set.
+    const int serial = next_serial();
+
     KeyEvent real;
     real.release = (e.type == SDL_KEYUP || e.type == SDL_MOUSEBUTTONUP) ? true : false;
     real.match.mod = getModState();
@@ -489,20 +490,20 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
       real.match.type = type_button;
       real.match.scancode = 0;
       real.match.button = e.button.button;
-      synthetics.push_back(real);
+      synthetics.push_back(make_pair<KeyEvent,int>(real, serial));
     }
     if (e.type == SDL_KEYUP || e.type == SDL_KEYDOWN) {
       real.match.type = type_key;
       real.match.scancode = e.key.keysym.scancode;
       real.match.key = e.key.keysym.sym;
-      synthetics.push_back(real);
+      synthetics.push_back(make_pair<KeyEvent,int>(real, serial));
     }
     if (e.type == SDL_KEYDOWN && e.key.keysym.unicode && getModState() < 2) {
       real.match.mod = KMOD_NONE;
       real.match.type = type_unicode;
       real.match.scancode = e.key.keysym.scancode;
       real.match.unicode = e.key.keysym.unicode;
-      synthetics.push_back(real);
+      synthetics.push_back(make_pair<KeyEvent,int>(real, serial));
     }
     if (e.type == SDL_QUIT) {
       // This one, we insert directly into the timeline.
@@ -511,13 +512,13 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
     }
   }
 
-  list<KeyEvent>::iterator lit;
+  list<pair<KeyEvent, int> >::iterator lit;
   for (lit = synthetics.begin(); lit != synthetics.end(); ++lit) {
     // Add or remove the key from pressed_keys, keeping that up to date
-    if (lit->release) pressed_keys.erase(lit->match);
-    else pressed_keys.insert(lit->match);
+    if (lit->first.release) pressed_keys.erase(lit->first.match);
+    else pressed_keys.insert(lit->first.match);
     // And pass the event on deeper.
-    add_input_refined(*lit, now);
+    add_input_refined(lit->first, now, lit->second);
   }
 }
 
@@ -613,7 +614,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
 }
 #endif
 
-void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
+void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
   // We may be registering a new mapping, in which case we skip the
   // rest of this function.
   if (key_registering && !e.release) {
@@ -658,7 +659,6 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now) {
     // accepted at the moment, there is no way we can know if it's
     // okay to cancel repeats unless /all/ the bindings are
     // non-repeating.
-    const int serial = next_serial();
     for (set<InterfaceKey>::iterator k = keys.begin(); k != keys.end(); ++k) {
       Event e = {key_repeat(*k), *k, 0, serial, now};
       timeline.insert(e);
