@@ -1567,7 +1567,8 @@ void gridrectst::init_gl() {
   static bool shown=false; // It's a bit hacky, but we want to only show the message once
   if (!enabler.use_opengl) return;
   if (dimx == 0 || dimy == 0) {
-    cout << "Error: Dimensions set to zero, aborting opengl initialization\n";
+    puts("Dimensions uninitialized, resetting");
+    reset_window_sdl();
     return;
   }
   if (gl_initialized) uninit_gl();
