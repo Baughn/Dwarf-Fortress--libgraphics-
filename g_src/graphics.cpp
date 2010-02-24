@@ -319,7 +319,7 @@ void graphicst::renewscreen()
   if(display_frames && !enabler.doing_buffer_draw())
     {
       ostringstream fps;
-      fps << "FPS: " << enabler.calculate_fps() << " (" << enabler.calculate_gfps() << ")";
+      fps << "FPS: " << setw(3) << enabler.calculate_fps() << " (" << enabler.calculate_gfps() << ")";
       changecolor(7,3,1);
       locate(0,init.display.grid_x * 2 / 3);
       addst(fps.str());
