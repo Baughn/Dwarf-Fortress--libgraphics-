@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <zlib.h>
+#include <cassert>
 
 #include "svector.h"
 
@@ -58,13 +59,154 @@ void process_object_lines(textlinesst &lines,string &chktype);
 
 
 static std::map<std::pair<int,int>,int> color_pairs; // For curses. MOVEME.
-static unsigned char screen_old[MAX_GRID_X][MAX_GRID_Y][4]; // For partial printing.
-static long screentexpos_old[MAX_GRID_X][MAX_GRID_Y];
-static char screentexpos_addcolor_old[MAX_GRID_X][MAX_GRID_Y];
-static unsigned char screentexpos_grayscale_old[MAX_GRID_X][MAX_GRID_Y];
-static unsigned char screentexpos_cf_old[MAX_GRID_X][MAX_GRID_Y];
-static unsigned char screentexpos_cbr_old[MAX_GRID_X][MAX_GRID_Y];
+static unsigned char *screen_old = NULL; // For partial printing
+static long *screentexpos_old = NULL;
+static char *screentexpos_addcolor_old = NULL;
+static unsigned char *screentexpos_grayscale_old = NULL;
+static unsigned char *screentexpos_cf_old = NULL;
+static unsigned char *screentexpos_cbr_old = NULL;
 
+void graphicst::unallocate() {
+  if (pbo_mapped == -1) { // Delete local-memory things
+    if (!screen) return;
+    delete[] screen; screen = NULL;
+    delete[] screentexpos;
+    delete[] screentexpos_addcolor;
+    delete[] screentexpos_grayscale;
+    delete[] screentexpos_cf;
+    delete[] screentexpos_cbr;
+    
+    delete[] screen_old;
+    delete[] screentexpos_old;
+    delete[] screentexpos_addcolor_old;
+    delete[] screentexpos_grayscale_old;
+    delete[] screentexpos_cf_old;
+    delete[] screentexpos_cbr_old;
+  } else {
+    // Unmap PBOs, then free them
+    if (screen) {
+      glBindBufferARB(GL_TEXTURE_BUFFER_ARB, shader_pbo[pbo_mapped]);
+      glUnmapBufferARB(GL_TEXTURE_BUFFER_ARB); // The others are offsets into the same buffer
+      screen = NULL;
+      glBindBufferARB(GL_TEXTURE_BUFFER_ARB, 0);
+    }
+    glDeleteBuffersARB(2, shader_pbo);
+    // And the TBO
+    glDeleteTextures(1, &shader_tbo);
+  }
+}
+
+// Add, then increment to the (possible) PBO alignment requirement
+static void align(size_t &sz, off_t inc) {
+  sz += inc;
+  while (sz%64) sz++; // So.. tired.. FIXME.
+}
+
+void graphicst::swap_pbos() {
+  assert (pbo_mapped != -1);
+  if (screen) {
+    // Unmap old PBO
+    // static int count=0;
+    // if (count++ % 40 == 0) {
+    //   for (int i=0; i < 6; i++) {
+    //     cout << screen[i*dimy*4] << " " << (int)screen[i*dimy*4+1] << " " << (int)screen[i*dimy*4+2] << " " << (int)screen[i*dimy*4+3] << ", ";
+    //   }
+    //   cout << endl;
+    // }
+    glBindBufferARB(GL_TEXTURE_BUFFER_ARB, shader_pbo[pbo_mapped]);
+    glUnmapBufferARB(GL_TEXTURE_BUFFER_ARB); // The others are offsets into the same buffer
+    screen = NULL;
+    // And attach it
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_BUFFER_ARB, shader_tbo);
+    glTexBufferARB(GL_TEXTURE_BUFFER_ARB, GL_ALPHA8UI_EXT, shader_pbo[pbo_mapped]);
+    printGLError();
+  }
+  pbo_mapped = !pbo_mapped;
+  glBindBufferARB(GL_TEXTURE_BUFFER_ARB, shader_pbo[pbo_mapped]);
+  printGLError();
+  if (GL_ARB_map_buffer_range) {
+    screen = (unsigned char*)glMapBufferRange(GL_TEXTURE_BUFFER_ARB, 0, shader_pbo_sz,
+                                              // GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
+                                              GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+  } else {
+    glBufferDataARB(GL_TEXTURE_BUFFER_ARB, shader_pbo_sz, NULL, GL_STREAM_DRAW);
+    screen = (unsigned char*)glMapBufferARB(GL_TEXTURE_BUFFER_ARB, GL_WRITE_ONLY);
+  }
+  assert(screen);
+  screentexpos = (long*)(screen + offset_texpos);
+  screentexpos_addcolor = (char*)(screen + offset_addcolor);
+  screentexpos_grayscale = screen + offset_grayscale;
+  screentexpos_cf = screen + offset_cf;
+  screentexpos_cbr = screen + offset_cbr;
+  printGLError();
+  glBindBufferARB(GL_TEXTURE_BUFFER_ARB, 0);
+  printGLError();
+}
+
+void graphicst::allocate(int x, int y) {
+  dimx = x; dimy = y;
+#ifdef DEBUG
+  cout << "GPS alloc: " << x << " " << y << endl;
+#endif
+  unallocate();
+  
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_SHADER)) {
+    // Create PBOs.
+    glGenBuffersARB(2, shader_pbo);
+    size_t bufsz = 0;
+    align(bufsz, x*y*4 * sizeof *screen);
+    offset_texpos = bufsz;
+    align(bufsz, x*y * sizeof *screentexpos);
+    offset_addcolor = bufsz;
+    align(bufsz, x*y * sizeof *screentexpos_addcolor);
+    offset_grayscale = bufsz;
+    align(bufsz, x*y * sizeof *screentexpos_grayscale);
+    offset_cf = bufsz;
+    align(bufsz, x*y * sizeof *screentexpos_cf);
+    offset_cbr = bufsz;
+    align(bufsz, x*y * sizeof *screentexpos_cbr);
+    shader_pbo_sz = bufsz;
+    for (int i=0; i < 2; i++) {
+      glBindBufferARB(GL_TEXTURE_BUFFER_ARB, shader_pbo[i]);
+      glBufferDataARB(GL_TEXTURE_BUFFER_ARB, bufsz, NULL, GL_STREAM_DRAW);
+      pbo_mapped = i;
+    }
+    screen = NULL;
+    // Create the texture buffer object
+    glGenTextures(1, &shader_tbo);
+    glBindTexture(GL_TEXTURE_BUFFER_ARB, shader_tbo);
+    // Initialize the renderer
+    swap_pbos();
+  } else {
+    pbo_mapped = -1;
+    screen = new unsigned char[screen, x*y*4];
+    memset(screen, 0, x*y*4);
+    screentexpos = new long[screentexpos, x*y];
+    memset(screentexpos, 0, x*y*4);
+    screentexpos_addcolor = new char[screentexpos_addcolor, x*y];
+    memset(screentexpos_addcolor, 0, x*y);
+    screentexpos_grayscale = new unsigned char[screentexpos_grayscale, x*y];
+    memset(screentexpos_grayscale, 0, x*y);
+    screentexpos_cf = new unsigned char[screentexpos_cf, x*y];
+    memset(screentexpos_cf, 0, x*y);
+    screentexpos_cbr = new unsigned char[screentexpos_cbr, x*y];
+    memset(screentexpos_cbr, 0, x*y);
+    
+    screen_old = new unsigned char[screen_old, x*y*4];
+    memset(screen_old, 0, x*y*4);
+    screentexpos_old = new long[screentexpos_old, x*y];
+    memset(screentexpos_old, 0, x*y*4);
+    screentexpos_addcolor_old = new char[screentexpos_addcolor_old, x*y];
+    memset(screentexpos_addcolor_old, 0, x*y);
+    screentexpos_grayscale_old = new unsigned char[screentexpos_grayscale_old, x*y];
+    memset(screentexpos_grayscale_old, 0, x*y);
+    screentexpos_cf_old = new unsigned char[screentexpos_cf_old, x*y];
+    memset(screentexpos_cf_old, 0, x*y);
+    screentexpos_cbr_old = new unsigned char[screentexpos_cbr_old, x*y];
+    memset(screentexpos_cbr_old, 0, x*y);
+  }
+}
 
 void graphicst::addcoloredst(const char *str,const char *colorstr)
 {
@@ -85,7 +227,7 @@ void graphicst::addcoloredst(const char *str,const char *colorstr)
 
 void graphicst::addst(const string &str)
 {
-	int s;
+ 	int s;
 	for(s=0;s<str.length()&&screenx<init.display.grid_x;s++)
 		{
 		if(screenx<0)
@@ -142,41 +284,23 @@ void graphicst::erasescreen_rect(int x1, int x2, int y1, int y2)
 
 void graphicst::erasescreen()
 {
-	changecolor(0,0,0);
-	short x2,y2;
-	for(x2=0;x2<init.display.grid_x;x2++)
-		{
-		for(y2=0;y2<init.display.grid_y;y2++)
-			{
-			locate(y2,x2);
-			addchar(' ');
-			}
-		}
-
+        memset(screen, 0, dimx*dimy*4);
+        
 	gridrectst *rect=enabler.get_gridrect(rect_id);
 	if(rect!=NULL)rect->trinum=0;
 }
 
 void graphicst::display()
 {
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_SHADER))
+    return; // This is done on the GPU in shader mode.
+  
   gridrectst *rect=enabler.get_gridrect(rect_id);
 
-  if(init.display.flag.has_flag(INIT_DISPLAY_FLAG_BLACK_SPACE))rect->black_space=1;
-  else rect->black_space=0;
-
+  
+  
   long localbufsize=rect->dimx*rect->dimy;
   long d=0;
-
-  if(enabler.create_full_screen)
-    {
-      rect->dispx=init.font.large_font_dispx;
-      rect->dispy=init.font.large_font_dispy;
-    }
-  else
-    {
-      rect->dispx=init.font.small_font_dispx;
-      rect->dispy=init.font.small_font_dispy;
-    }
 
   long *c_buffer_texpos;
   float *c_buffer_r;
@@ -191,27 +315,27 @@ void graphicst::display()
     for (y2=0; y2<init.display.grid_y; y2++,d++) {
       if (d>=localbufsize) break;
       // Partial printing (and color-conversion): Big-ass if.
-      if (screen[x2][y2][0] == screen_old[x2][y2][0] &&
-          screen[x2][y2][1] == screen_old[x2][y2][1] &&
-          screen[x2][y2][2] == screen_old[x2][y2][2] &&
-          screen[x2][y2][3] == screen_old[x2][y2][3] &&
-          screentexpos[x2][y2] == screentexpos_old[x2][y2] &&
-          screentexpos_addcolor[x2][y2] == screentexpos_addcolor_old[x2][y2] &&
-          screentexpos_grayscale[x2][y2] == screentexpos_grayscale_old[x2][y2] &&
-          screentexpos_cf[x2][y2] == screentexpos_cf_old[x2][y2] &&
-          screentexpos_cbr[x2][y2] == screentexpos_cbr_old[x2][y2] &&
+      if (screen[x2*dimy*4 + y2*4 + 0] == screen_old[x2*dimy*4 + y2*4 + 0] &&
+          screen[x2*dimy*4 + y2*4 + 1] == screen_old[x2*dimy*4 + y2*4 + 1] &&
+          screen[x2*dimy*4 + y2*4 + 2] == screen_old[x2*dimy*4 + y2*4 + 2] &&
+          screen[x2*dimy*4 + y2*4 + 3] == screen_old[x2*dimy*4 + y2*4 + 3] &&
+          screentexpos[x2*dimy + y2] == screentexpos_old[x2*dimy + y2] &&
+          screentexpos_addcolor[x2*dimy + y2] == screentexpos_addcolor_old[x2*dimy + y2] &&
+          screentexpos_grayscale[x2*dimy + y2] == screentexpos_grayscale_old[x2*dimy + y2] &&
+          screentexpos_cf[x2*dimy + y2] == screentexpos_cf_old[x2*dimy + y2] &&
+          screentexpos_cbr[x2*dimy + y2] == screentexpos_cbr_old[x2*dimy + y2] &&
           !force_full_display_count) { // Nothing's changed
       } else {
         // Okay, the buffer has changed. First update the old-buffer.
-        screen_old[x2][y2][0] = screen[x2][y2][0];
-        screen_old[x2][y2][1] = screen[x2][y2][1];
-        screen_old[x2][y2][2] = screen[x2][y2][2];
-        screen_old[x2][y2][3] = screen[x2][y2][3];
-        screentexpos_old[x2][y2] = screentexpos[x2][y2];
-        screentexpos_addcolor_old[x2][y2] = screentexpos_addcolor[x2][y2];
-        screentexpos_grayscale_old[x2][y2] = screentexpos_grayscale[x2][y2];
-        screentexpos_cf_old[x2][y2] = screentexpos_cf[x2][y2];
-        screentexpos_cbr_old[x2][y2] = screentexpos_cbr[x2][y2];
+        screen_old[x2*dimy*4 + y2*4 + 0] = screen[x2*dimy*4 + y2*4 + 0];
+        screen_old[x2*dimy*4 + y2*4 + 1] = screen[x2*dimy*4 + y2*4 + 1];
+        screen_old[x2*dimy*4 + y2*4 + 2] = screen[x2*dimy*4 + y2*4 + 2];
+        screen_old[x2*dimy*4 + y2*4 + 3] = screen[x2*dimy*4 + y2*4 + 3];
+        screentexpos_old[x2*dimy + y2] = screentexpos[x2*dimy + y2];
+        screentexpos_addcolor_old[x2*dimy + y2] = screentexpos_addcolor[x2*dimy + y2];
+        screentexpos_grayscale_old[x2*dimy + y2] = screentexpos_grayscale[x2*dimy + y2];
+        screentexpos_cf_old[x2*dimy + y2] = screentexpos_cf[x2*dimy + y2];
+        screentexpos_cbr_old[x2*dimy + y2] = screentexpos_cbr[x2*dimy + y2];
         // Now, then. We need to convert the buffer contents to texture positions and RGB colors..
 
         c_buffer_texpos = &(rect->buffer_texpos[d]);
@@ -228,23 +352,23 @@ void graphicst::display()
         rect->s_buffer_count[d] = init.display.partial_print_count;
         
         //CONVERT COLORS
-        convert_to_rgb(*c_buffer_br,*c_buffer_bg,*c_buffer_bb,screen[x2][y2][2],0);
+        convert_to_rgb(*c_buffer_br,*c_buffer_bg,*c_buffer_bb,screen[x2*dimy*4 + y2*4 + 2],0);
         
-        if (screentexpos[x2][y2]!=0) {
-          if(screentexpos_grayscale[x2][y2]) {
-            convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screentexpos_cf[x2][y2],screentexpos_cbr[x2][y2]);
-          } else if (screentexpos_addcolor[x2][y2]) {
-            convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screen[x2][y2][1],screen[x2][y2][3]);
+        if (screentexpos[x2*dimy + y2]!=0) {
+          if(screentexpos_grayscale[x2*dimy + y2]) {
+            convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screentexpos_cf[x2*dimy + y2],screentexpos_cbr[x2*dimy + y2]);
+          } else if (screentexpos_addcolor[x2*dimy + y2]) {
+            convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screen[x2*dimy*4 + y2*4 + 1],screen[x2*dimy*4 + y2*4 + 3]);
           } else {
             *c_buffer_r=1;
             *c_buffer_g=1;
             *c_buffer_b=1;
           }
-          *c_buffer_texpos=screentexpos[x2][y2];
+          *c_buffer_texpos=screentexpos[x2*dimy + y2];
         } else {
-          convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screen[x2][y2][1],screen[x2][y2][3]);
-          if(enabler.create_full_screen)*c_buffer_texpos=init.font.large_font_texpos[screen[x2][y2][0]];
-          else *c_buffer_texpos=init.font.small_font_texpos[screen[x2][y2][0]];
+          convert_to_rgb(*c_buffer_r,*c_buffer_g,*c_buffer_b,screen[x2*dimy*4 + y2*4 + 1],screen[x2*dimy*4 + y2*4 + 3]);
+          if(enabler.create_full_screen)*c_buffer_texpos=init.font.large_font_texpos[screen[x2*dimy*4 + y2*4 + 0]];
+          else *c_buffer_texpos=init.font.small_font_texpos[screen[x2*dimy*4 + y2*4 + 0]];
         }
       }
     }
@@ -286,7 +410,7 @@ int graphicst::lookup_pair(pair<int,int> color) {
 
 // see: http://dwarffortresswiki.net/index.php/Character_table
 static int charmap[256] = {
-  0x0000, 0x263A, 0x263B, 0x2665, 0x2666, 0x2663, 0x2660, 0x2022,
+  ' ', 0x263A, 0x263B, 0x2665, 0x2666, 0x2663, 0x2660, 0x2022,
     0x25D8, 0x25CB, 0x25D9, 0x2642, 0x2640, 0x266A, 0x266B, 0x263C,
   0x25BA, 0x25C4, 0x2195, 0x203C, 0x00B6, 0x00A7, 0x25AC, 0x21A8,
     0x2191, 0x2193, 0x2192, 0x2190, 0x221F, 0x2194, 0x25B2, 0x25BC,
@@ -332,14 +456,14 @@ void graphicst::renewscreen()
       force_full_display_count--;
       for (x2=0;x2<init.display.grid_x;x2++) {
           for(y2=0;y2<init.display.grid_y;y2++) {
-            const int ch   = screen[x2][y2][0];
-            const int fg   = screen[x2][y2][1];
-            const int bg   = screen[x2][y2][2];
-            const int bold = screen[x2][y2][3];
-            screen_old[x2][y2][0] = ch;
-            screen_old[x2][y2][1] = fg;
-            screen_old[x2][y2][2] = bg;
-            screen_old[x2][y2][3] = bold;
+            const int ch   = screen[x2*dimy*4 + y2*4 + 0];
+            const int fg   = screen[x2*dimy*4 + y2*4 + 1];
+            const int bg   = screen[x2*dimy*4 + y2*4 + 2];
+            const int bold = screen[x2*dimy*4 + y2*4 + 3];
+            screen_old[x2*dimy*4 + y2*4 + 0] = ch;
+            screen_old[x2*dimy*4 + y2*4 + 1] = fg;
+            screen_old[x2*dimy*4 + y2*4 + 2] = bg;
+            screen_old[x2*dimy*4 + y2*4 + 3] = bold;
             const string utf8 = encode_utf8(charmap[ch] ? charmap[ch] : ch);
             const int pair = lookup_pair(make_pair<int,int>(fg,bg));
             attron(COLOR_PAIR(pair));
@@ -351,18 +475,18 @@ void graphicst::renewscreen()
     } else {
       for (x2=0;x2<init.display.grid_x;x2++) {
         for(y2=0;y2<init.display.grid_y;y2++) {
-          const int ch   = screen[x2][y2][0];
-          const int fg   = screen[x2][y2][1];
-          const int bg   = screen[x2][y2][2];
-          const int bold = screen[x2][y2][3];
-          if (screen_old[x2][y2][0] != ch ||
-              screen_old[x2][y2][1] != fg ||
-              screen_old[x2][y2][2] != bg ||
-              screen_old[x2][y2][3] != bold) {
-            screen_old[x2][y2][0] = ch;
-            screen_old[x2][y2][1] = fg;
-            screen_old[x2][y2][2] = bg;
-            screen_old[x2][y2][3] = bold;
+          const int ch   = screen[x2*dimy*4 + y2*4 + 0];
+          const int fg   = screen[x2*dimy*4 + y2*4 + 1];
+          const int bg   = screen[x2*dimy*4 + y2*4 + 2];
+          const int bold = screen[x2*dimy*4 + y2*4 + 3];
+          if (screen_old[x2*dimy*4 + y2*4 + 0] != ch ||
+              screen_old[x2*dimy*4 + y2*4 + 1] != fg ||
+              screen_old[x2*dimy*4 + y2*4 + 2] != bg ||
+              screen_old[x2*dimy*4 + y2*4 + 3] != bold) {
+            screen_old[x2*dimy*4 + y2*4 + 0] = ch;
+            screen_old[x2*dimy*4 + y2*4 + 1] = fg;
+            screen_old[x2*dimy*4 + y2*4 + 2] = bg;
+            screen_old[x2*dimy*4 + y2*4 + 3] = bold;
             const string utf8 = encode_utf8(charmap[ch] ? charmap[ch] : ch);
             const int pair = lookup_pair(make_pair<int,int>(fg,bg));
             attron(COLOR_PAIR(pair));
@@ -376,9 +500,9 @@ void graphicst::renewscreen()
   } else
 #endif
     {
-    display();
-    enabler.flag|=ENABLERFLAG_RENDER;
-  }
+      display();
+      enabler.flag|=ENABLERFLAG_RENDER;
+    }
 }
 
 void graphicst::setclipping(long x1,long x2,long y1,long y2)
@@ -402,92 +526,92 @@ void graphicst::dim_colors(long x,long y,char dim)
 		switch(dim)
 			{
 			case 4:
-				switch(screen[x][y][2])
+				switch(screen[x*dimy*4 + y*4 + 2])
 					{
 					case 4:
 					case 5:
 					case 6:
-						screen[x][y][2]=1;
+						screen[x*dimy*4 + y*4 + 2]=1;
 						break;
 					case 2:
 					case 7:
-						screen[x][y][2]=3;
+						screen[x*dimy*4 + y*4 + 2]=3;
 						break;
 					}
-				switch(screen[x][y][1])
+				switch(screen[x*dimy*4 + y*4 + 1])
 					{
 					case 4:
 					case 5:
 					case 6:
-						screen[x][y][1]=1;
+						screen[x*dimy*4 + y*4 + 1]=1;
 						break;
 					case 2:
 					case 7:
-						screen[x][y][1]=3;
+						screen[x*dimy*4 + y*4 + 1]=3;
 						break;
 					}
-				if(screen[x][y][1]==screen[x][y][2])screen[x][y][1]=0;
-				screen[x][y][3]=0;
-				if(screen[x][y][1]==0&&screen[x][y][2]==0&&screen[x][y][3]==0)screen[x][y][3]=1;
+				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2])screen[x*dimy*4 + y*4 + 1]=0;
+				screen[x*dimy*4 + y*4 + 3]=0;
+				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
 				break;
 			case 3:
-				switch(screen[x][y][2])
+				switch(screen[x*dimy*4 + y*4 + 2])
 					{
 					case 4:
 					case 5:
-						screen[x][y][2]=6;
+						screen[x*dimy*4 + y*4 + 2]=6;
 						break;
 					case 2:
 					case 7:
-						screen[x][y][2]=3;
+						screen[x*dimy*4 + y*4 + 2]=3;
 						break;
 					}
-				switch(screen[x][y][1])
+				switch(screen[x*dimy*4 + y*4 + 1])
 					{
 					case 1:
-						screen[x][y][3]=0;
+						screen[x*dimy*4 + y*4 + 3]=0;
 						break;
 					case 4:
 					case 5:
-						screen[x][y][1]=6;
+						screen[x*dimy*4 + y*4 + 1]=6;
 						break;
 					case 2:
-						screen[x][y][1]=3;
+						screen[x*dimy*4 + y*4 + 1]=3;
 						break;
 					case 7:
-						screen[x][y][1]=3;
+						screen[x*dimy*4 + y*4 + 1]=3;
 						break;
 					}
-				if(screen[x][y][1]!=7)screen[x][y][3]=0;
-				if(screen[x][y][1]==screen[x][y][2]&&
-					screen[x][y][3]==0)screen[x][y][1]=0;
-				if(screen[x][y][1]==0&&screen[x][y][2]==0&&screen[x][y][3]==0)screen[x][y][3]=1;
+				if(screen[x*dimy*4 + y*4 + 1]!=7)screen[x*dimy*4 + y*4 + 3]=0;
+				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2]&&
+					screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 1]=0;
+				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
 				break;
 			case 2:
-				switch(screen[x][y][2])
+				switch(screen[x*dimy*4 + y*4 + 2])
 					{
 					case 4:
 					case 5:
-						screen[x][y][2]=6;
+						screen[x*dimy*4 + y*4 + 2]=6;
 						break;
 					}
-				switch(screen[x][y][1])
+				switch(screen[x*dimy*4 + y*4 + 1])
 					{
 					case 4:
 					case 5:
-						screen[x][y][1]=6;
+						screen[x*dimy*4 + y*4 + 1]=6;
 						break;
 					}
-				if(screen[x][y][1]!=7)screen[x][y][3]=0;
-				if(screen[x][y][1]==screen[x][y][2]&&
-					screen[x][y][3]==0)screen[x][y][1]=0;
-				if(screen[x][y][1]==0&&screen[x][y][2]==0&&screen[x][y][3]==0)screen[x][y][3]=1;
+				if(screen[x*dimy*4 + y*4 + 1]!=7)screen[x*dimy*4 + y*4 + 3]=0;
+				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2]&&
+					screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 1]=0;
+				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
 				break;
 			case 1:
-				if(screen[x][y][1]!=7)screen[x][y][3]=0;
-				if(screen[x][y][1]==screen[x][y][2]&&
-					screen[x][y][3]==0)screen[x][y][1]=0;
-				if(screen[x][y][1]==0&&screen[x][y][2]==0&&screen[x][y][3]==0)screen[x][y][3]=1;
+				if(screen[x*dimy*4 + y*4 + 1]!=7)screen[x*dimy*4 + y*4 + 3]=0;
+				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2]&&
+					screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 1]=0;
+				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
 				break;
 			}
 		}
@@ -498,9 +622,9 @@ void graphicst::rain_color_square(long x,long y)
 	if(x>=clipx[0]&&x<=clipx[1]&&
 		y>=clipy[0]&&y<=clipy[1])
 		{
-		screen[x][y][1]=1;
-		screen[x][y][2]=0;
-		screen[x][y][3]=1;
+		screen[x*dimy*4 + y*4 + 1]=1;
+		screen[x*dimy*4 + y*4 + 2]=0;
+		screen[x*dimy*4 + y*4 + 3]=1;
 		}
 }
 
@@ -509,9 +633,9 @@ void graphicst::snow_color_square(long x,long y)
 	if(x>=clipx[0]&&x<=clipx[1]&&
 		y>=clipy[0]&&y<=clipy[1])
 		{
-		screen[x][y][1]=7;
-		screen[x][y][2]=0;
-		screen[x][y][3]=1;
+		screen[x*dimy*4 + y*4 + 1]=7;
+		screen[x*dimy*4 + y*4 + 2]=0;
+		screen[x*dimy*4 + y*4 + 3]=1;
 		}
 }
 
@@ -520,9 +644,9 @@ void graphicst::color_square(long x,long y,unsigned char f,unsigned char b,unsig
 	if(x>=clipx[0]&&x<=clipx[1]&&
 		y>=clipy[0]&&y<=clipy[1])
 		{
-		screen[x][y][1]=f;
-		screen[x][y][2]=b;
-		screen[x][y][3]=br;
+		screen[x*dimy*4 + y*4 + 1]=f;
+		screen[x*dimy*4 + y*4 + 2]=b;
+		screen[x*dimy*4 + y*4 + 3]=br;
 		}
 }
 
@@ -604,9 +728,9 @@ void graphicst::add_tile(long texp,char addcolor)
 	if(screenx>=clipx[0]&&screenx<=clipx[1]&&
 		screeny>=clipy[0]&&screeny<=clipy[1])
 		{
-		screentexpos[screenx][screeny]=texp;
-		screentexpos_addcolor[screenx][screeny]=addcolor;
-		screentexpos_grayscale[screenx][screeny]=0;
+		screentexpos[screenx*dimy + screeny]=texp;
+		screentexpos_addcolor[screenx*dimy + screeny]=addcolor;
+		screentexpos_grayscale[screenx*dimy + screeny]=0;
 		}
 }
 
@@ -615,11 +739,11 @@ void graphicst::add_tile_grayscale(long texp,char cf,char cbr)
 	if(screenx>=clipx[0]&&screenx<=clipx[1]&&
 		screeny>=clipy[0]&&screeny<=clipy[1])
 		{
-		screentexpos[screenx][screeny]=texp;
-		screentexpos_addcolor[screenx][screeny]=0;
-		screentexpos_grayscale[screenx][screeny]=1;
-		screentexpos_cf[screenx][screeny]=cf;
-		screentexpos_cbr[screenx][screeny]=cbr;
+		screentexpos[screenx*dimy + screeny]=texp;
+		screentexpos_addcolor[screenx*dimy + screeny]=0;
+		screentexpos_grayscale[screenx*dimy + screeny]=1;
+		screentexpos_cf[screenx*dimy + screeny]=cf;
+		screentexpos_cbr[screenx*dimy + screeny]=cbr;
 		}
 }
 

@@ -66,16 +66,7 @@ void endroutine(void);
 
 static int loopvar = 1;
 
-static int glerrorcount = 0;
-
-// GL error macro
-#ifdef DEBUG
-# define printGLError() do { GLenum err; do { err = glGetError(); if (err && glerrorcount < 40) { printf("GL error: 0x%x in %s:%d\n", err, __FILE__ , __LINE__); glerrorcount++; } } while(err); } while(0);
-# define deputs(str) puts(str)
-#else
-# define printGLError()
-# define deputs(str)
-#endif
+int glerrorcount = 0;
 
 // Yes, the profusion of global variables below is a bad thing. The reason they
 // exist is because there is only one, global gridrectst, but it likes to
@@ -180,6 +171,7 @@ static pair<int,int> resize_grid(const int w_req, const int h_req) {
   // Inform graphicst
   // if (gps.original_rect)
   gps.force_full_display_count=1;
+  gps.allocate(w,h);
   gps.prepare_rect(1);
   return pair<int,int>(w,h);
 }
@@ -980,10 +972,33 @@ enablerst::enablerst()
 
 void gridrectst::render(render_phase phase, bool clear)
 {
-  if (enabler.use_opengl)
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_SHADER))
+    render_shader(phase, clear);
+  else if (enabler.use_opengl)
     render_gl(phase, clear);
   else if (phase == complete) // No point trying to phase things outside opengl
     render_2d(clear);
+}
+
+void gridrectst::render_shader(render_phase phase, bool clear) {
+  if (phase == setup) {
+    gps.swap_pbos();
+  } else {
+    if (clear) {
+      glViewport(0,0,enabler.window_width,enabler.window_height);
+      glClear(GL_COLOR_BUFFER_BIT | (accum_buffer ? GL_ACCUM_BUFFER_BIT : 0));
+      update_viewport();
+    }
+    glUseProgram(shader_program);
+    printGLError();
+    
+    // Render
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, shader_grid);
+    glVertexPointer(2, GL_FLOAT, 0, 0);
+    glDrawArrays(GL_TRIANGLES, 0, dimx*dimy*12);
+    printGLError();
+  }
 }
 
 SDL_Surface *gridrectst::tile_cache_lookup(texture_fullid &id) {
@@ -1109,6 +1124,45 @@ void gridrectst::render_2d(bool clear) {
     else
       ++it;
   }
+}
+
+void gridrectst::update_viewport() {
+  // Figure out what part of the window we actually use for said
+  // viewport, to get the aspect ratio and zoom right.
+
+  // We always use the entire window is black_space is off. If it is
+  // on, we still use the entire window rather than leaving black
+  // fringes in *both* directions.
+
+  // Total size of window, ignoring zoom entirely. Only used to calculate other values.
+  const float totalsizex=dispx*dimx; // dispx is tile width in pixels, dimx is grid size in tiles
+  const float totalsizey=dispy*dimy;
+  origin_x = 0; origin_y = 0; size_x = enabler.window_width; size_y = enabler.window_height;
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_BLACK_SPACE)) { // black_space? maintain_aspect, more like.
+    if ((totalsizex + dispx >= enabler.window_width ||
+         totalsizey + dispy >= enabler.window_height)
+        && totalsizex <= enabler.window_width
+        && totalsizey <= enabler.window_height) {
+      // We're right on the edge, but still no noticable fringes.
+      size_x = totalsizex; size_y = totalsizey;
+      origin_x = (enabler.window_width - size_x) / 2;
+      origin_y = (enabler.window_height - size_y) / 2;
+    } else {
+      const double aspect = totalsizex / totalsizey;
+      // Figure out which axis is most compressed, use the entire window in that axis and
+      // calculate the other from that.
+      const double compressx = totalsizex / enabler.window_width,
+        compressy = totalsizey / enabler.window_height;
+      if (compressx > compressy) {
+        size_y = size_y / (compressx / compressy);
+        origin_y = (enabler.window_height - size_y) / 2;
+      } else {
+        size_x = size_x / (compressy / compressx);
+        origin_x = (enabler.window_width - size_x) / 2;
+      }
+    } 
+  }
+  glViewport(origin_x, origin_y, size_x, size_y);
 }
 
 void gridrectst::render_gl(render_phase phase, bool clear) {
@@ -1418,43 +1472,12 @@ void gridrectst::render_gl(render_phase phase, bool clear) {
       glMatrixMode(GL_MODELVIEW);
       glLoadIdentity();
       
-      // Total size of window, ignoring zoom entirely. Only used to calculate other values.
-      const float totalsizex=dispx*dimx; // dispx is tile width in pixels, dimx is grid size in tiles
-      const float totalsizey=dispy*dimy;
       // Setup a nicer coordinate system
       glTranslatef(-1,1,0);
       glScalef(2,-2,2);
       // Scale the grid so it fits exactly into the GL viewport, making 1 GL unit equal 1 tile
       glScalef(1.0f / dimx, 1.0f / dimy, 1);
-      // Figure out what part of the window we actually use for said viewport, to get the aspect ratio and zoom right
-      // We always use the entire window is black_space is off. If it is on, we still use the entire window rather than leaving black fringes in *both* directions.
-      origin_x = 0; origin_y = 0; size_x = enabler.window_width; size_y = enabler.window_height;
-      if (black_space) { // black_space? maintain_aspect, more like.
-        if ((totalsizex + dispx >= enabler.window_width ||
-             totalsizey + dispy >= enabler.window_height)
-            && totalsizex <= enabler.window_width
-            && totalsizey <= enabler.window_height) {
-          // We're right on the edge, but still no noticable fringes.
-          size_x = totalsizex; size_y = totalsizey;
-          origin_x = (enabler.window_width - size_x) / 2;
-          origin_y = (enabler.window_height - size_y) / 2;
-        } else {
-          const double aspect = totalsizex / totalsizey;
-          // Figure out which axis is most compressed, use the entire window in that axis and
-          // calculate the other from that.
-          const double compressx = totalsizex / enabler.window_width,
-            compressy = totalsizey / enabler.window_height;
-          if (compressx > compressy) {
-            size_y = size_y / (compressx / compressy);
-            origin_y = (enabler.window_height - size_y) / 2;
-          } else {
-            size_x = size_x / (compressy / compressx);
-            origin_x = (enabler.window_width - size_x) / 2;
-          }
-        } 
-      }
-      glViewport(origin_x, origin_y, size_x, size_y);
-
+      update_viewport();
       
       // If viewport scaling is on.. we viewport-scale.
       if (!zoom_grid) {
@@ -1564,6 +1587,20 @@ void gridrectst::render_gl(render_phase phase, bool clear) {
 }
 
 void gridrectst::init_gl() {
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_BLACK_SPACE))
+    black_space=1;
+  else
+    black_space=0;
+
+  if (enabler.create_full_screen) {
+    dispx=init.font.large_font_dispx;
+    dispy=init.font.large_font_dispy;
+  } else {
+    dispx=init.font.small_font_dispx;
+    dispy=init.font.small_font_dispy;
+  }
+
+
   static bool shown=false; // It's a bit hacky, but we want to only show the message once
   if (!enabler.use_opengl) return;
   if (dimx == 0 || dimy == 0) {
@@ -1573,6 +1610,187 @@ void gridrectst::init_gl() {
   }
   if (gl_initialized) uninit_gl();
   vertices_initialized = false;
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_SHADER)) {
+    bool ok = true;
+    if (!GL_ARB_map_buffer_range) {
+      cout << "ARB_map_buffer_range not supported, using slower variant." << endl; }
+    if (!GLEW_ARB_pixel_buffer_object) {
+      cout << "PBOs not supported, "; ok = false; }
+    if (!GLEW_ARB_vertex_shader) {
+      cout << "Vertex shaders not suported, "; ok = false; }
+    if (!GLEW_ARB_fragment_shader) {
+      cout << "Fragment shaders not supported, "; ok = false; }
+    if (!GL_ARB_texture_buffer_object) {
+      cout << "TBOs not supported, "; ok = false; }
+    if (!ok) {
+      cout << "reverting to standard mode" << endl;
+      init.display.flag.remove_flag(INIT_DISPLAY_FLAG_SHADER);
+    } else {
+#ifndef DEBUG
+      if (!shown)
+#endif
+        cout << "Using OpenGL shaders for all rendering" << endl;
+      // Load shader
+      shader_program = glCreateProgram();
+      shader_vertex = glCreateShader(GL_VERTEX_SHADER);
+      shader_fragment = glCreateShader(GL_FRAGMENT_SHADER);
+      ifstream fragmenter("data/shader.fs");
+      ifstream vertexer("data/shader.vs");
+      ostringstream pragmas;
+      pragmas << "#version 150" << endl;
+      pragmas << "#define dimx " << gps.dimx << endl;
+      pragmas << "#define dimy " << gps.dimy << endl;
+      // pragmas << "#define dimy_grid " << dimy << endl;
+      // pragmas << "#define dispx " << dispx << endl;
+      // pragmas << "#define dispy " << dispy << endl;
+      pragmas << "const vec4 colors[] = vec4[16](";
+      for (int bold=0; bold<2; bold++) {
+        for (int i=0; i<8; i++) {
+          float r, g, b;
+          convert_to_rgb(r,g,b, i, bold);
+          pragmas << "vec4(" << r << "," << g << "," << b << ",1.0)";
+          if (bold != 1 || i != 7) pragmas << ", ";
+        }
+      }
+      pragmas << ");" << endl;
+      pragmas << "#line 0 0" << endl;
+      string pragmas_str = pragmas.str();
+
+      // Build & upload vertex shader
+      vector<const char*> lines;
+      lines.push_back(pragmas_str.c_str());
+      while (vertexer.good()) {
+        string line;
+        getline(vertexer, line);
+        char *ptr = new char[line.length()+2];
+        strcpy(ptr, line.c_str());
+        ptr[line.length()] = '\n';
+        ptr[line.length()+1] = 0;
+        lines.push_back(ptr);
+      }
+      glShaderSource(shader_vertex, lines.size(), &lines[0], NULL);
+      printGLError();
+      // cout << lines[0];
+      for (int i=1; i < lines.size(); i++) {
+        // cout << lines[i];
+        delete[] lines[i];
+      }
+      lines.clear();
+      // Compile, link, and print any errors
+      glCompileShader(shader_vertex);
+      int log_size;
+      glGetShaderiv(shader_vertex, GL_INFO_LOG_LENGTH, &log_size);
+      if (log_size > 1) {
+        cout << "Vertex shader compilation log (" << log_size << "):" << endl;
+        char *buf = new char[log_size];
+        glGetShaderInfoLog(shader_vertex, log_size, NULL, buf);
+        cout << buf << endl;
+        delete[] buf;
+        abort();
+      }
+      glAttachShader(shader_program, shader_vertex);
+
+      // Build & upload fragment shader
+      lines.push_back(pragmas_str.c_str());
+      while (fragmenter.good()) {
+        string line;
+        getline(fragmenter, line);
+        char *ptr = new char[line.length()+2];
+        strcpy(ptr, line.c_str());
+        ptr[line.length()] = '\n';
+        ptr[line.length()+1] = 0;
+        lines.push_back(ptr);
+      }
+      glShaderSource(shader_fragment, lines.size(), &lines[0], NULL);
+      printGLError();
+      // cout << lines[0];
+      for (int i=1; i < lines.size(); i++) {
+        // cout << lines[i];
+        delete[] lines[i];
+      }
+      // Compile, link, and print any errors
+      glCompileShader(shader_fragment);
+      glGetShaderiv(shader_fragment, GL_INFO_LOG_LENGTH, &log_size);
+      if (log_size > 1) {
+        cout << "Fragment shader compilation log (" << log_size << "):" << endl;
+        char *buf = new char[log_size];
+        glGetShaderInfoLog(shader_fragment, log_size, NULL, buf);
+        cout << buf << endl;
+        delete[] buf;
+        abort();
+      }
+      glAttachShader(shader_program, shader_fragment);
+      
+      vertexer.close(); fragmenter.close();
+
+      glLinkProgram(shader_program);
+      glUseProgram(shader_program);
+      printGLError();
+      // Set the sampler texture units
+      GLuint loc = glGetUniformLocation(shader_program, "textures");
+      printGLError();
+      glUniform1i(loc, 0);
+      printGLError();
+      glUniform1i(glGetUniformLocation(shader_program, "data"), 1);
+      glUniform1i(glGetUniformLocation(shader_program, "coords"), 2);
+      printGLError();
+      // Over to graphicst. The data TBO is bound in gps.swap_pbos.
+      gps.allocate(gps.dimx, gps.dimy);
+      printGLError();
+      // Make and upload texture-coord array
+      glGenBuffersARB(1, &shader_coords);
+      glBindBufferARB(GL_TEXTURE_BUFFER_ARB, shader_coords);
+      glBufferDataARB(GL_TEXTURE_BUFFER_ARB,
+                      enabler.textures.textureCount() * sizeof(GLfloat) * 4,
+                      enabler.textures.gl_texpos,
+                      GL_STATIC_DRAW);
+      glGenTextures(1, &shader_coords_tbo);
+      glActiveTexture(GL_TEXTURE2);
+      glBindTexture(GL_TEXTURE_BUFFER_ARB, shader_coords_tbo);
+      glTexBufferARB(GL_TEXTURE_BUFFER_ARB, GL_RGBA32F_ARB, shader_coords);
+      printGLError();
+      // Bind the textures themselves
+      enabler.textures.upload_textures();
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, enabler.textures.gl_catalog);
+      printGLError();
+      // Make and upload vertex array
+      glGenBuffersARB(1, &shader_grid);
+      glBindBufferARB(GL_ARRAY_BUFFER_ARB, shader_grid);
+      GLfloat *vertices = new GLfloat[dimx*dimy*12];
+      GLfloat *v = vertices;
+      for (int tile = 0; tile < dimx*dimy; tile++) {
+        const int posx = tile / dimy;
+        const int posy = tile % dimy;
+        const GLfloat edge_l = (float)posx * 2 / dimx - 1 ,
+          edge_r = (float)(posx+1) * 2 / dimx - 1,
+          edge_u = (float)(dimy-posy) * 2 / dimy - 1,
+          edge_d = (float)(dimy-posy-1) * 2 / dimy - 1;
+        // Set vertex locations
+        *(v++) = edge_l; // Upper left
+        *(v++) = edge_u;
+        *(v++) = edge_r; // Upper right
+        *(v++) = edge_u;
+        *(v++) = edge_r; // Lower right
+        *(v++) = edge_d;
+        
+        *(v++) = edge_l; // Upper left
+        *(v++) = edge_u;
+        *(v++) = edge_r; // Lower right
+        *(v++) = edge_d;
+        *(v++) = edge_l; // Lower left
+        *(v++) = edge_d;
+      }
+      glBufferDataARB(GL_ARRAY_BUFFER_ARB, dimx*dimy*12*sizeof(GLfloat), vertices, GL_STATIC_DRAW);
+      delete[] vertices;
+      // Arrange the zoom
+      update_viewport();
+      
+      gl_initialized = true;
+      shown = true;
+      return;
+    }
+  }
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO) && GLEW_ARB_vertex_buffer_object) {
 #ifndef DEBUG
     if (!shown)
@@ -1714,6 +1932,12 @@ void gridrectst::uninit_gl() {
     framebuffer = 0;
     framebuffer_initialized = false;
   }
+  if (shader_program) {
+    glDeleteShader(shader_vertex);
+    glDeleteShader(shader_fragment);
+    glDeleteProgram(shader_program);
+    shader_program = 0;
+  }
   gl_initialized = false;
   accum_buffer = false;
 }
@@ -1748,6 +1972,7 @@ gridrectst::gridrectst(long newdimx,long newdimy)
   framebuffer_initialized = false;
   framebuffer = 0;
   vertices_initialized = false;
+  shader_program = shader_fragment = shader_vertex = shader_coords = 0;
 
   allocate(newdimx,newdimy);
   trinum=0;
@@ -2131,6 +2356,9 @@ void text_system_file_infost::get_text(text_infost &text)
 
 int main (int argc, char* argv[])
 {
+  gps.pbo_mapped = -1; // REMOVEME
+  gps.allocate(MAX_GRID_X, MAX_GRID_Y); // REMOVEME
+  
 #if !defined(__APPLE__) && defined(unix)
   bool ok = gtk_init_check(&argc, &argv);
   if (!ok) {

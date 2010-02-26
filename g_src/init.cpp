@@ -174,6 +174,10 @@ void initst::begin()
 						display.flag.add_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT);
                                                 display.partial_print_count=0;
                                                 }
+                                        if(token2=="SHADER")
+                                          {
+                                            display.flag.add_flag(INIT_DISPLAY_FLAG_SHADER);
+                                          }
  					}
 
 				if(token=="SINGLE_BUFFER")

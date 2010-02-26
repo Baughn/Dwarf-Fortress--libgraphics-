@@ -1309,7 +1309,7 @@ void interfacest::handlemovie(char flushall)
 					for(y2=0;y2<init.display.grid_y;y2++)
 						{
 						//Core50Core50Core50Core50Core50Core50
-						supermoviebuffer[supermovie_pos]=gps.screen[x2][y2][0];
+						supermoviebuffer[supermovie_pos]=gps.screen[x2*gps.dimy*4 + y2*4 + 0];
 
 						supermovie_pos++;
 						}
@@ -1320,9 +1320,9 @@ void interfacest::handlemovie(char flushall)
 					for(y2=0;y2<init.display.grid_y;y2++)
 						{
 						//Core50Core50Core50Core50Core50Core50
-						frame_col=gps.screen[x2][y2][1];
-						frame_col|=(gps.screen[x2][y2][2]<<3);
-						if(gps.screen[x2][y2][3])frame_col|=64;
+						frame_col=gps.screen[x2*gps.dimy*4 + y2*4 + 1];
+						frame_col|=(gps.screen[x2*gps.dimy*4 + y2*4 + 2]<<3);
+						if(gps.screen[x2*gps.dimy*4 + y2*4 + 3])frame_col|=64;
 						supermoviebuffer[supermovie_pos]=frame_col;
 
 						supermovie_pos++;

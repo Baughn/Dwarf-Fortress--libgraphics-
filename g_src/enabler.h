@@ -360,7 +360,7 @@ enum render_phase {
 // From graphics.cpp
 void render_things(enum render_phase);
 
-// A tuple of everything that tile rendering depends on
+// A tuple of everything that 2D tile rendering depends on
 struct texture_fullid {
   int texpos;
   float r, g, b;
@@ -384,10 +384,13 @@ class gridrectst
   void render_gl(render_phase, bool clear);
   void render_2d(bool clear);
   void render_curses(bool clear);
+  void render_shader(render_phase, bool clear);
 
   // A tile cache for 2D mode
   map<texture_fullid, SDL_Surface*> tile_cache;
   SDL_Surface *tile_cache_lookup(texture_fullid &id);
+
+  void update_viewport();
   
  public:
   long id;
@@ -453,6 +456,11 @@ class gridrectst
   uint32_t vbo_refs[4];
   // Number of tiles setup to be rendered
   int tile_count;
+
+ public:
+  // SHADER mode
+  GLuint shader_program, shader_fragment, shader_vertex, shader_coords,
+    shader_coords_tbo, shader_grid;
 };
 
 class text_info_elementst
