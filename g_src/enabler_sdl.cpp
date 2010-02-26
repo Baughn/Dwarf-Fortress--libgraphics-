@@ -483,7 +483,8 @@ static void eventLoop_SDL(GL_Window window)
         } //init mouse on
         break;
       case SDL_VIDEORESIZE:
-        resize_grid_sdl(event.resize.w, event.resize.h, true);
+        if (!enabler.create_full_screen)
+          resize_grid_sdl(event.resize.w, event.resize.h, true);
         break;
       } // switch (event.type)
     } //while have event
@@ -656,13 +657,23 @@ void enablerst::do_frame()
   // Finish rendering graphics, if appropriate
   if (do_render && !skip_gframe) {
     // If we're supposed to clear the window, then the data from before this mainloop
-    // is not out of date; redo the setup
+    // is out of date; redo the setup
     if (gps.force_full_display_count > 0)
       render(setup);
+    if (sync) {
+      if (glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED) {
+        glDeleteSync(sync);
+        sync = NULL;
+      } else {
+        // This frame is taking a while! Avoid blocking in SDL_GL_SwapBuffers.
+        goto skip_frame;
+      }
+    }
     render(complete);
     update_gfps();
     current_render_count++;
     secondary_render_count++;
+  skip_frame:
     gframes_outstanding--;
   }
   skip_gframe = false;
@@ -684,8 +695,13 @@ void enablerst::render(enum render_phase phase)
 {
   render_things(phase);
   if (phase == complete) {
-    if (use_opengl) 
+    if (use_opengl) {
+      if (GL_ARB_sync) {
+        assert(sync == NULL);
+        sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+      }
       SDL_GL_SwapBuffers();
+    }
 #ifdef CURSES
     else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT))
       refresh();
@@ -708,8 +724,8 @@ void enablerst::toggle_fullscreen(GL_Window* window)
 
   reset_gl(window);
   reset_window_sdl();
-  render(setup);
-  render(complete);
+  // render(setup);
+  // render(complete);
 }
 
 void enablerst::reset_gl(GL_Window* window) {
@@ -967,6 +983,8 @@ enablerst::enablerst()
   g_qprate = main_qprate;
 
   tile_vertices = tile_texcoords = NULL;
+
+  sync = NULL;
 }
 
 

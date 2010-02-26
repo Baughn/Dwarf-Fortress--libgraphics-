@@ -932,6 +932,8 @@ void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,lon
   void create_textures();
   void remove_textures();
 
+  GLsync sync;
+
  public:
   bool RunningMacro;
   bool use_opengl; // If false, everything goes via SDL 2D output instead
