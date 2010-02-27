@@ -92,6 +92,10 @@ void initst::begin()
 					{
 					enabler.desired_windowed_height=convert_string_to_long(token2);
 					}
+                                if(!token.compare("RESIZABLE")) {
+                                  if (token2=="YES")
+                                    init.display.flag.add_flag(INIT_DISPLAY_FLAG_RESIZABLE);
+                                }
 				if(!token.compare("FULLSCREENX"))
 					{
 					enabler.desired_fullscreen_width=convert_string_to_long(token2);
