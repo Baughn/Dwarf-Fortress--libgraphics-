@@ -1655,7 +1655,7 @@ void gridrectst::init_gl() {
       ifstream fragmenter("data/shader.fs");
       ifstream vertexer("data/shader.vs");
       ostringstream pragmas;
-      pragmas << "#version 150" << endl;
+      pragmas << "#version 140" << endl;
       pragmas << "#define dimx " << gps.dimx << endl;
       pragmas << "#define dimy " << gps.dimy << endl;
       // pragmas << "#define dimy_grid " << dimy << endl;
