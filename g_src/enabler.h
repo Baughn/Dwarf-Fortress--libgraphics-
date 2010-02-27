@@ -945,6 +945,9 @@ void convert_to_rgb(float &r,float &g,float &b,char col,char bright);
 #endif
 
 pair<int,int> window_to_grid(int x, int y);
+pair<int,int> resize_grid(const int w_req, const int h_req);
+void lock_grid();
+void unlock_grid();
 
 extern enablerst enabler;
 
