@@ -2167,8 +2167,10 @@ int main (int argc, char* argv[])
 #ifdef linux
   if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF)) {
     // Initialize OpenAL
-    if (!musicsound.initsound())
+    if (!musicsound.initsound()) {
       puts("Initializing OpenAL failed, no sound will be played");
+      init.media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
+    }
   }
 #endif
 
