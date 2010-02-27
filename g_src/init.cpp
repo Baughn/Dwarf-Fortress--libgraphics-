@@ -381,36 +381,6 @@ void initst::begin()
 						display.windowed=INIT_DISPLAY_WINDOW_PROMPT;
 						}
 					}
-				if(token=="GRID")
-					{
-					string token3;
-					if(str.length()>=token.length()+token2.length()+3)
-						{
-						grab_token_string_pos(token3,str,token.length()+token2.length()+3);
-						}
-
-					display.small_grid_x=convert_string_to_long(token2);
-					display.small_grid_y=convert_string_to_long(token3);
-					if(display.small_grid_x<80)display.small_grid_x=80;
-					if(display.small_grid_x>MAX_GRID_X)display.small_grid_x=MAX_GRID_X;
-					if(display.small_grid_y<25)display.small_grid_y=25;
-					if(display.small_grid_y>MAX_GRID_Y)display.small_grid_y=MAX_GRID_Y;
-					}
-				if(token=="FULLGRID")
-					{
-					string token3;
-					if(str.length()>=token.length()+token2.length()+3)
-						{
-						grab_token_string_pos(token3,str,token.length()+token2.length()+3);
-						}
-
-					display.large_grid_x=convert_string_to_long(token2);
-					display.large_grid_y=convert_string_to_long(token3);
-					if(display.large_grid_x<80)display.large_grid_x=80;
-					if(display.large_grid_x>MAX_GRID_X)display.large_grid_x=MAX_GRID_X;
-					if(display.large_grid_y<25)display.large_grid_y=25;
-					if(display.large_grid_y>MAX_GRID_Y)display.large_grid_y=MAX_GRID_Y;
-					}
 				if(!token.compare("SOUND"))
 					{
 					if(token2!="ON")
