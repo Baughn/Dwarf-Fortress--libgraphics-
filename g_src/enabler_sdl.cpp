@@ -89,6 +89,8 @@ static bool zoom_grid = true;
 static std::queue<enum zoom_commands> zoom_command_buffer;
 // A general "buffers dirty, don't render this frame" flag
 static bool skip_gframe = true;
+// If true, avoid changing the grid size at all
+bool grid_locked = false;
 
 // For graphicst: <fps,g_fps>
 static int calculated_fps = 0, calculated_gfps = 0;
@@ -145,9 +147,13 @@ pair<int,int> window_to_grid(int x, int y) {
 
 // Resize the internal grid to some requested value. Returns the
 // actual grid size, in case of clamping.
-static pair<int,int> resize_grid(const int w_req, const int h_req) {
-  const int w = MAX(MIN(w_req,MAX_GRID_X),MIN_GRID_X);
-  const int h = MAX(MIN(h_req,MAX_GRID_Y),MIN_GRID_Y);
+pair<int,int> resize_grid(const int w_req, const int h_req) {
+  const int w = grid_locked ? init.display.grid_x : MAX(MIN(w_req,MAX_GRID_X),MIN_GRID_X);
+  const int h = grid_locked ? init.display.grid_y : MAX(MIN(h_req,MAX_GRID_Y),MIN_GRID_Y);
+#ifdef DEBUG
+  if ((w != w_req || h != h_req) && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT))
+    cout << "Grid clamped to " << w << "x" << h << endl;
+#endif
   if (w == init.display.grid_x && h == init.display.grid_y)
     return pair<int,int>(w,h); // Nothing to do
   if (enabler.create_full_screen) {
@@ -213,7 +219,7 @@ static void resize_grid_sdl(const int width, const int height, const bool resizi
   max_zoom = MIN(max_zoom, (double)height / (font_h * MIN_GRID_Y));
 
   if (max_zoom < min_zoom) {
-    puts("I can't handle a window like this. Get a grip.");
+    deputs("I can't handle a window like this. Get a grip.");
     return;
   }
 
@@ -224,7 +230,7 @@ static void resize_grid_sdl(const int width, const int height, const bool resizi
     grid_zoom = max_zoom;
 
 #ifdef DEBUG
-  printf("Setting to %dx%d, grid %dx%d, zoom %f\n", width, height, new_grid_x,new_grid_y,grid_zoom);
+  printf("Setting to %dx%d, optimal grid %dx%d, zoom %f\n", width, height, new_grid_x,new_grid_y,grid_zoom);
 #endif
   if (!enabler.create_full_screen) {
     enabler.desired_windowed_width = enabler.window_width = width;
@@ -240,6 +246,17 @@ static void resize_grid_sdl(const int width, const int height, const bool resizi
 static void reset_window_sdl() {
   SDL_Surface *s = SDL_GetVideoSurface();
   resize_grid_sdl(s->w, s->h, false);
+}
+
+void lock_grid() { grid_locked = true; }
+void unlock_grid() {
+  grid_locked = false;
+#ifdef CURSES
+  if (!enabler.use_opengl)
+    reset_window_ncurses();
+  else
+#endif
+    reset_window_sdl();
 }
 
 void zoom_display(enum zoom_commands command) {
@@ -833,7 +850,8 @@ char enablerst::create_window_GL(GL_Window* window)
     window->init.width = desired_fullscreen_width;
     window->init.height = desired_fullscreen_height;
   } else {
-    flags |= SDL_RESIZABLE;
+    if (!init.display.flag.has_flag(INIT_DISPLAY_FLAG_NOT_RESIZABLE))
+      flags |= SDL_RESIZABLE;
     window->init.width = desired_windowed_width;
     window->init.height = desired_windowed_height;
   }
@@ -2395,8 +2413,10 @@ int main (int argc, char* argv[])
 #ifdef linux
   if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF)) {
     // Initialize OpenAL
-    if (!musicsound.initsound())
+    if (!musicsound.initsound()) {
       puts("Initializing OpenAL failed, no sound will be played");
+      init.media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
+    }
   }
 #endif
 

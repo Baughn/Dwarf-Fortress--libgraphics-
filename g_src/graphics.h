@@ -18,6 +18,7 @@ enum Texture
 class graphicst
 {
   int lookup_pair(std::pair<int,int> color);
+  long calculate_old_fps();
 	public:
 		long screenx,screeny;
 		short screenf,screenb;

@@ -25,9 +25,12 @@ This lets you set the starting windowed/fullscreen setting.  Can be YES, NO or P
 This is the size and font for windowed mode.  Changing to the 800x600 font might make you happier.
 If set below 256x256 it specifies the grid size instead, with a minimum of 80x25.
 
-[WINDOWEDX:0]
-[WINDOWEDY:0]
+[WINDOWEDX:80]
+[WINDOWEDY:50]
 [FONT:curses_640x300.png]
+
+You may disable window resizing if you wish.
+[RESIZABLE:YES]
 
 Full screen info.  The 0s below mean that the game will choose a resolution for you, but you can set it yourself as well.
 

@@ -159,7 +159,7 @@ void musicsoundst::playsound(slot slot) {
   if (!functional) return;
   // printf("%d requested\n", slot);
   if (!slot_source.count(slot)) {
-    printf("Slot %d-%d requested, but no song loaded\n", (int)slot.first, slot.second);
+    // printf("Slot %d-%d requested, but no song loaded\n", (int)slot.first, slot.second);
     return;
   }
   if (background_slot == slot) {
@@ -179,7 +179,7 @@ void musicsoundst::startbackgroundmusic(slot slot) {
   if (!functional) return;
 
   if (!slot_source.count(slot)) {
-    printf("Slot %d-%d requested, but no song loaded\n", (int)slot.first, slot.second);
+    // printf("Slot %d-%d requested, but no song loaded\n", (int)slot.first, slot.second);
     return;
   }
 

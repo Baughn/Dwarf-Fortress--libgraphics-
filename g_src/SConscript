@@ -23,7 +23,7 @@ env = Environment(ENV = {'PATH' : os.environ['PATH']})
 # below.
 env['CPPPATH']=["#g_src/fmodexinclude"]
 env['CCFLAGS']=["-Dunix"]
-env['LIBS']=["ncurses","SDL_image"]
+env['LIBS']=["ncursesw","SDL_image"]
 # If there's a library in the libs folder it will get linked over a system one.
 env['LIBPATH']=["#libs"]
 env['LINKFLAGS']=["-Wl,--as-needed",'-Wl,-rpath=\$$ORIGIN/libs']
