@@ -842,7 +842,7 @@ char enablerst::create_window_GL(GL_Window* window)
     window->init.width = desired_fullscreen_width;
     window->init.height = desired_fullscreen_height;
   } else {
-    if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_RESIZABLE))
+    if (!init.display.flag.has_flag(INIT_DISPLAY_FLAG_NOT_RESIZABLE))
       flags |= SDL_RESIZABLE;
     window->init.width = desired_windowed_width;
     window->init.height = desired_windowed_height;
