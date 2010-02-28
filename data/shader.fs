@@ -1,7 +1,7 @@
+#version 150
 // -*- mode: C -*-
-// Version and defines emitted by gridrectst::init_gl at load:
+// Defines emitted by gridrectst::init_gl at load:
 // dimx, dimy:      Grid size of the screen array
-// dimy_grid:       Displayed rows
 // dispx, dispy:    Grid-cell (font) size
 // vec4 colors[16]: Color palette; first non-bold, then bold
 

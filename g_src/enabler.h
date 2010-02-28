@@ -20,6 +20,8 @@
 #include <algorithm>
 #include <utility>
 #include <list>
+#include <iostream>
+#include <sstream>
 
 using std::vector;
 using std::pair;
@@ -377,6 +379,81 @@ struct texture_fullid {
   }
 };
 
+class texture_bo {
+  GLuint bo, tbo;
+ public:
+  texture_bo() { bo = tbo = 0; }
+  void reset() {
+    if (bo) {
+      glDeleteBuffers(1, &bo);
+      glDeleteTextures(1, &tbo);
+      bo = tbo = 0;
+      printGLError();
+    }
+  }
+  void buffer(GLvoid *ptr, GLsizeiptr sz) {
+    if (bo) reset();
+    glGenBuffersARB(1, &bo);
+    glGenTextures(1, &tbo);
+    glBindBufferARB(GL_TEXTURE_BUFFER_ARB, bo);
+    glBufferDataARB(GL_TEXTURE_BUFFER_ARB, sz, ptr, GL_STATIC_DRAW_ARB);
+    printGLError();
+  }
+  void bind(GLenum texture_unit, GLenum type) {
+    glActiveTexture(texture_unit);
+    glBindTexture(GL_TEXTURE_BUFFER_ARB, tbo);
+    glTexBufferARB(GL_TEXTURE_BUFFER_ARB, type, bo);
+    printGLError();
+  }
+  GLuint texnum() { return tbo; }
+};
+
+
+class shader {
+  string filename;
+  std::ostringstream lines;
+ public:
+  std::ostringstream header;
+  void load(const string &filename) {
+    this->filename = filename;
+    std::ifstream file(filename.c_str());
+    string version;
+    getline(file, version);
+    header << version << std::endl;
+    while (file.good()) {
+      string line;
+      getline(file, line);
+      lines << line << std::endl;
+    }
+    file.close();
+  }
+  GLuint upload(GLenum type) {
+    GLuint shader = glCreateShader(type);
+    string lines_done = lines.str(), header_done = header.str();
+    const char *ptrs[3];
+    ptrs[0] = header_done.c_str();
+    ptrs[1] = "#line 0 0\n";
+    ptrs[2] = lines_done.c_str();
+    glShaderSource(shader, 3, ptrs, NULL);
+    glCompileShader(shader);
+    // Check the compilation log
+    int log_size;
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_size);
+    if (log_size > 1) {
+      std::cout << filename << " preprocessed source:" << std::endl;
+      std::cout << header_done << "#line 0 0\n" << lines_done;
+      std::cout << filename << " shader compilation log (" << log_size << "):" << std::endl;
+      char *buf = new char[log_size];
+      glGetShaderInfoLog(shader, log_size, NULL, buf);
+      std::cout << buf << std::endl;
+      delete[] buf;
+      abort();
+    }
+    printGLError();
+    return shader;
+  }
+};
+
 class gridrectst
 {
   friend class enablerst;
@@ -459,9 +536,10 @@ class gridrectst
 
  public:
   // SHADER mode
-  GLuint shader_program, shader_fragment, shader_vertex, shader_coords,
-    shader_coords_tbo, shader_grid;
+  texture_bo shader_coords, shader_fontmap;
+  GLuint shader_program, shader_fragment, shader_vertex, shader_grid;
 };
+
 
 class text_info_elementst
 {

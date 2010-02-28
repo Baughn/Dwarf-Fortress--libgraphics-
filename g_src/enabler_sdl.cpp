@@ -1666,129 +1666,58 @@ void gridrectst::init_gl() {
       if (!shown)
 #endif
         cout << "Using OpenGL shaders for all rendering" << endl;
-      // Load shader
-      shader_program = glCreateProgram();
-      shader_vertex = glCreateShader(GL_VERTEX_SHADER);
-      shader_fragment = glCreateShader(GL_FRAGMENT_SHADER);
-      ifstream fragmenter("data/shader.fs");
-      ifstream vertexer("data/shader.vs");
-      ostringstream pragmas;
-      pragmas << "#version 140" << endl;
-      pragmas << "#define dimx " << gps.dimx << endl;
-      pragmas << "#define dimy " << gps.dimy << endl;
-      // pragmas << "#define dimy_grid " << dimy << endl;
-      // pragmas << "#define dispx " << dispx << endl;
-      // pragmas << "#define dispy " << dispy << endl;
-      pragmas << "const vec4 colors[] = vec4[16](";
+      // Load shaders
+      shader shaders[2];
+      shaders[0].load("data/shader.vs");
+      shaders[1].load("data/shader.fs");
+      // Load common defines
+      for (int i=0; i<2; i++) {
+        shaders[i].header << "#define dimx  " << gps.dimx << endl;
+        shaders[i].header << "#define dimy  " << gps.dimy << endl;
+        shaders[i].header << "#define dispx " << dispx << endl;
+        shaders[i].header << "#define dispy " << dispy << endl;
+      }
+      // Vertex shader color palette
+      shaders[0].header << "const vec4 colors[] = vec4[16](";
       for (int bold=0; bold<2; bold++) {
         for (int i=0; i<8; i++) {
           float r, g, b;
           convert_to_rgb(r,g,b, i, bold);
-          pragmas << "vec4(" << r << "," << g << "," << b << ",1.0)";
-          if (bold != 1 || i != 7) pragmas << ", ";
+          shaders[0].header << "vec4(" << r << "," << g << "," << b << ",1.0)";
+          if (bold != 1 || i != 7) shaders[0].header << ", ";
         }
       }
-      pragmas << ");" << endl;
-      pragmas << "#line 0 0" << endl;
-      string pragmas_str = pragmas.str();
-
-      // Build & upload vertex shader
-      vector<const char*> lines;
-      lines.push_back(pragmas_str.c_str());
-      while (vertexer.good()) {
-        string line;
-        getline(vertexer, line);
-        char *ptr = new char[line.length()+2];
-        strcpy(ptr, line.c_str());
-        ptr[line.length()] = '\n';
-        ptr[line.length()+1] = 0;
-        lines.push_back(ptr);
-      }
-      glShaderSource(shader_vertex, lines.size(), &lines[0], NULL);
-      printGLError();
-      // cout << lines[0];
-      for (int i=1; i < lines.size(); i++) {
-        // cout << lines[i];
-        delete[] lines[i];
-      }
-      lines.clear();
-      // Compile, link, and print any errors
-      glCompileShader(shader_vertex);
-      int log_size;
-      glGetShaderiv(shader_vertex, GL_INFO_LOG_LENGTH, &log_size);
-      if (log_size > 1) {
-        cout << "Vertex shader compilation log (" << log_size << "):" << endl;
-        char *buf = new char[log_size];
-        glGetShaderInfoLog(shader_vertex, log_size, NULL, buf);
-        cout << buf << endl;
-        delete[] buf;
-        abort();
-      }
+      shaders[0].header << ");" << endl;
+      // Build and load the shader program
+      shader_program = glCreateProgram();
+      shader_vertex = shaders[0].upload(GL_VERTEX_SHADER);
+      shader_fragment = shaders[1].upload(GL_FRAGMENT_SHADER);
       glAttachShader(shader_program, shader_vertex);
-
-      // Build & upload fragment shader
-      lines.push_back(pragmas_str.c_str());
-      while (fragmenter.good()) {
-        string line;
-        getline(fragmenter, line);
-        char *ptr = new char[line.length()+2];
-        strcpy(ptr, line.c_str());
-        ptr[line.length()] = '\n';
-        ptr[line.length()+1] = 0;
-        lines.push_back(ptr);
-      }
-      glShaderSource(shader_fragment, lines.size(), &lines[0], NULL);
-      printGLError();
-      // cout << lines[0];
-      for (int i=1; i < lines.size(); i++) {
-        // cout << lines[i];
-        delete[] lines[i];
-      }
-      // Compile, link, and print any errors
-      glCompileShader(shader_fragment);
-      glGetShaderiv(shader_fragment, GL_INFO_LOG_LENGTH, &log_size);
-      if (log_size > 1) {
-        cout << "Fragment shader compilation log (" << log_size << "):" << endl;
-        char *buf = new char[log_size];
-        glGetShaderInfoLog(shader_fragment, log_size, NULL, buf);
-        cout << buf << endl;
-        delete[] buf;
-        abort();
-      }
       glAttachShader(shader_program, shader_fragment);
-      
-      vertexer.close(); fragmenter.close();
-
+      printGLError();
       glLinkProgram(shader_program);
       glUseProgram(shader_program);
-      printGLError();
-      // Set the sampler texture units
-      GLuint loc = glGetUniformLocation(shader_program, "textures");
-      printGLError();
-      glUniform1i(loc, 0);
-      printGLError();
-      glUniform1i(glGetUniformLocation(shader_program, "data"), 1);
-      glUniform1i(glGetUniformLocation(shader_program, "coords"), 2);
       printGLError();
       // Over to graphicst. The data TBO is bound in gps.swap_pbos.
       gps.allocate(gps.dimx, gps.dimy);
       printGLError();
-      // Make and upload texture-coord array
-      glGenBuffersARB(1, &shader_coords);
-      glBindBufferARB(GL_TEXTURE_BUFFER_ARB, shader_coords);
-      glBufferDataARB(GL_TEXTURE_BUFFER_ARB,
-                      enabler.textures.textureCount() * sizeof(GLfloat) * 4,
-                      enabler.textures.gl_texpos,
-                      GL_STATIC_DRAW);
-      glGenTextures(1, &shader_coords_tbo);
-      glActiveTexture(GL_TEXTURE2);
-      glBindTexture(GL_TEXTURE_BUFFER_ARB, shader_coords_tbo);
-      glTexBufferARB(GL_TEXTURE_BUFFER_ARB, GL_RGBA32F_ARB, shader_coords);
-      printGLError();
-      // Bind the textures themselves
+      // Bind the textures
       enabler.textures.upload_textures();
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, enabler.textures.gl_catalog);
+      printGLError();
+      // Make and upload texture-coord array
+      shader_coords.buffer(enabler.textures.gl_texpos,
+                           enabler.textures.textureCount() * sizeof(GLfloat) * 4);
+      shader_coords.bind(GL_TEXTURE2, GL_RGBA32F_ARB);
+      // Make and upload fontmap array
+      shader_fontmap.buffer(enabler.create_full_screen ? init.font.large_font_texpos : init.font.small_font_texpos, enabler.create_full_screen ? sizeof init.font.large_font_texpos : sizeof init.font.small_font_texpos);
+      shader_fontmap.bind(GL_TEXTURE3, GL_ALPHA32I_EXT);
+      // Set the sampler texture units
+      glUniform1i(glGetUniformLocation(shader_program, "textures"), 0);
+      glUniform1i(glGetUniformLocation(shader_program, "data"),     1);
+      glUniform1i(glGetUniformLocation(shader_program, "coords"),   2);
+      glUniform1i(glGetUniformLocation(shader_program, "fontmap"),  3);
       printGLError();
       // Make and upload vertex array
       glGenBuffersARB(1, &shader_grid);
@@ -2008,7 +1937,7 @@ gridrectst::gridrectst(long newdimx,long newdimy)
   framebuffer_initialized = false;
   framebuffer = 0;
   vertices_initialized = false;
-  shader_program = shader_fragment = shader_vertex = shader_coords = 0;
+  shader_program = shader_fragment = shader_vertex = 0;
 
   allocate(newdimx,newdimy);
   trinum=0;
