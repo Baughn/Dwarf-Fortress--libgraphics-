@@ -106,13 +106,6 @@ void graphicst::swap_pbos() {
   assert (pbo_mapped != -1);
   if (screen) {
     // Unmap old PBO
-    // static int count=0;
-    // if (count++ % 40 == 0) {
-    //   for (int i=0; i < 6; i++) {
-    //     cout << screen[i*dimy*4] << " " << (int)screen[i*dimy*4+1] << " " << (int)screen[i*dimy*4+2] << " " << (int)screen[i*dimy*4+3] << ", ";
-    //   }
-    //   cout << endl;
-    // }
     glBindBufferARB(GL_TEXTURE_BUFFER_ARB, shader_pbo[pbo_mapped]);
     glUnmapBufferARB(GL_TEXTURE_BUFFER_ARB); // The others are offsets into the same buffer
     screen = NULL;
