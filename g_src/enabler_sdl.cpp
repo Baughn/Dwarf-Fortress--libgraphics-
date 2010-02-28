@@ -1055,7 +1055,8 @@ SDL_Surface *gridrectst::tile_cache_lookup(texture_fullid &id) {
       for (int x = 0; x < tex->w; x++, pixel_src+=4, pixel_dst+=4) {
         float alpha = pixel_src[3] / 255;
         for (int c = 0; c < 3; c++) {
-          pixel_dst[c] = (alpha * (pixel_src[c] & color_fg[c])) + ((1 - alpha) * color_bg[c]);
+          float fg = color_fg[c] / 255.0, bg = color_bg[c] / 255.0, tex = pixel_src[c] / 255.0;
+          pixel_dst[c] = ((alpha * (tex * fg)) + ((1 - alpha) * bg)) * 255;
         }
       }
     }
