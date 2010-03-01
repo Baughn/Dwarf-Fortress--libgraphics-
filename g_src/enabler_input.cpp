@@ -531,6 +531,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   // TODO: Deal with shifted arrow keys, etc. See man 5 terminfo and tgetent.
   
   EventMatch sdl, uni; // Each key may provoke an unicode event, an "SDL-key" event, or both
+  const int serial = next_serial();
   sdl.type = type_key;
   uni.type = type_unicode;
   sdl.scancode = uni.scancode = 0; // We don't use this.. hang on, who does? ..nobody. FIXME!
@@ -598,7 +599,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   if (sdl.key) {
     set<InterfaceKey> events = key_translation(sdl);
     for (set<InterfaceKey>::iterator k = events.begin(); k != events.end(); ++k) {
-      e.serial = next_serial();
+      e.serial = serial;
       e.k = *k;
       timeline.insert(e);
     }
@@ -606,7 +607,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   if (uni.unicode) {
     set<InterfaceKey> events = key_translation(uni);
     for (set<InterfaceKey>::iterator k = events.begin(); k != events.end(); ++k) {
-      e.serial = next_serial();
+      e.serial = serial;
       e.k = *k;
       timeline.insert(e);
     }
