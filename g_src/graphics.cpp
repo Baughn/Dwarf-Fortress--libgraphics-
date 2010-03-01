@@ -366,6 +366,7 @@ void graphicst::display()
       }
     }
   }
+  if (force_full_display_count > 0) force_full_display_count--;
 }
 
 #ifdef CURSES
