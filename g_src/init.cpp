@@ -295,6 +295,10 @@ void initst::begin()
 						window.flag.add_flag(INIT_WINDOW_FLAG_VSYNC_OFF);
 						}
 					}
+                                if(token=="ARB_SYNC") {
+                                  if (token2 == "ON")
+                                    init.display.flag.add_flag(INIT_DISPLAY_FLAG_ARB_SYNC);
+                                }
 
 #ifdef WIN32
 				if(token=="PRIORITY")

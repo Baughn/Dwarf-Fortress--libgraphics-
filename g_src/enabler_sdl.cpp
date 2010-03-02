@@ -713,7 +713,7 @@ void enablerst::render(enum render_phase phase)
   render_things(phase);
   if (phase == complete) {
     if (use_opengl) {
-      if (GL_ARB_sync) {
+      if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ARB_SYNC) && GL_ARB_sync) {
         assert(sync == NULL);
         sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
       }

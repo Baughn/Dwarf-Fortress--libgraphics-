@@ -85,6 +85,13 @@ Use this to set the maximum graphical frame refresh rate during play.
 
 [G_FPS_CAP:20]
 
+On cards that support the OpenGL ARB_sync extension, turning this on
+can improve framerates in GPU overload conditions, most notably when
+using the shader print-mode. It defaults to OFF, as many cards that
+claim to support this will crash if asked to do so.
+
+[ARB_SYNC:OFF]
+
 This sets the applications vertical synchronization behavior.  Changing this to ON can impact your FPS if your G_FPS is high.  The other options are ON and DEFAULT.  DEFAULT uses whatever settings you have your system at in general.
 
 [VSYNC:OFF]
