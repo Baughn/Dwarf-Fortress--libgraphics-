@@ -1,4 +1,4 @@
-#version 150
+#version 140
 // -*- mode: C -*-
 // Defines emitted by gridrectst::init_gl at load:
 // dimx, dimy:      Grid size of the screen array
