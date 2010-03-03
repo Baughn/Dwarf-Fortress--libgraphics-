@@ -43,6 +43,7 @@ KeybindingScreen::KeybindingScreen() {
 }
 
 void KeybindingScreen::feed(set<InterfaceKey> &input) {
+  enabler.flag|=ENABLERFLAG_RENDER;
   if (input.count(INTERFACEKEY_STANDARDSCROLL_PAGEUP) ||
       input.count(INTERFACEKEY_STANDARDSCROLL_PAGEDOWN) ||
       input.count(INTERFACEKEY_STANDARDSCROLL_UP) ||
@@ -115,7 +116,6 @@ void KeybindingScreen::logic() {
     was_registering = false;
     reset_keyR();
   }
-  // enabler.flag|=ENABLERFLAG_RENDER;
   // gps.renewscreen();
 }
 
@@ -229,6 +229,7 @@ MacroScreenLoad::MacroScreenLoad() {
 }
 
 void MacroScreenLoad::feed(set<InterfaceKey> &input) {
+  enabler.flag|=ENABLERFLAG_RENDER;
   if (input.count(INTERFACEKEY_SELECT)) {
     string id = menu.get_selection();
     if (id != "") enabler.load_macro(id);
@@ -243,7 +244,6 @@ void MacroScreenLoad::feed(set<InterfaceKey> &input) {
 }
 
 void MacroScreenLoad::logic() {
-  // enabler.flag|=ENABLERFLAG_RENDER;
 }
 
 void MacroScreenLoad::render() {
@@ -262,10 +262,10 @@ MacroScreenSave::MacroScreenSave() {
 }
 
 void MacroScreenSave::logic() {
-  // enabler.flag|=ENABLERFLAG_RENDER;
 }
 
 void MacroScreenSave::feed(set<InterfaceKey> &input) {
+  enabler.flag|=ENABLERFLAG_RENDER;
   id.feed(input);
   if (input.count(INTERFACEKEY_SELECT)) {
     string n = id.get_text();
