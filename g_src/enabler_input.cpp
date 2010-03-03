@@ -592,6 +592,22 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     }
   }
 
+  // We may be registering a new mapping, in which case we skip the
+  // rest of this function.
+  if (key_registering) {
+    if (uni.unicode && register_unicode) {
+      keymap.insert(pair<EventMatch,InterfaceKey>(uni,register_to_key));
+      update_keydisplay(register_to_key, display(uni));
+    } else if (sdl.key && !register_unicode) {
+      keymap.insert(pair<EventMatch,InterfaceKey>(sdl,register_to_key));
+      update_keydisplay(register_to_key, display(sdl));
+    } else {
+      return;
+    }
+    key_registering = false;
+    return;
+  }
+  
   // Key repeat is handled by the terminal, and we don't get release
   // events anyway.
   KeyEvent kev; kev.release = false;
