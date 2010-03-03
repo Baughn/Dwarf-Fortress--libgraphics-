@@ -551,10 +551,12 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     uni.unicode = '\t';
   } else if (key == -27) { // If we see esc here, it's the actual esc key. Hopefully.
     sdl.key = SDLK_ESCAPE;
+  } else if (key == -127) { // Backspace/del
+    sdl.key = SDLK_BACKSPACE;
   } else if (key < 0 && key >= -26) { // Control-a through z (but not ctrl-j, or ctrl-i)
     sdl.mod |= DFMOD_CTRL;
     sdl.key = (SDLKey)(SDLK_a + (-key) - 1);
-  } else if (key <= -32 && key >= -127) { // ASCII character set
+  } else if (key <= -32 && key >= -126) { // ASCII character set
     uni.unicode = -key;
     sdl.key = (SDLKey)-key; // Most of this maps directly to SDL keys, except..
     if (sdl.key > 64 && sdl.key < 91) { // Uppercase
