@@ -745,6 +745,7 @@ void graphicst::prepare_graphics()
 	processfilename.clear();
 
 	enabler.textures.upload_textures();
+        reset_window_sdl(true);
 }
 
 void graphicst::add_tile(long texp,char addcolor)

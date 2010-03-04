@@ -538,6 +538,7 @@ class gridrectst
   // SHADER mode
   texture_bo shader_coords, shader_fontmap;
   GLuint shader_program, shader_fragment, shader_vertex, shader_grid;
+  GLuint frame_location;
 };
 
 
@@ -1036,6 +1037,7 @@ pair<int,int> window_to_grid(int x, int y);
 pair<int,int> resize_grid(const int w_req, const int h_req);
 void lock_grid();
 void unlock_grid();
+void reset_window_sdl(bool resizing = false);
 
 extern enablerst enabler;
 

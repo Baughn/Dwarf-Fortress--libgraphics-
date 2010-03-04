@@ -243,9 +243,9 @@ static void resize_grid_sdl(const int width, const int height, const bool resizi
   resize_grid(new_grid_x, new_grid_y);
 }
 
-static void reset_window_sdl() {
+void reset_window_sdl(bool resizing) {
   SDL_Surface *s = SDL_GetVideoSurface();
-  resize_grid_sdl(s->w, s->h, false);
+  resize_grid_sdl(s->w, s->h, resizing);
 }
 
 void lock_grid() { grid_locked = true; }
@@ -1030,7 +1030,7 @@ void gridrectst::render_shader(render_phase phase, bool clear) {
     }
     glUseProgram(shader_program);
     static int frame = 0;
-    glUniform1ui(glGetUniformLocation(shader_program, "frame"),  frame++);
+    glUniform1ui(frame_location,  frame++);
     printGLError();
     
     // Render
@@ -1713,6 +1713,7 @@ void gridrectst::init_gl() {
       printGLError();
       glLinkProgram(shader_program);
       glUseProgram(shader_program);
+      frame_location = glGetUniformLocation(shader_program, "frame");
       printGLError();
       // Over to graphicst. The data TBO is bound in gps.swap_pbos.
       gps.allocate(gps.dimx, gps.dimy);
