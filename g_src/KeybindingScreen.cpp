@@ -33,17 +33,35 @@ const BindingGroup groups[] = {
 KeybindingScreen::KeybindingScreen() {
   gview.addscreen(this, INTERFACE_PUSH_AT_BACK, NULL); // HACK
   mode = mode_main;
-  was_registering = false;
 
   main.add("Macros", sel_macros);
   for (int i = 0; i < ARRSZ(groups); i++)
     main.set(i+2, groups[i].name, sel_first_group + i);
   main.set(ARRSZ(groups)+3, "Save and exit", sel_save_exit);
-  main.add("Exit without saving", sel_just_exit);
+  main.add("Exit, discard changes when DF quits", sel_just_exit);
 }
 
 void KeybindingScreen::feed(set<InterfaceKey> &input) {
   enabler.flag|=ENABLERFLAG_RENDER;
+  if (input.count(INTERFACEKEY_KEYBINDING_COMPLETE)) {
+    list<RegisteredKey> keys = enabler.getRegisteredKey();
+    if (keys.size() == 0) {
+      puts("No keys registered ?!");
+      mode = mode_keyR;
+    } else {
+      keyRegister.clear();
+      list<RegisteredKey> keys = enabler.getRegisteredKey();
+      for (list<RegisteredKey>::iterator it = keys.begin(); it != keys.end(); ++it) {
+        string display;
+        switch (it->type) {
+        case type_button: display = "Mouse button: "; break;
+        case type_key: display = "Physical: "; break;
+        case type_unicode: display = "Logical: "; break;
+        }
+        keyRegister.add(display + it->display, it->type);
+      }
+    }
+  }
   if (input.count(INTERFACEKEY_STANDARDSCROLL_PAGEUP) ||
       input.count(INTERFACEKEY_STANDARDSCROLL_PAGEDOWN) ||
       input.count(INTERFACEKEY_STANDARDSCROLL_UP) ||
@@ -53,6 +71,7 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
     case mode_keyL: keyL.feed(input); reset_keyR(); break;
     case mode_keyR: keyR.feed(input); break;
     case mode_macro: macro.feed(input); break;
+    case mode_register: keyRegister.feed(input); break;
     }
   }
   if (mode == mode_keyL && input.count(INTERFACEKEY_STANDARDSCROLL_RIGHT))
@@ -65,6 +84,8 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
       if (macro.get_selection() != "") {
         enabler.delete_macro(macro.get_selection());
         macro.del_selection();
+        if (!macro.size())
+          macro.add("No macros!", "");
       }
       break;
     case mode_keyR:
@@ -93,30 +114,29 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
       }
       break;
     case mode_keyR:
-      switch (keyR.get_selection().sel) {
-      case sel_unicode:
-        enabler.register_key(true, keyL.get_selection());
-        was_registering = true;
-        break;
-      case sel_sdl:
-        enabler.register_key(false, keyL.get_selection());
-        was_registering = true;
-        break;
+      if (keyR.get_selection().sel == sel_add) {
+        enabler.register_key();
+        mode = mode_register;
       }
+      break;
+    case mode_register:
+      enabler.bindRegisteredKey(keyRegister.get_selection(), keyL.get_selection());
+      mode = mode_keyR;
+      reset_keyR();
       break;
     }
   }
   if (input.count(INTERFACEKEY_LEAVESCREEN)) {
-    mode = mode_main;
+    if (mode == mode_register)
+      mode = mode_keyR;
+    else
+      mode = mode_main;
   }
 }
 
 void KeybindingScreen::logic() {
-  if (was_registering && !enabler.is_registering()) {
-    was_registering = false;
-    reset_keyR();
-  }
-  // gps.renewscreen();
+  if (mode == mode_register)
+    enabler.flag|=ENABLERFLAG_RENDER;
 }
 
 void KeybindingScreen::enter_macros() {
@@ -142,41 +162,40 @@ void KeybindingScreen::enter_key(int group) {
 void KeybindingScreen::reset_keyR() {
   keyR.clear();
   struct keyR_selector sel;
-  sel.sel = sel_unicode;
-  keyR.add("Add binding - unicode", sel);
-  sel.sel = sel_sdl;
-  keyR.add("Add binding - sdl", sel);
-  keyR.add("Add binding - mouse button", sel);
+  sel.sel = sel_add;
+  keyR.add("Add binding", sel);
   InterfaceKey key = keyL.get_selection();
   list<EventMatch> matchers = enabler.list_keys(key);
-  int i = 4;
+  int i = 2;
   for (list<EventMatch>::iterator it = matchers.begin(); it != matchers.end(); ++it, ++i) {
     ostringstream desc;
     switch (it->type) {
     case type_unicode:
-      desc << "Unicode: ";
+      desc << "Logical: ";
       if (it->unicode < 256 && isgraph(it->unicode)) // Is it printable?
         desc << (char)it->unicode;
       else
         desc << "U+" << hex << uppercase << it->unicode;
       break;
     case type_key:
-      desc << "SDL: " << translate_mod(it->mod) << sdlNames.left[it->key];
+      desc << "Physical: " << translate_mod(it->mod) << sdlNames.left[it->key];
       break;
     case type_button:
-      desc << "Button: " << (int)it->button;
+      desc << "Mouse: " << (int)it->button;
       break;
     }
     sel.sel = sel_event;
     sel.event = *it;
     keyR.set(i, desc.str(), sel);
-    cout << desc.str() << endl;
   }
 }
 
 void KeybindingScreen::render_macro() {
   drawborder("Macros");
-  macro.render(6, init.display.grid_x-2, 3, init.display.grid_y-2);
+  gps.locate(3, 3);
+  gps.changecolor(4,0,1);
+  gps.addst("Select a macro, then press " + enabler.GetKeyDisplay(INTERFACEKEY_STRING_A000) + " to delete.");
+  macro.render(6, init.display.grid_x-2, 5, init.display.grid_y-2);
 }
 
 void KeybindingScreen::render_key() {
@@ -185,12 +204,45 @@ void KeybindingScreen::render_key() {
     drawborder("Keybinding - currently registering new key");
   } else
     drawborder("Keybinding");
-  keyL.render(6, init.display.grid_x/2 - 1, 3, init.display.grid_y-2);
-  if (mode == mode_keyL)
+  gps.locate(3, 6);
+  gps.changecolor(4,0,1);
+  gps.addst("Select a binding, then press " + enabler.GetKeyDisplay(INTERFACEKEY_STRING_A000) + " to delete.");
+  keyL.render(6, init.display.grid_x/2 - 1, 5, init.display.grid_y-2);
+  if (mode == mode_keyL || mode == mode_register)
     keyR.bleach(true);
   else
     keyR.bleach(false);
-  keyR.render(init.display.grid_x/2 + 1, init.display.grid_x-2, 3, init.display.grid_y-2);
+  keyR.render(init.display.grid_x/2 + 1, init.display.grid_x-2, 5, init.display.grid_y-2);
+}
+
+void KeybindingScreen::render_register() {
+  int x1 = init.display.grid_x / 2 - 20,
+    x2 = init.display.grid_x / 2 + 20,
+    y1 = init.display.grid_y / 2 - 1,
+    y2 = init.display.grid_y / 2 + 1;
+  if (!enabler.is_registering()) {
+    y2 = y1 + keyRegister.size() + 1;
+  }
+  gps.erasescreen_rect(x1, x2, y1, y2);
+  gps.changecolor(1,1,1);
+  for (int x = x1; x <= x2; x++) {
+    gps.locate(y1, x); gps.addchar(' ');
+    gps.locate(y2, x); gps.addchar(' ');
+  }
+  for (int y = y1 + 1; y < y2; y++) {
+    gps.locate(y, x1); gps.addchar(' ');
+    gps.locate(y, x2); gps.addchar(' ');
+  }
+  if (enabler.is_registering()) {
+    gps.changecolor(7,0,1);
+    gps.locate(y1+1, x1+2);
+    gps.addst(translate_mod(getModState()));
+  } else {
+    keyRegister.render(x1+1, x2-1, y1+1, y2-1);
+    gps.locate(y2, x1+2);
+    gps.changecolor(7,1,1);
+    gps.addst("Select binding, or press space to abort");
+  }
 }
 
 // Render the main menu
@@ -204,6 +256,10 @@ void KeybindingScreen::render() {
   case mode_main: render_main(); break;
   case mode_keyL: case mode_keyR: render_key(); break;
   case mode_macro: render_macro(); break;
+  case mode_register:
+    render_key();
+    render_register();
+    break;
   }
 }
 

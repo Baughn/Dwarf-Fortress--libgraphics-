@@ -8,12 +8,10 @@
 #include <set>
 #include <string>
 
-
 class KeybindingScreen : public viewscreenst {
-  enum { mode_main, mode_keyL, mode_keyR, mode_macro } mode;
-  enum keyR_type { sel_unicode, sel_sdl, sel_event };
+  enum { mode_main, mode_keyL, mode_keyR, mode_macro, mode_register } mode;
+  enum keyR_type { sel_add, sel_event };
   enum main_selector { sel_macros, sel_just_exit, sel_save_exit, sel_first_group };
-  bool was_registering;
 
   struct keyR_selector {
     keyR_type sel;
@@ -24,10 +22,12 @@ class KeybindingScreen : public viewscreenst {
   widgets::menu<InterfaceKey> keyL;
   widgets::menu<keyR_selector> keyR;
   widgets::menu<std::string> macro;
+  widgets::menu<MatchType> keyRegister;
   
   void render_main();
   void render_macro();
   void render_key();
+  void render_register();
 
   void reset_keyR();
   

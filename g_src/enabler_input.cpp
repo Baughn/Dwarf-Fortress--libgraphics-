@@ -75,8 +75,7 @@ static map<string,macro> macros;
 
 // Keybinding editing
 static bool key_registering = false;
-static InterfaceKey register_to_key; // Key to register the next press as (if key_registering is true)
-static bool register_unicode; // Whether to ignore unicode or, if not, SDL symbols
+static list<EventMatch> stored_keys;
 
 // Interface-file last loaded
 static string interfacefile;
@@ -247,7 +246,7 @@ static void update_modstate(const SDL_Event &e) {
 }
 
 // Converts SDL mod states to ours, collapsing left/right shift/alt/ctrl
-static Uint8 getModState() {
+Uint8 getModState() {
   return modState;
 }
 
@@ -441,7 +440,7 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
   set<EventMatch>::iterator pkit;
   list<pair<KeyEvent, int> > synthetics;
   update_modstate(e);
-
+  
   // Convert modifier state changes
   if ((e.type == SDL_KEYUP || e.type == SDL_KEYDOWN) &&
       (e.key.keysym.sym == SDLK_RSHIFT ||
@@ -460,7 +459,8 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
       if (synth.match.type != type_unicode) {
         synth.release = false;
         synth.match.mod = getModState();
-        synthetics.push_back(make_pair<KeyEvent,int>(synth, next_serial()));
+        if (!key_registering) // We don't want extras when registering keys
+          synthetics.push_back(make_pair<KeyEvent,int>(synth, next_serial()));
       }
     }
   } else {
@@ -597,15 +597,14 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   // We may be registering a new mapping, in which case we skip the
   // rest of this function.
   if (key_registering) {
-    if (uni.unicode && register_unicode) {
-      keymap.insert(pair<EventMatch,InterfaceKey>(uni,register_to_key));
-      update_keydisplay(register_to_key, display(uni));
-    } else if (sdl.key && !register_unicode) {
-      keymap.insert(pair<EventMatch,InterfaceKey>(sdl,register_to_key));
-      update_keydisplay(register_to_key, display(sdl));
-    } else {
-      return;
+    if (uni.unicode) {
+      stored_keys.push_back(uni);
     }
+    if (sdl.key) {
+      stored_keys.push_back(sdl);
+    }
+    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE;
+    timeline.insert(e);
     key_registering = false;
     return;
   }
@@ -634,16 +633,12 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
 #endif
 
 void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
-  // We may be registering a new mapping, in which case we skip the
+// We may be registering a new mapping, in which case we skip the
   // rest of this function.
   if (key_registering && !e.release) {
-    if ((e.match.type == type_unicode && register_unicode) ||
-        (e.match.type == type_key && !register_unicode) ||
-        (e.match.type == type_button)) {
-      keymap.insert(pair<EventMatch,InterfaceKey>(e.match,register_to_key));
-      update_keydisplay(register_to_key, display(e.match));
-      key_registering = false;
-    }
+    stored_keys.push_back(e.match);
+    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE;
+    timeline.insert(e);
     return;
   }
 
@@ -927,11 +922,31 @@ void enabler_inputst::delete_macro(string name) {
 }
 
 
-// Updating (adding to) the key-bindings
-void enabler_inputst::register_key(bool unicode, InterfaceKey key) {
+// Sets the next key-press to be stored instead of executed.
+void enabler_inputst::register_key() {
   key_registering = true;
-  register_to_key = key;
-  register_unicode = unicode;
+  stored_keys.clear();
+}
+
+// Returns a description of stored keys. Max one of each type.
+list<RegisteredKey> enabler_inputst::getRegisteredKey() {
+  key_registering = false;
+  list<RegisteredKey> ret;
+  for (list<EventMatch>::iterator it = stored_keys.begin(); it != stored_keys.end(); ++it) {
+    struct RegisteredKey r = {it->type, display(*it)};
+    ret.push_back(r);
+  }
+  return ret;
+}
+
+// Binds one of the stored keys to key
+void enabler_inputst::bindRegisteredKey(MatchType type, InterfaceKey key) {
+  for (list<EventMatch>::iterator it = stored_keys.begin(); it != stored_keys.end(); ++it) {
+    if (it->type == type) {
+      keymap.insert(pair<EventMatch,InterfaceKey>(*it, key));
+      update_keydisplay(key, display(*it));
+    }
+  }
 }
 
 bool enabler_inputst::is_registering() {

@@ -20,6 +20,7 @@ enum Repeat {
 
 enum MatchType { type_unicode, type_key, type_button };
 
+Uint8 getModState();
 std::string translate_mod(Uint8 mod);
 int decode_utf8(const std::string &s);
 int decode_utf8_predict_length(char byte);
@@ -67,6 +68,11 @@ struct KeyEvent {
 
 typedef std::list<std::set<InterfaceKey> > macro;
 
+struct RegisteredKey {
+  MatchType type;
+  string display;
+};
+
 class enabler_inputst {
   std::set<InterfaceKey> key_translation(EventMatch &match);
   Repeat key_repeat(InterfaceKey);
@@ -102,8 +108,11 @@ class enabler_inputst {
   void delete_macro(string name);
 
   // Updating the key-bindings
-  void register_key(bool unicode, InterfaceKey key); // Adds the next event to be generated to the keymap for this interfacekey. If unicode is true, ignores SDL syms; otherwise, ignores unicode. Mouse buttons work either way.
-  bool is_registering();
+  void register_key(); // Sets the next key-press to be stored instead of executed.
+  list<RegisteredKey> getRegisteredKey(); // Returns a description of stored keys. Max one of each type.
+  void bindRegisteredKey(MatchType type, InterfaceKey key); // Binds one of the stored keys to key
+  bool is_registering(); // Returns true if we're still waiting for a key-hit
+
   std::list<EventMatch> list_keys(InterfaceKey key); // Returns a list of events matching this interfacekey
   void remove_key(InterfaceKey key, EventMatch ev); // Removes a particular matcher from the keymap.
 };

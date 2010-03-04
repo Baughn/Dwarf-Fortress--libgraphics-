@@ -428,6 +428,7 @@ static void eventLoop_SDL(GL_Window window)
         break;
       case SDL_ACTIVEEVENT:
         enabler.clear_input();
+        enabler.flag|=ENABLERFLAG_RENDER;
         if (event.active.state & SDL_APPACTIVE) {
           if (event.active.gain) {
             gps.force_full_display_count++;
@@ -440,6 +441,7 @@ static void eventLoop_SDL(GL_Window window)
         break;
       case SDL_VIDEOEXPOSE:
         gps.force_full_display_count++;
+        enabler.flag|=ENABLERFLAG_RENDER;
         break;
       case SDL_MOUSEMOTION:
         // Deal with the mouse hiding bit
@@ -500,6 +502,7 @@ static void eventLoop_SDL(GL_Window window)
         } //init mouse on
         break;
       case SDL_VIDEORESIZE:
+        enabler.flag|=ENABLERFLAG_RENDER;
         if (!enabler.create_full_screen)
           resize_grid_sdl(event.resize.w, event.resize.h, true);
         break;

@@ -96,6 +96,7 @@ namespace widgets {
     
   public:
     menu() { clear(); }
+    int size() { return lines.size(); }
     // Adds a line just past the last taken position
     void add(string text, T token) {
       if (!lines.size()) {
