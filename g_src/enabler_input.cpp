@@ -560,7 +560,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     uni.unicode = -key;
     sdl.key = (SDLKey)-key; // Most of this maps directly to SDL keys, except..
     if (sdl.key > 64 && sdl.key < 91) { // Uppercase
-      sdl.key = (SDLKey)(sdl.key + 33); // Maps to lowercase, and
+      sdl.key = (SDLKey)(sdl.key + 32); // Maps to lowercase, and
       sdl.mod |= DFMOD_SHIFT; // Add shift.
     }
   } else if (key < -127) { // Unicode, no matching SDL keys
