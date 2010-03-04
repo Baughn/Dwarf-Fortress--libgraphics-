@@ -285,8 +285,10 @@ void graphicst::erasescreen()
 
 void graphicst::display()
 {
-  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_SHADER))
-    return; // This is done on the GPU in shader mode.
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_SHADER)) {
+    force_full_display_count = 0;
+    return; // The rest is done on the GPU in shader mode.
+  }
   
   gridrectst *rect=enabler.get_gridrect(rect_id);
 

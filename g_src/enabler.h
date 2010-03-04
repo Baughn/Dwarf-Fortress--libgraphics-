@@ -432,7 +432,7 @@ class shader {
     string lines_done = lines.str(), header_done = header.str();
     const char *ptrs[3];
     ptrs[0] = header_done.c_str();
-    ptrs[1] = "#line 0 0\n";
+    ptrs[1] = "#line 1 0\n";
     ptrs[2] = lines_done.c_str();
     glShaderSource(shader, 3, ptrs, NULL);
     glCompileShader(shader);
@@ -441,7 +441,7 @@ class shader {
     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_size);
     if (log_size > 1) {
       std::cout << filename << " preprocessed source:" << std::endl;
-      std::cout << header_done << "#line 0 0\n" << lines_done;
+      std::cout << header_done << "#line 1 0\n" << lines_done;
       std::cout << filename << " shader compilation log (" << log_size << "):" << std::endl;
       char *buf = new char[log_size];
       glGetShaderInfoLog(shader, log_size, NULL, buf);

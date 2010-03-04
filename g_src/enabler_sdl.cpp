@@ -1026,6 +1026,8 @@ void gridrectst::render_shader(render_phase phase, bool clear) {
       update_viewport();
     }
     glUseProgram(shader_program);
+    static int frame = 0;
+    glUniform1ui(glGetUniformLocation(shader_program, "frame"),  frame++);
     printGLError();
     
     // Render
@@ -1673,10 +1675,20 @@ void gridrectst::init_gl() {
       shaders[1].load("data/shader.fs");
       // Load common defines
       for (int i=0; i<2; i++) {
+        // grid/tile sizes
         shaders[i].header << "#define dimx  " << gps.dimx << endl;
         shaders[i].header << "#define dimy  " << gps.dimy << endl;
         shaders[i].header << "#define dispx " << dispx << endl;
         shaders[i].header << "#define dispy " << dispy << endl;
+        if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS)) {
+          shaders[i].header << "#define GRAPHICS" << endl;
+          // graphicst offsets
+          shaders[i].header << "#define offset_texpos " << gps.offset_texpos << endl;
+          shaders[i].header << "#define offset_addcolor " << gps.offset_addcolor << endl;
+          shaders[i].header << "#define offset_grayscale " << gps.offset_grayscale << endl;
+          shaders[i].header << "#define offset_cf " << gps.offset_cf << endl;
+          shaders[i].header << "#define offset_cbr " << gps.offset_cbr << endl;
+        }
       }
       // Vertex shader color palette
       shaders[0].header << "const vec4 colors[] = vec4[16](";
