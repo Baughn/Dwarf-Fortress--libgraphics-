@@ -28,6 +28,7 @@ using std::pair;
 using std::map;
 using std::list;
 
+#include "basics.h"
 #include "svector.h"
 #include "endian.h"
 #include "files.h"
@@ -440,13 +441,19 @@ class shader {
     int log_size;
     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_size);
     if (log_size > 1) {
-      std::cout << filename << " preprocessed source:" << std::endl;
-      std::cout << header_done << "#line 1 0\n" << lines_done;
-      std::cout << filename << " shader compilation log (" << log_size << "):" << std::endl;
+      errorlog << filename << " preprocessed source:" << std::endl;
+      std::cerr << filename << " preprocessed source:" << std::endl;
+      errorlog << header_done << "#line 1 0\n" << lines_done;
+      std::cerr << header_done << "#line 1 0\n" << lines_done;
+      errorlog << filename << " shader compilation log (" << log_size << "):" << std::endl;
+      std::cerr << filename << " shader compilation log (" << log_size << "):" << std::endl;
       char *buf = new char[log_size];
       glGetShaderInfoLog(shader, log_size, NULL, buf);
-      std::cout << buf << std::endl;
+      errorlog << buf << std::endl;
+      std::cerr << buf << std::endl;
+      errorlog.flush();
       delete[] buf;
+      MessageBox(NULL, "Shader compilation failed; details in errorlog.txt", "Critical error", MB_OK);
       abort();
     }
     printGLError();

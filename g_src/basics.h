@@ -1,4 +1,5 @@
-//#define NO_FMOD
+#ifndef BASICS_H
+#define BASICS_H
 
 #include <string>
 using std::string;
@@ -94,3 +95,6 @@ enum Song
 	SONG_GAME,
 	SONGNUM
 };
+
+extern std::ofstream errorlog, gamelog;
+#endif

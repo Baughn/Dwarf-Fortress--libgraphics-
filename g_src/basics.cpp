@@ -15,48 +15,35 @@
 
 #include "svector.h"
 using std::string;
+using std::endl;
+using std::ofstream;
 
 #include "endian.h"
 
 #include "basics.h"
 
+ofstream errorlog("errorlog.txt", std::ios::out | std::ios::app);
+ofstream gamelog("gamelog.txt", std::ios::out | std::ios::app);
+
 void errorlog_string(const char *ptr)
 {
-	if(ptr==NULL)return;
-
-	//SAVE AN ERROR TO THE LOG FILE
-	std::ofstream fseed("errorlog.txt", std::ios::out | std::ios::app);
-	if(fseed.is_open())
-		{
-		fseed<<ptr<<std::endl;
-		}
-	fseed.close();
+  if(ptr==NULL)return;
+  errorlog << ptr << endl;
+  errorlog.flush();
 }
 
 void errorlog_string(const string &str)
 {
-	if(str.empty())return;
-
-	//SAVE AN ERROR TO THE LOG FILE
-	std::ofstream fseed("errorlog.txt", std::ios::out | std::ios::app);
-	if(fseed.is_open())
-		{
-		fseed<<str.c_str()<<std::endl;
-		}
-	fseed.close();
+  if(str.empty())return;
+  errorlog << str << endl;
+  errorlog.flush();
 }
 
 void gamelog_string(string &str)
 {
-	if(str.empty())return;
-
-	//SAVE AN ERROR TO THE LOG FILE
-	std::ofstream fseed("gamelog.txt",std::ios::out | std::ios::app);
-	if(fseed.is_open())
-		{
-		fseed<<str.c_str()<<std::endl;
-		}
-	fseed.close();
+  if(str.empty())return;
+  gamelog << str << endl;
+  gamelog.flush();
 }
 
 void grab_token(char *dest,const char *source,char compc)
