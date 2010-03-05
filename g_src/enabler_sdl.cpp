@@ -1694,7 +1694,7 @@ void gridrectst::init_gl() {
         }
       }
       // Vertex shader color palette
-      shaders[0].header << "const vec4 colors[] = vec4[16](";
+      shaders[0].header << "vec4 colors[] = vec4[16](";
       for (int bold=0; bold<2; bold++) {
         for (int i=0; i<8; i++) {
           float r, g, b;
