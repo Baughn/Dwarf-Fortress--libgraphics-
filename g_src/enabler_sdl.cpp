@@ -111,7 +111,8 @@ static void do_update_fps(queue<int> &q, int &sum, int &last, int &calc) {
   q.push(interval);
   sum += interval;
   last = now;
-  calc = q.size() * 1000 / sum;
+  if (sum)
+    calc = q.size() * 1000 / sum;
 }
 
 static void update_fps() {
