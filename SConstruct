@@ -1,2 +1,1 @@
-SConscript(['g_src/SConscript',])
-
+SConscript(['g_src/SConscript'])

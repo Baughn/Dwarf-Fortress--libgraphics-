@@ -820,7 +820,6 @@ char enablerst::create_window_GL(GL_Window* window)
   int retval = -1;
   Uint32 flags = 0;
   SDL_Surface *screen = NULL;
-  static bool glewInitialized = false;
 
 #ifdef CURSES
   // If we're using ncurses output, we completely short-circuit SDL windowing.
@@ -883,9 +882,8 @@ char enablerst::create_window_GL(GL_Window* window)
   }
 
   screen = SDL_SetVideoMode(window->init.width, window->init.height, window->init.bitsPerPixel, flags);
-  if (use_opengl && !glewInitialized) {
+  if (use_opengl) {
     glewInit();
-    glewInitialized = true;
   }
   if (screen == NULL) {
     destroy_window_GL(window);
