@@ -437,10 +437,12 @@ class shader {
     ptrs[2] = lines_done.c_str();
     glShaderSource(shader, 3, ptrs, NULL);
     glCompileShader(shader);
-    // Check the compilation log
-    int log_size;
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_size);
-    if (log_size > 1) {
+    // Let's see if this compiled correctly..
+    GLint status;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    if (status == GL_FALSE) { // ..no. Check the compilation log.
+      GLint log_size;
+      glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_size);
       errorlog << filename << " preprocessed source:" << std::endl;
       std::cerr << filename << " preprocessed source:" << std::endl;
       errorlog << header_done << "#line 1 0\n" << lines_done;
