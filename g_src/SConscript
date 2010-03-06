@@ -13,9 +13,28 @@ dll  = '#libs/libgraphics.so'
 optimize = True
 debug = False
 profile = False
-   
+
+clang = True
+
 # Propagate PATH. We'll just take our chances with non-repeatable builds.
 env = Environment(ENV = {'PATH' : os.environ['PATH']})
+
+if clang:
+   env['CC']="clang"
+   env['CXX']="clang++"
+   env['CXXCOM']="$CXX -o $TARGET -emit-llvm -pipe -c $CXXFLAGS $CCFLAGS $_CCCOMCOM $SOURCES"
+   env['CCCOM']="$CC -o $TARGET -emit-llvm -pipe -c $CFLAGS $CCFLAGS $_CCCOMCOM $SOURCES"
+   env['SHCCCOM']=env['CCCOM']
+   env['SHCXXCOM']=env['CXXCOM']
+   env["OBJSUFFIX"]=".bc"
+   env["SHOBJSUFFIX"]=".bc"
+   if optimize:
+      env["SHLINKCOM"]="llvm-link $SOURCES | opt -disable-internalize -std-link-opts | llc -O3 | g++ -shared -xassembler -o $TARGET $SHLINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS -"
+      env["LINKCOM"]="llvm-link $SOURCES | opt -std-link-opts -disable-internalize | llc -O3 | g++ -xassembler -o $TARGET $LINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS -"
+   else:
+      env["SHLINKCOM"]="llvm-link $SOURCES | llc | g++ -shared -xassembler -o $TARGET $SHLINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS -"
+      env["LINKCOM"]="llvm-link $SOURCES | llc | g++ -xassembler -o $TARGET $LINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS -"
+
 
 # Init variables, and make sure they're around for appending to
 # These variables are the ones used by the actual compilation. We construct
@@ -33,9 +52,10 @@ env["CPPPATH"].append('#g_src/glext')
 env["CCFLAGS"].append('-DGLEW_STATIC') # Should only be needed on windows, but can't hurt.
 
 # Generic unix, including Linux
-env['ASFLAGS']="--32"
-env['LINKFLAGS'].append("-m32")
-env["CCFLAGS"].append("-m32")
+if not clang:
+   env['ASFLAGS']="--32"
+   env['LINKFLAGS'].append("-m32")
+   env["CCFLAGS"].append("-m32")
 env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
 env.ParseConfig('pkg-config openal --cflags --libs')
 env.ParseConfig('pkg-config sndfile --libs --cflags')
@@ -49,7 +69,10 @@ if profile:
    env['LINKFLAGS'].append("-pg")
 
 if optimize:
-   env["CCFLAGS"]+=["-O3","-march=pentium3","-mfpmath=sse"]
+   if not clang:
+      env["CCFLAGS"]+=["-O3","-march=pentium3","-mfpmath=sse"]
+   else:
+      env["CCFLAGS"].append("-O2") # Only to reduce WPO time
 
 if debug:
    env["CCFLAGS"].append("-ggdb")
