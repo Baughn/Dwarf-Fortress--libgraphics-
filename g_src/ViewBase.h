@@ -28,6 +28,7 @@ class viewscreenst
 		virtual void feed(std::set<InterfaceKey> &events){}
 		virtual void logic(){}
 		virtual void render(){}
+                virtual void resize(int w, int h){}
 
 		virtual void help();
 		virtual char movies_okay(){return 1;}

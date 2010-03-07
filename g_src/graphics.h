@@ -104,6 +104,15 @@ class graphicst
                     }
                   if(advance)screenx++;
                 }
+                void addchar(int x, int y, unsigned char c, int f, int b, int bright) {
+                  if (x >= clipx[0] && x <= clipx[1] &&
+                      y >= clipy[0] && y <= clipy[1]) {
+                    screen[x*dimy*4 + y*4 + 0] = c;
+                    screen[x*dimy*4 + y*4 + 1] = f;
+                    screen[x*dimy*4 + y*4 + 2] = b;
+                    screen[x*dimy*4 + y*4 + 3] = bright;
+                  }
+                }
 		void addcoloredst(const char *str,const char *colorstr);
 		void addst(const string &str);
 		void addst(const char *str);

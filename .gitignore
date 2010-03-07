@@ -1,5 +1,6 @@
 *.os
 *.o
+*.bc
 /.sconsign.dblite
 /gamelog.txt
 /libs/libgraphics.so

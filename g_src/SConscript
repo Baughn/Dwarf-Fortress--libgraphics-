@@ -10,16 +10,20 @@ src_dll = ["basics.cpp","command_line.cpp","enabler_sdl.cpp","files.cpp",
 
 dll  = '#libs/libgraphics.so'
 
-optimize = True
-debug = False
+optimize = False
+debug = True
 profile = False
 
-clang = True
+clang = False
+
+libgraphics = False
+tetris = True
 
 # Propagate PATH. We'll just take our chances with non-repeatable builds.
 env = Environment(ENV = {'PATH' : os.environ['PATH']})
 
 if clang:
+   env["STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME"]=True
    env['CC']="clang"
    env['CXX']="clang++"
    env['CXXCOM']="$CXX -o $TARGET -emit-llvm -pipe -c $CXXFLAGS $CCFLAGS $_CCCOMCOM $SOURCES"
@@ -27,13 +31,15 @@ if clang:
    env['SHCCCOM']=env['CCCOM']
    env['SHCXXCOM']=env['CXXCOM']
    env["OBJSUFFIX"]=".bc"
-   env["SHOBJSUFFIX"]=".bc"
+   env["SHOBJSUFFIX"]=".so.bc"
+   env["ARCOM"]="llvm-link $SOURCES -o $TARGET"
+   env["RANLIBCOM"]="true"
    if optimize:
-      env["SHLINKCOM"]="llvm-link $SOURCES | opt -disable-internalize -std-link-opts | llc -O3 | g++ -shared -xassembler -o $TARGET $SHLINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS -"
-      env["LINKCOM"]="llvm-link $SOURCES | opt -std-link-opts -disable-internalize | llc -O3 | g++ -xassembler -o $TARGET $LINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS -"
+      env["SHLINKCOM"]="llvm-link $SOURCES | opt -disable-internalize -std-link-opts | llc -O3 | g++ -shared -xassembler - -o $TARGET $SHLINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS"
+      env["LINKCOM"]="llvm-link $SOURCES | opt -disable-internalize -std-link-opts | llc -O3 | g++ -xassembler -o $TARGET - $LINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS"
    else:
-      env["SHLINKCOM"]="llvm-link $SOURCES | llc | g++ -shared -xassembler -o $TARGET $SHLINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS -"
-      env["LINKCOM"]="llvm-link $SOURCES | llc | g++ -xassembler -o $TARGET $LINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS -"
+      env["SHLINKCOM"]="llvm-link $SOURCES | llc | g++ -shared -xassembler -fPIC -o $TARGET - $SHLINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS"
+      env["LINKCOM"]="llvm-link $SOURCES | llc | g++ -xassembler -o $TARGET - $LINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS"
 
 
 # Init variables, and make sure they're around for appending to
@@ -79,4 +85,8 @@ if debug:
    env["CCFLAGS"].append("-DDEBUG")
    
 # Finally, do the build
-env.SharedLibrary(dll, src_dll)
+if libgraphics:
+   env.SharedLibrary(dll, src_dll)
+
+if tetris:
+   env.Program("#tetris", src_dll + ["tetris.cpp"])

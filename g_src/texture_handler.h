@@ -1,3 +1,8 @@
+#ifndef TEXTURE_HANDLER_H
+#define TEXTURE_HANDLER_H
+
+#include "textlines.h"
+
 struct tile_pagest
 {
 	string token;
@@ -51,3 +56,5 @@ class texture_handlerst
 			return NULL;
 			}
 };
+
+#endif

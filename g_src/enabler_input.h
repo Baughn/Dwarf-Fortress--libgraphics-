@@ -47,6 +47,7 @@ struct EventMatch {
     case type_unicode: return unicode == other.unicode;
     case type_key: return key == other.key;
     case type_button: return button == other.button;
+    default: return false;
     }
   }
   
@@ -57,6 +58,7 @@ struct EventMatch {
     case type_unicode: return unicode < other.unicode;
     case type_key: return key < other.key;
     case type_button: return button < other.button;
+    default: return false;
     }
   }
 };

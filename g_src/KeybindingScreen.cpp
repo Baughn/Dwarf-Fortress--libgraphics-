@@ -39,6 +39,7 @@ KeybindingScreen::KeybindingScreen() {
     main.set(i+2, groups[i].name, sel_first_group + i);
   main.set(ARRSZ(groups)+3, "Save and exit", sel_save_exit);
   main.add("Exit, discard changes when DF quits", sel_just_exit);
+  enabler.flag |= ENABLERFLAG_RENDER;
 }
 
 void KeybindingScreen::feed(set<InterfaceKey> &input) {
