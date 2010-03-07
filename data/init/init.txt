@@ -83,7 +83,7 @@ You may set FPS_CAP to 0 to make it uncapped.
 
 Use this to set the maximum graphical frame refresh rate during play.
 
-[G_FPS_CAP:20]
+[G_FPS_CAP:50]
 
 On cards that support the OpenGL ARB_sync extension, turning this on
 can improve framerates in GPU overload conditions, most notably when
