@@ -124,7 +124,6 @@ void viewscreen_movieplayerst::force_play(string &file)
 void viewscreen_movieplayerst::logic()
 {
 	enabler.flag&=~ENABLERFLAG_MAXFPS;
-	enabler.qprate=enabler.main_qprate;//USE THE MAIN RATE FOR MOVIES
 
 	enabler.flag|=ENABLERFLAG_RENDER;
 
@@ -143,9 +142,6 @@ void viewscreen_movieplayerst::logic()
 	if(!is_playing&&quit_if_no_play)
 		{
 		breakdownlevel=INTERFACE_BREAKDOWN_STOPSCREEN;
-                unlock_grid();
-                resize_grid(init.display.orig_grid_x, init.display.orig_grid_y);
-		gps.prepare_rect(1);
 		return;
 		}
 
@@ -207,8 +203,6 @@ void viewscreen_movieplayerst::logic()
 				{
 				is_playing=0;
 				//NOTE: THIS CAUSES IT TO LOSE THE LAST FRAME DUE TO CLEARING
-                                unlock_grid();
-                                resize_grid(init.display.orig_grid_x, init.display.orig_grid_y);
 				}
 			}
 		}
@@ -424,8 +418,7 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 		if(is_playing)
 			{
 			is_playing=0;
-                        unlock_grid();
-                        resize_grid(init.display.orig_grid_x, init.display.orig_grid_y);
+                        enabler.release_grid_size();
 			gview.supermovie_on=0;
 			gview.currentblocksize=0;
 			gview.nextfilepos=0;
@@ -444,9 +437,7 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 		else
 			{
 			is_playing=0;
-                        unlock_grid();
-                        resize_grid(init.display.orig_grid_x, init.display.orig_grid_y);
-			gps.prepare_rect(1);
+                        enabler.release_grid_size();
 			gview.supermovie_on=0;
 			gview.currentblocksize=0;
 			gview.nextfilepos=0;
@@ -681,8 +672,7 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 				{
 				//TURN ON THE MOVIE RECORDER
 				is_playing=0;
-                                unlock_grid();
-                                resize_grid(init.display.orig_grid_x, init.display.orig_grid_y);
+                                enabler.release_grid_size();
 				gview.supermovie_on=1;
 				gview.currentblocksize=0;
 				gview.nextfilepos=0;
@@ -733,9 +723,7 @@ viewscreen_movieplayerst::viewscreen_movieplayerst()
 	force_file.erase();
 	gview.movie_file="data/movies/last_record.cmv";
 	is_playing=0;
-        // unlock_grid();
-        // resize_grid(init.display.orig_grid_x, init.display.orig_grid_y);
-	// gps.prepare_rect(1);
+        enabler.release_grid_size();
 	is_forced_play=0;
 	quit_if_no_play=0;
 	gview.supermovie_on=0;
@@ -848,14 +836,12 @@ char interfacest::loop() {
   //NO INTERFACE LEFT, QUIT
   if(view.child==0)return 1;
 
-#ifdef ENABLER
-  if(shutdown_interface_for_ms>0) {
-    // TODO
-    enabler.clear_input();     //CLEAR ALL THE KEYS
-    if(enabler.now-shutdown_interface_tickcount>=shutdown_interface_for_ms||
-       shutdown_interface_tickcount>enabler.now) shutdown_interface_for_ms=0;
-  }
-#endif
+  // if(shutdown_interface_for_ms>0) {
+  //   // FIXME ASKTOADY
+  //   enabler.clear_input();     //CLEAR ALL THE KEYS
+  //   if(enabler.now-shutdown_interface_tickcount>=shutdown_interface_for_ms||
+  //      shutdown_interface_tickcount>enabler.now) shutdown_interface_for_ms=0;
+  // }
 
   //GRAB CURRENT SCREEN AT THE END OF THE LIST
   viewscreenst *currentscreen=&view;
@@ -863,11 +849,11 @@ char interfacest::loop() {
   //MOVE SCREENS BACK
   switch(currentscreen->breakdownlevel) {
   case INTERFACE_BREAKDOWN_NONE: {
-    //FRAME COUNT
-    if(gps.display_frames && !enabler.doing_buffer_draw()) {
-      QueryPerformanceCounter(&gps.print_time[gps.print_index]);
-      gps.print_index=(gps.print_index+1)%100;
-    }
+    //FRAME COUNT FIXME ASKTOADY
+    // if(gps.display_frames && !enabler.doing_buffer_draw()) {
+    //   QueryPerformanceCounter(&gps.print_time[gps.print_index]);
+    //   gps.print_index=(gps.print_index+1)%100;
+    // }
     
     if (currentscreen->child==NULL) currentscreen->logic();
 
@@ -884,12 +870,10 @@ char interfacest::loop() {
       } else {
         // Feed input
         set<InterfaceKey> era = enabler.get_input(now);
-        if (era.size() == 0)
-			{
-			if(enabler.mouse_lbut||
-				enabler.mouse_rbut)currentscreen->feed(era);
-			break;
-			}
+        if (era.size() == 0) {
+          if(enabler.mouse_lbut || enabler.mouse_rbut) currentscreen->feed(era);
+          break;
+        }
         currentscreen->feed(era);
         if (era.count(INTERFACEKEY_TOGGLE_FULLSCREEN)) {
           enabler.toggle_fullscreen();
@@ -923,13 +907,13 @@ char interfacest::loop() {
           currentscreen->help();
         // Zoom commands
         if (era.count(INTERFACEKEY_ZOOM_IN))
-          zoom_display(zoom_in);
+          enabler.zoom_display(zoom_in);
         if (era.count(INTERFACEKEY_ZOOM_OUT))
-          zoom_display(zoom_out);
+          enabler.zoom_display(zoom_out);
         if (era.count(INTERFACEKEY_ZOOM_TOGGLE))
-          zoom_display(zoom_toggle_gridzoom);
+          enabler.zoom_display(zoom_toggle_gridzoom);
         if (era.count(INTERFACEKEY_ZOOM_RESET))
-          zoom_display(zoom_reset);
+          enabler.zoom_display(zoom_reset);
         // Macro commands
         if (era.count(INTERFACEKEY_RECORD_MACRO)) {
           if (enabler.is_recording())
@@ -1156,10 +1140,8 @@ void interfacest::read_movie_chunk(long &maxmoviepos,char &is_playing)
                                 cmh.dimx=byteswap(cmh.dimx);
                                 cmh.dimy=byteswap(cmh.dimy);
                                 cmh.delayrate=byteswap(cmh.delayrate);
-                                
-                                resize_grid(cmh.dimx, cmh.dimy);
-                                lock_grid();
-				gps.prepare_rect(0);
+
+                                enabler.override_grid_size(cmh.dimx, cmh.dimy);
 
 				gview.supermovie_delayrate=cmh.delayrate;
 				gview.supermovie_delaystep=cmh.delayrate;
@@ -1263,15 +1245,13 @@ void interfacest::read_movie_chunk(long &maxmoviepos,char &is_playing)
 			else
 				{
 				is_playing=0;
-                                unlock_grid();
-                                resize_grid(init.display.orig_grid_x, init.display.orig_grid_y);
+                                enabler.release_grid_size();
 				}
 			}
 		else
 			{
 			is_playing=0;
-                        unlock_grid();
-                        resize_grid(init.display.orig_grid_x, init.display.orig_grid_y);
+                        enabler.release_grid_size();
 			}
 
 		f.close();
@@ -1279,8 +1259,7 @@ void interfacest::read_movie_chunk(long &maxmoviepos,char &is_playing)
 	else
 		{
 		is_playing=0;
-                unlock_grid();
-                resize_grid(init.display.orig_grid_x, init.display.orig_grid_y);
+                enabler.release_grid_size();
 		}
 }
 

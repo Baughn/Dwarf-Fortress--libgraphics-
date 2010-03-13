@@ -43,8 +43,6 @@ init_displayst::init_displayst()
 	flag.set_size_on_flag_num(INIT_DISPLAY_FLAGNUM);
 	windowed=INIT_DISPLAY_WINDOW_PROMPT;
 
-	dwarf_frame_rate.QuadPart=enabler.qpfr.QuadPart/100;
-
 	partial_print_count=0;
 }
 
@@ -86,23 +84,23 @@ void initst::begin()
 					}
 				if(!token.compare("WINDOWEDX"))
 					{
-					enabler.desired_windowed_width=convert_string_to_long(token2);
+					display.desired_windowed_width=convert_string_to_long(token2);
 					}
 				if(!token.compare("WINDOWEDY"))
 					{
-					enabler.desired_windowed_height=convert_string_to_long(token2);
+					display.desired_windowed_height=convert_string_to_long(token2);
 					}
                                 if(!token.compare("RESIZABLE")) {
                                   if (token2=="NO")
-                                    init.display.flag.add_flag(INIT_DISPLAY_FLAG_NOT_RESIZABLE);
+                                    display.flag.add_flag(INIT_DISPLAY_FLAG_NOT_RESIZABLE);
                                 }
 				if(!token.compare("FULLSCREENX"))
 					{
-					enabler.desired_fullscreen_width=convert_string_to_long(token2);
+					display.desired_fullscreen_width=convert_string_to_long(token2);
 					}
 				if(!token.compare("FULLSCREENY"))
 					{
-					enabler.desired_fullscreen_height=convert_string_to_long(token2);
+					display.desired_fullscreen_height=convert_string_to_long(token2);
 					}
 
 				if(token=="PRINT_MODE")
@@ -206,19 +204,19 @@ void initst::begin()
 						}
 					if(!token.compare("GRAPHICS_WINDOWEDX"))
 						{
-						enabler.desired_windowed_width=convert_string_to_long(token2);
+						display.desired_windowed_width=convert_string_to_long(token2);
 						}
 					if(!token.compare("GRAPHICS_WINDOWEDY"))
 						{
-						enabler.desired_windowed_height=convert_string_to_long(token2);
+						display.desired_windowed_height=convert_string_to_long(token2);
 						}
 					if(!token.compare("GRAPHICS_FULLSCREENX"))
 						{
-						enabler.desired_fullscreen_width=convert_string_to_long(token2);
+						display.desired_fullscreen_width=convert_string_to_long(token2);
 						}
 					if(!token.compare("GRAPHICS_FULLSCREENY"))
 						{
-						enabler.desired_fullscreen_height=convert_string_to_long(token2);
+						display.desired_fullscreen_height=convert_string_to_long(token2);
 						}
 					if(!token.compare("GRAPHICS_BLACK_SPACE"))
 						{
@@ -297,7 +295,7 @@ void initst::begin()
 					}
                                 if(token=="ARB_SYNC") {
                                   if (token2 == "ON")
-                                    init.display.flag.add_flag(INIT_DISPLAY_FLAG_ARB_SYNC);
+                                    display.flag.add_flag(INIT_DISPLAY_FLAG_ARB_SYNC);
                                 }
 
 #ifdef WIN32
@@ -360,19 +358,11 @@ void initst::begin()
 					}
 				if(!token.compare("FPS_CAP"))
 					{
-					long fps=convert_string_to_long(token2);
-					if(fps>1000)fps=1000;
-                                        if(fps==0)fps=2147483647;
-					if(fps<1)fps=1;
-					display.dwarf_frame_rate.QuadPart=enabler.qpfr.QuadPart/fps;
+                                          enabler.set_fps(convert_string_to_long(token2));
 					}
 				if(!token.compare("G_FPS_CAP"))
 					{
-					long fps=convert_string_to_long(token2);
-					if(fps>50)fps=50;
-					if(fps<1)fps=1;
-					display.g_frame_rate.QuadPart=enabler.qpfr.QuadPart/fps;
-					enabler.g_qprate=display.g_frame_rate;
+                                          enabler.set_gfps(convert_string_to_long(token2));
 					}
 				if(token=="WINDOWED")
 					{
@@ -650,60 +640,46 @@ void initst::begin()
 			}
 		}
 	fseed2.close();
+        
+#ifdef _DEBUG
+        enabler.window.isFullScreen = FALSE;
+#else
+        
+        //FULL SCREEN QUERY, UNLESS IT'S ALREADY SET IN INIT
 
-	#ifdef _DEBUG
-		enabler.window.isFullScreen = FALSE;
-	#else
-
-	//FULL SCREEN QUERY, UNLESS IT'S ALREADY SET IN INIT
-	if(enabler.command_line.empty())
-		{
-		if(display.windowed==INIT_DISPLAY_WINDOW_TRUE)
-			{
-			enabler.window.init.isFullScreen = FALSE;
-			}
-		else if(display.windowed==INIT_DISPLAY_WINDOW_FALSE)
-			{
-			enabler.window.init.isFullScreen = TRUE;
-			}
-		else
-			{
-			if (MessageBox (NULL, "Run in Fullscreen Mode?  You can set your preferences in data\\init\\init.txt.\rUnless you've changed your bindings, you can press F11 to toggle this setting any time.", "Start FullScreen?", MB_YESNO | MB_ICONQUESTION) == IDNO)
-				{
-				enabler.window.init.isFullScreen = FALSE;								// If Not, Run In Windowed Mode
-				}
-			}
-		}
-	else enabler.window.init.isFullScreen = FALSE;
-	#endif
-
-	enabler.create_full_screen = enabler.window.init.isFullScreen;						// create_full_screen Is Set To User Default
-
-	if(enabler.create_full_screen)
-		{
-		display.grid_x=display.large_grid_x;
-		display.grid_y=display.large_grid_y;
-		}
-	else
-		{
-		display.grid_x=display.small_grid_x;
-		display.grid_y=display.small_grid_y;
-		}
-	display.orig_grid_x=display.grid_x;
-	display.orig_grid_y=display.grid_y;
-
-	enabler.inactive_mode=0;
+        if (!display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
+          if(enabler.command_line.empty())
+            {
+              if(display.windowed==INIT_DISPLAY_WINDOW_TRUE)
+                {
+                  enabler.fullscreen = false;
+                }
+              else if(display.windowed==INIT_DISPLAY_WINDOW_FALSE)
+                {
+                  enabler.fullscreen = true;
+                }
+              else
+                {
+                  if (MessageBox (NULL, "Run in Fullscreen Mode?  You can set your preferences in data\\init\\init.txt.\rUnless you've changed your bindings, you can press F11 to toggle this setting any time.", "Start FullScreen?", MB_YESNO | MB_ICONQUESTION) == IDNO) {
+                    enabler.fullscreen = false; // If Not, Run In Windowed Mode
+                  } else {
+                    enabler.fullscreen = true;
+                  }
+                }
+            }
+          else enabler.fullscreen = false;
+        }
+#endif
+        
 
 	enabler.textures.load_multi_pdim(small_font,font.small_font_texpos,16,16,true,&font.small_font_dispx,&font.small_font_dispy);
 	enabler.textures.load_multi_pdim(large_font,font.large_font_texpos,16,16,true,&font.large_font_dispx,&font.large_font_dispy);
 
         // compute the desired window size, if set to auto
-        if (enabler.desired_windowed_width < MAX_GRID_X && enabler.desired_windowed_height < MAX_GRID_Y) {
-          int dimx = MAX(enabler.desired_windowed_width,80);
-          int dimy = MAX(enabler.desired_windowed_height,25);
-          enabler.desired_windowed_width = font.small_font_dispx * dimx;
-          enabler.desired_windowed_height = font.small_font_dispy * dimy;
+        if (display.desired_windowed_width < MAX_GRID_X && display.desired_windowed_height < MAX_GRID_Y) {
+          int dimx = MAX(display.desired_windowed_width,80);
+          int dimy = MAX(display.desired_windowed_height,25);
+          display.desired_windowed_width = font.small_font_dispx * dimx;
+          display.desired_windowed_height = font.small_font_dispy * dimy;
         }
-
-	gps.prepare_rect(1);
 }

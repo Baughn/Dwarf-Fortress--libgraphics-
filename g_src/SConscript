@@ -2,11 +2,11 @@
 from sys import platform
 import os
 
-src_dll = ["basics.cpp","command_line.cpp","enabler_sdl.cpp","files.cpp",
+src_dll = ["basics.cpp","command_line.cpp","enabler.cpp","files.cpp",
            "find_files_posix.cpp","graphics.cpp","init.cpp","interface.cpp",
            "keybindings.cpp","music_and_sound_openal.cpp", "random.cpp",
            "textlines.cpp","glew.c","enabler_input.cpp","ViewBase.cpp",
-           "KeybindingScreen.cpp"]
+           "KeybindingScreen.cpp", "win32_compat.cpp", "renderer_opengl.cpp"]
 
 dll  = '#libs/libgraphics.so'
 
@@ -18,6 +18,8 @@ clang = False
 
 libgraphics = False
 tetris = True
+
+M64 = True
 
 # Propagate PATH. We'll just take our chances with non-repeatable builds.
 env = Environment(ENV = {'PATH' : os.environ['PATH']})
@@ -58,7 +60,7 @@ env["CPPPATH"].append('#g_src/glext')
 env["CCFLAGS"].append('-DGLEW_STATIC') # Should only be needed on windows, but can't hurt.
 
 # Generic unix, including Linux
-if not clang:
+if not clang and not M64:
    env['ASFLAGS']="--32"
    env['LINKFLAGS'].append("-m32")
    env["CCFLAGS"].append("-m32")

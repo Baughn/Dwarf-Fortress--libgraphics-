@@ -50,20 +50,21 @@ enum InitDisplayWindow
 
 class init_displayst
 {
-	public:
-		flagarrayst flag;
-		InitDisplayWindow windowed;
-		LARGE_INTEGER dwarf_frame_rate;
-		LARGE_INTEGER g_frame_rate;
+ public:
+  flagarrayst flag;
+  InitDisplayWindow windowed;
+  LARGE_INTEGER dwarf_frame_rate;
+  LARGE_INTEGER g_frame_rate;
 
-		long grid_x,grid_y;
-		long orig_grid_x,orig_grid_y;
-		long small_grid_x,small_grid_y;
-		long large_grid_x,large_grid_y;
+  int grid_x, grid_y; // The *current* display grid size, kept up to date
 
-		char partial_print_count;
+  int desired_fullscreen_width, desired_fullscreen_height;
+  int desired_windowed_width, desired_windowed_height;
 
-		init_displayst();
+  
+  char partial_print_count;
+  
+  init_displayst();
 };
 
 enum InitMediaFlag

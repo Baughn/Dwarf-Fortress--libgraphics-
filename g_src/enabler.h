@@ -22,11 +22,15 @@
 #include <list>
 #include <iostream>
 #include <sstream>
+#include <stack>
+#include <queue>
 
 using std::vector;
 using std::pair;
 using std::map;
 using std::list;
+using std::stack;
+using std::queue;
 
 #include "basics.h"
 #include "svector.h"
@@ -310,9 +314,6 @@ class flagarrayst
 #define COLOR_YELLOW 6
 #define COLOR_WHITE	7
 
-enum zoom_commands { zoom_in, zoom_out, zoom_toggle_gridzoom, zoom_reset };
-void zoom_display(enum zoom_commands command);
-
 enum ColorData
   {
     COLOR_DATA_WHITE_R,
@@ -359,9 +360,6 @@ enum render_phase {
   complete,
   phase_count
 };
-
-// From graphics.cpp
-void render_things(enum render_phase);
 
 // A tuple of everything that 2D tile rendering depends on
 struct texture_fullid {
@@ -463,92 +461,92 @@ class shader {
   }
 };
 
-class gridrectst
-{
-  friend class enablerst;
+/* class gridrectst */
+/* { */
+/*   friend class enablerst; */
 
-  void render_gl(render_phase, bool clear);
-  void render_2d(bool clear);
-  void render_curses(bool clear);
-  void render_shader(render_phase, bool clear);
+/*   void render_gl(render_phase, bool clear); */
+/*   void render_2d(bool clear); */
+/*   void render_curses(bool clear); */
+/*   void render_shader(render_phase, bool clear); */
 
-  // A tile cache for 2D mode
-  map<texture_fullid, SDL_Surface*> tile_cache;
-  SDL_Surface *tile_cache_lookup(texture_fullid &id);
+/*   // A tile cache for 2D mode */
+/*   map<texture_fullid, SDL_Surface*> tile_cache; */
+/*   SDL_Surface *tile_cache_lookup(texture_fullid &id); */
 
-  void update_viewport();
+/*   void update_viewport(); */
   
- public:
-  long id;
+/*  public: */
+/*   long id; */
 
-  //FUNCTIONS
-  static gridrectst *create(long newdimx,long newdimy);
-  void render(render_phase, bool clear);
+/*   //FUNCTIONS */
+/*   static gridrectst *create(long newdimx,long newdimy); */
+/*   void render(render_phase, bool clear); */
 
-  //THE DIMENSIONS
-  long dimx,dimy;
+/*   //THE DIMENSIONS */
+/*   long dimx,dimy; */
 
-  //THE BUFFER
-  vector<long> buffer_texpos;
-  vector<float> buffer_r;
-  vector<float> buffer_g;
-  vector<float> buffer_b;
-  vector<float> buffer_br;
-  vector<float> buffer_bg;
-  vector<float> buffer_bb;
-  vector<char> s_buffer_count;
-  /* bool use_s_buffer_tiles; */
-  /* int s_buffer_tiles_size; */
-  list<int> s_buffer_tiles; // A fixed-size list of tiles with buffer_count >= 0.
+/*   //THE BUFFER */
+/*   vector<long> buffer_texpos; */
+/*   vector<float> buffer_r; */
+/*   vector<float> buffer_g; */
+/*   vector<float> buffer_b; */
+/*   vector<float> buffer_br; */
+/*   vector<float> buffer_bg; */
+/*   vector<float> buffer_bb; */
+/*   vector<char> s_buffer_count; */
+/*   /\* bool use_s_buffer_tiles; *\/ */
+/*   /\* int s_buffer_tiles_size; *\/ */
+/*   list<int> s_buffer_tiles; // A fixed-size list of tiles with buffer_count >= 0. */
 
-  long dispx,dispy;
-  char black_space;
+/*   long dispx,dispy; */
+/*   char black_space; */
 
-  void dirty(int x, int y, int w, int h); // Dirty a rectangle so it'll be redrawn
+/*   void dirty(int x, int y, int w, int h); // Dirty a rectangle so it'll be redrawn */
   
-  //THREE-DIMENSIONAL DISPLAY
-  float tri[TRIMAX][3];
-  float tricol[TRIMAX][4];
-  long trinum;
-  float view_z,view_angle;
+/*   //THREE-DIMENSIONAL DISPLAY */
+/*   float tri[TRIMAX][3]; */
+/*   float tricol[TRIMAX][4]; */
+/*   long trinum; */
+/*   float view_z,view_angle; */
 
-  void add_triangle(float t11,float t12,float t13,float tc1r,float tc1g,float tc1b,float tc1a,
-		    float t21,float t22,float t23,float tc2r,float tc2g,float tc2b,float tc2a,
-		    float t31,float t32,float t33,float tc3r,float tc3g,float tc3b,float tc3a);
-  void allocate(long newdimx,long newdimy);
-  void clean();
+/*   void add_triangle(float t11,float t12,float t13,float tc1r,float tc1g,float tc1b,float tc1a, */
+/* 		    float t21,float t22,float t23,float tc2r,float tc2g,float tc2b,float tc2a, */
+/* 		    float t31,float t32,float t33,float tc3r,float tc3g,float tc3b,float tc3a); */
+/*   void allocate(long newdimx,long newdimy); */
+/*   void clean(); */
 
-  void init_gl();
-  void uninit_gl();
+/*   void init_gl(); */
+/*   void uninit_gl(); */
 
- private:
-  //FUNCTIONS
-  gridrectst(long newdimx,long newdimy);
-  ~gridrectst();
+/*  private: */
+/*   //FUNCTIONS */
+/*   gridrectst(long newdimx,long newdimy); */
+/*   ~gridrectst(); */
 
-  bool gl_initialized;
-  // Arrays for vertex, texture and color data, overloaded as VBO mapping pointers in VBO mode
-  bool vertices_initialized; // Used to skip rewriting them in standard and VBO mode
-  vector<GLfloat> buf_vertex, buf_tex;
-  vector<GLfloat> buf_bg_color, buf_fg_color;
-  // True if accumulation buffer is used
-  bool accum_buffer;
-  // Framebuffer reference for partial-printing, or 0 if there is none
-  GLuint framebuffer;
-  bool framebuffer_initialized;
-  GLuint fb_texture, fb_depth;
-  GLuint fb_draw_list;
-  // VBO references, vbo_refs[0]=0 if they are unused.
-  uint32_t vbo_refs[4];
-  // Number of tiles setup to be rendered
-  int tile_count;
+/*   bool gl_initialized; */
+/*   // Arrays for vertex, texture and color data, overloaded as VBO mapping pointers in VBO mode */
+/*   bool vertices_initialized; // Used to skip rewriting them in standard and VBO mode */
+/*   vector<GLfloat> buf_vertex, buf_tex; */
+/*   vector<GLfloat> buf_bg_color, buf_fg_color; */
+/*   // True if accumulation buffer is used */
+/*   bool accum_buffer; */
+/*   // Framebuffer reference for partial-printing, or 0 if there is none */
+/*   GLuint framebuffer; */
+/*   bool framebuffer_initialized; */
+/*   GLuint fb_texture, fb_depth; */
+/*   GLuint fb_draw_list; */
+/*   // VBO references, vbo_refs[0]=0 if they are unused. */
+/*   uint32_t vbo_refs[4]; */
+/*   // Number of tiles setup to be rendered */
+/*   int tile_count; */
 
- public:
-  // SHADER mode
-  texture_bo shader_coords, shader_fontmap;
-  GLuint shader_program, shader_fragment, shader_vertex, shader_grid;
-  GLuint frame_location;
-};
+/*  public: */
+/*   // SHADER mode */
+/*   texture_bo shader_coords, shader_fontmap; */
+/*   GLuint shader_program, shader_fragment, shader_vertex, shader_grid; */
+/*   GLuint frame_location; */
+/* }; */
 
 
 class text_info_elementst
@@ -858,195 +856,261 @@ typedef struct {									// Window Creation Info
 
 typedef struct {									// Contains Information Vital To A Window
   GL_WindowInit		init;						// Window Init
-  BOOL				isVisible;					// Window Visible?
-} GL_Window;										// GL_Window
+  BOOL				isVisible;				// Window Visible?
+} GL_Window;								// GL_Window
+
+class renderer {
+ public:
+  virtual void update_tile(int x, int y) = 0;
+  virtual void update_all() = 0;
+  virtual void render() = 0;
+  virtual void set_fullscreen(bool full) {}
+};
+
+enum zoom_commands { zoom_in, zoom_out, zoom_toggle_gridzoom, zoom_reset };
 
 class enablerst : public enabler_inputst
 {
-  friend class gridrectst;
-  friend class tilest;
-  friend class textures;
+  friend class initst;
 
- public:
-  GL_Window			window;											// Window Structure
-  BOOL				isMessagePumpActive;							// Message Pump Active?
-  MSG					msg;											// Window Message Structure
-
-  int desired_windowed_width,desired_windowed_height;
-  int desired_fullscreen_width,desired_fullscreen_height;
-  unsigned long flag;
-  char tracking_on;
+  float ccolor[16][3]; // The curses-RGB mapping used for non-curses display modes
 
   string command_line;
+  bool fullscreen;
+  stack<pair<int,int> > overridden_grid_sizes;
 
+  class renderer *renderer;
 
-  int loop(void);
-
-  void terminate_application(GL_Window* window);
-  char create_full_screen;
-  char inactive_mode;
-  void reshape_GL(int width,int height);
-  void render(enum render_phase);
-  void render_tiles(enum render_phase, bool clear);
-  void graphicsinit();
-  long gridrect_create(long dimx,long dimy);
-  long cursesrect_create(long font_id,long x,long y,long dimx,long dimy);
-  gridrectst *get_gridrect(long rect_id);
-  void toggle_fullscreen()
-  {
-    toggle_fullscreen(&window);
-  }
-  // Display a particular tile at a particular window-relative location
-  // Pass -1 as tex_pos to remove a particular tile. Using the same id twice
-  // overwrites the last call.
-  void set_tile(long tex_pos, int id, int x, int y);
-  void add_gennum_tile(long gennum,double dimx,double dimy,double letx,double lety,char alpha);
-  void set_color(float r,float g,float b,float a=1);
-  void enable_fade(float r,float g,float b,float a,float t);
-  void disable_fade();
-  void set_font(long font_id)
-  {
-    active_font_id=font_id;
-  }
-  void print_string(const string &str,char centered=0,short length_lim=1000,char crammed_lets=0);
-  void set_center(double newx,double newy)
-  {
-    center_x=newx;
-    center_y=newy;
-  }
-  void set_clear_color(float newr,float newg,float newb,float newa)
-  {
-    if(fade_t==0)
-      {
-	clear_r=newr;clear_g=newg;clear_b=newb;clear_a=newa;
-      }
-    else
-      {
-	clear_r=newr*(1.0f-fade_t)+fade_r*fade_t;
-	clear_g=newg*(1.0f-fade_t)+fade_g*fade_t;
-	clear_b=newb*(1.0f-fade_t)+fade_b*fade_t;
-	clear_a=newa*(1.0f-fade_t)+fade_a*fade_t;
-      }
-  }
-  unsigned long get_timer()
-  {
-    if(main_qprate.QuadPart==0)return 0;
-    else return qpc.QuadPart;
-  }
-
-void copy_texture_data(unsigned char *dest,long destx,long desty,char destalpha,
-			unsigned char *src,long srcx,long srcy,char srcalpha,
-			long offx,long offy,
-			float rmult,float gmult,float bmult,char use_trans,long *color_data=NULL,unsigned long flag=0);
-
-void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,long alpha,string &filename);
-
-
- void flip_uchar_array(unsigned char *buff,long dimx,long dimy,long bytes_per_pixel,unsigned long flag);
- void get_texture_data_dims(long pos,short &width,short &height,char &alpha);
-
-  void read_pixels(int x,int y,int width,int height,unsigned char *buffer);
-
-  enablerst();
-  ~enablerst()
-    {
-      long t;
-      for(t=(long)gridrect.size()-1;t>=0;t--)
-	{
-	  delete gridrect[t];
-	}
-      gridrect.clear();
-    }
-  void enable_buffer_draw(){buffer_draw=1;}
-  void disable_buffer_draw(){buffer_draw=0;}
-  char doing_buffer_draw(){return buffer_draw;}
-
-  LARGE_INTEGER qpfr;
-  LARGE_INTEGER main_qprate,qprate,g_qprate;
-  LARGE_INTEGER qpc,qpc2,g_qpc;
-		
-  double frames_outstanding;
-  SDL_cond *timer_cond;
+  // Frame timing calculations
+  int calculated_fps, calculated_gfps;
+  queue<int> frame_timings, gframe_timings; // Milisecond lengths of the last few frames
+  int frame_sum, gframe_sum;
+  int frame_last, gframe_last; // SDL_GetTick returns
+  void do_update_fps(queue<int> &q, int &sum, int &last, int &calc);
+  void update_fps();
+  void update_gfps();
+  SDL_cond *timer_cond; // Triggered once per gframe, for wake-up calls
   SDL_mutex *dummy_mutex;
 
-  Uint32 now; //we only need to be getting the tick time once
-
-  unsigned long current_render_count;
-  unsigned long secondary_render_count;
-
-  long oldmouse_x,oldmouse_y,mouse_x,mouse_y;
-  char mouse_lbut,mouse_rbut;
-  char mouse_lbut_down,mouse_rbut_down;
-  char mouse_lbut_lift,mouse_rbut_lift;
-
-  text_systemst text_system;
-  char change_screen_resolution (int width, int height, int bitsPerPixel);
-
-  void refresh_tiles();
-
-  float ccolor[16][3];
-  int window_width,window_height;
-
-  void do_frame();
-  class textures textures;
-
- private:
-  long next_tile_slot;
-  long active_font_id;
-
-  char is_program_looping;
-  svector<gridrectst *> gridrect;
-  long next_gridrect_id;
-  long next_texture_id;
-  long next_texture_data_id;
-  double locx,locy,locz;
-  double center_x,center_y;
-  float color_r,color_g,color_b,color_a;
-  float clear_r,clear_g,clear_b,clear_a;
-  float fade_r,fade_g,fade_b,fade_a,fade_t;
-  char buffer_draw;
-
-  // Tile-map used by set_tile
-  map<int,struct tile> tiles;
-  // Vertex and texture arrays generated from above map
-  GLfloat *tile_vertices;
-  GLfloat *tile_texcoords;
-
-
-  char create_window_GL (GL_Window* window);
-  char destroy_window_GL (GL_Window* window);
-  char register_window_class (void);
-  void toggle_fullscreen(GL_Window* window);
-  void create_textures();
-  void remove_textures();
-
-  GLsync sync;
-
+  int fps, gfps;
  public:
-  bool RunningMacro;
-  bool use_opengl; // If false, everything goes via SDL 2D output instead
-
-  void reset_gl(GL_Window* window);
-  void reset_gl()
-  {
-    reset_gl(&window);
-  }
-
-  bool prep_for_image_export();
-  void post_image_export();
   
-  int calculate_fps();
+  enablerst();
+  unsigned long flag; // ENABLERFLAG_RENDER, ENABLERFLAG_MAXFPS
+
+  int loop(string cmdline);
+  void do_frame();
+
+  // Renderer interface
+  // The update functions read their data from gps, and do whatever preparations are necessary
+  // for render() to do its job
+  void update_tile(int x, int y) { renderer->update_tile(x,y); }
+  void update_all() { renderer->update_all(); } // Renders the *entire* array, thus reducing function calls
+  void render() { renderer->render(); }         // Draw the frame to screen
+  
+  // Framerate interface
+  void set_fps(int fps);
+  void set_gfps(int gfps);
+  int get_fps() { return fps; }
+  int get_gfps() { return gfps; }
+  int calculate_fps();  // Calculate the actual provided (G)FPS
   int calculate_gfps();
+
+  // Mouse interface
+  void get_mouse_coords(int &x, int &y);
+  char mouse_lbut,mouse_rbut;
+
+  // OpenGL state (wrappers)
+  class textures textures; // Font/graphics texture catalog
+  GLsync sync; // Rendering barrier
+  
+  // Grid-size interface
+  void override_grid_size(int w, int h); // Pick a /particular/ grid-size
+  void release_grid_size(); // Undoes override_grid_size
+  void zoom_display(zoom_commands command);
+
+  
+  // Window management
+  bool is_fullscreen() { return fullscreen; }
+  void toggle_fullscreen() {
+    if (fullscreen) renderer->set_fullscreen(false);
+    else renderer->set_fullscreen(true);
+    fullscreen = !fullscreen;
+  }
+  
+/*   friend class gridrectst; */
+/*   friend class tilest; */
+/*   friend class textures; */
+  
+/*   unsigned long flag; // ENABLERFLAG_RENDER, ENABLERFLAG_MAXFPS */
+/*   char tracking_on;   // Whether we're tracking the mouse or not */
+
+/*   string command_line; */
+
+
+/*   int loop(void); */
+
+/*   void terminate_application(GL_Window* window); */
+/*   char create_full_screen; */
+/*   char inactive_mode; */
+/*   void reshape_GL(int width,int height); */
+/*   void render(enum render_phase); */
+/*   void render_tiles(enum render_phase, bool clear); */
+/*   void graphicsinit(); */
+/*   long gridrect_create(long dimx,long dimy); */
+/*   long cursesrect_create(long font_id,long x,long y,long dimx,long dimy); */
+/*   gridrectst *get_gridrect(long rect_id); */
+/*   void toggle_fullscreen() */
+/*   { */
+/*     toggle_fullscreen(&window); */
+/*   } */
+/*   // Display a particular tile at a particular window-relative location */
+/*   // Pass -1 as tex_pos to remove a particular tile. Using the same id twice */
+/*   // overwrites the last call. */
+/*   void set_tile(long tex_pos, int id, int x, int y); */
+/*   void add_gennum_tile(long gennum,double dimx,double dimy,double letx,double lety,char alpha); */
+/*   void set_color(float r,float g,float b,float a=1); */
+/*   void enable_fade(float r,float g,float b,float a,float t); */
+/*   void disable_fade(); */
+/*   void set_font(long font_id) */
+/*   { */
+/*     active_font_id=font_id; */
+/*   } */
+/*   void print_string(const string &str,char centered=0,short length_lim=1000,char crammed_lets=0); */
+/*   void set_center(double newx,double newy) */
+/*   { */
+/*     center_x=newx; */
+/*     center_y=newy; */
+/*   } */
+/*   void set_clear_color(float newr,float newg,float newb,float newa) */
+/*   { */
+/*     if(fade_t==0) */
+/*       { */
+/* 	clear_r=newr;clear_g=newg;clear_b=newb;clear_a=newa; */
+/*       } */
+/*     else */
+/*       { */
+/* 	clear_r=newr*(1.0f-fade_t)+fade_r*fade_t; */
+/* 	clear_g=newg*(1.0f-fade_t)+fade_g*fade_t; */
+/* 	clear_b=newb*(1.0f-fade_t)+fade_b*fade_t; */
+/* 	clear_a=newa*(1.0f-fade_t)+fade_a*fade_t; */
+/*       } */
+/*   } */
+/*   unsigned long get_timer() */
+/*   { */
+/*     if(main_qprate.QuadPart==0)return 0; */
+/*     else return qpc.QuadPart; */
+/*   } */
+
+/* void copy_texture_data(unsigned char *dest,long destx,long desty,char destalpha, */
+/* 			unsigned char *src,long srcx,long srcy,char srcalpha, */
+/* 			long offx,long offy, */
+/* 			float rmult,float gmult,float bmult,char use_trans,long *color_data=NULL,unsigned long flag=0); */
+
+/* void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,long alpha,string &filename); */
+
+
+/*  void flip_uchar_array(unsigned char *buff,long dimx,long dimy,long bytes_per_pixel,unsigned long flag); */
+/*  void get_texture_data_dims(long pos,short &width,short &height,char &alpha); */
+
+/*   void read_pixels(int x,int y,int width,int height,unsigned char *buffer); */
+
+/*   enablerst(); */
+/*   ~enablerst() */
+/*     { */
+/*       long t; */
+/*       for(t=(long)gridrect.size()-1;t>=0;t--) */
+/* 	{ */
+/* 	  delete gridrect[t]; */
+/* 	} */
+/*       gridrect.clear(); */
+/*     } */
+/*   void enable_buffer_draw(){buffer_draw=1;} */
+/*   void disable_buffer_draw(){buffer_draw=0;} */
+/*   char doing_buffer_draw(){return buffer_draw;} */
+
+/*   LARGE_INTEGER qpfr; */
+/*   LARGE_INTEGER main_qprate,qprate,g_qprate; */
+/*   LARGE_INTEGER qpc,qpc2,g_qpc; */
+		
+/*   double frames_outstanding; */
+
+/*   Uint32 now; //we only need to be getting the tick time once */
+
+/*   unsigned long current_render_count; */
+/*   unsigned long secondary_render_count; */
+
+/*   long oldmouse_x,oldmouse_y,mouse_x,mouse_y; */
+/*   char mouse_lbut_down,mouse_rbut_down; */
+/*   char mouse_lbut_lift,mouse_rbut_lift; */
+
+/*   text_systemst text_system; */
+/*   char change_screen_resolution (int width, int height, int bitsPerPixel); */
+
+/*   void refresh_tiles(); */
+
+/*   int window_width,window_height; */
+
+/*   void do_frame(); */
+/*   class textures textures; */
+
+/*  private: */
+/*   long next_tile_slot; */
+/*   long active_font_id; */
+
+/*   char is_program_looping; */
+/*   svector<gridrectst *> gridrect; */
+/*   long next_gridrect_id; */
+/*   long next_texture_id; */
+/*   long next_texture_data_id; */
+/*   double locx,locy,locz; */
+/*   double center_x,center_y; */
+/*   float color_r,color_g,color_b,color_a; */
+/*   float clear_r,clear_g,clear_b,clear_a; */
+/*   float fade_r,fade_g,fade_b,fade_a,fade_t; */
+/*   char buffer_draw; */
+
+/*   // Tile-map used by set_tile */
+/*   map<int,struct tile> tiles; */
+/*   // Vertex and texture arrays generated from above map */
+/*   GLfloat *tile_vertices; */
+/*   GLfloat *tile_texcoords; */
+
+
+/*   char create_window_GL (GL_Window* window); */
+/*   char destroy_window_GL (GL_Window* window); */
+/*   char register_window_class (void); */
+/*   void toggle_fullscreen(GL_Window* window); */
+/*   void create_textures(); */
+/*   void remove_textures(); */
+
+/*   GLsync sync; */
+
+/*  public: */
+/*   bool RunningMacro; */
+/*   bool use_opengl; // If false, everything goes via SDL 2D output instead */
+
+/*   void reset_gl(GL_Window* window); */
+/*   void reset_gl() */
+/*   { */
+/*     reset_gl(&window); */
+/*   } */
+
+/*   bool prep_for_image_export(); */
+/*   void post_image_export(); */
+  
 };
 
 void convert_to_rgb(float &r,float &g,float &b,char col,char bright);
 #endif
 
-pair<int,int> window_to_grid(int x, int y);
-pair<int,int> resize_grid(const int w_req, const int h_req);
-void lock_grid();
-void unlock_grid();
-void reset_window_sdl(bool resizing = false);
+/* pair<int,int> window_to_grid(int x, int y); */
+/* pair<int,int> resize_grid(const int w_req, const int h_req); */
+
+// Function prototypes for deep-DF calls
+char beginroutine();
+char mainloop();
+void endroutine();
 
 extern enablerst enabler;
 

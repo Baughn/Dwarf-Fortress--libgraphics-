@@ -23,12 +23,13 @@ class graphicst
 		long screenx,screeny;
 		short screenf,screenb;
 		char screenbright;
+
+		unsigned char *screen;
 		long *screentexpos;
 		char *screentexpos_addcolor;
 		unsigned char *screentexpos_grayscale;
 		unsigned char *screentexpos_cf;
 		unsigned char *screentexpos_cbr;
-		unsigned char *screen;
 
                 // Shader-mode stuff
                 int pbo_mapped; // -1 if PBOs not in use, otherwise an index into shader_pbo
@@ -129,8 +130,6 @@ class graphicst
 
 		void prepare_graphics();
 
-		void prepare_rect(char n_orig);
-
 		void gray_out_rect(long sx,long ex,long sy,long ey)
                 {
                   long x,y;
@@ -169,5 +168,7 @@ class graphicst
 };
 
 extern graphicst gps;
+// From graphics.cpp
+void render_things();
 
 #endif

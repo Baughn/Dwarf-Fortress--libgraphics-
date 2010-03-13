@@ -8,4 +8,6 @@
 #include "music_and_sound_fmodex.h"
  #endif // unix
 
+extern musicsoundst musicsound;
+
 #endif
