@@ -174,6 +174,8 @@ public:
     // Only reallocate the grid if it actually changes
     if (init.display.grid_x != gridx || init.display.grid_y != gridy)
       gps.allocate(gridx, gridy);
+    // But always force a full display cycle
+    gps.force_full_display_count = 1;
   }
 
   void set_fullscreen() {

@@ -178,7 +178,7 @@ void graphicst::allocate(int x, int y) {
     screen = new unsigned char[screen, x*y*4];
     memset(screen, 0, x*y*4);
     screentexpos = new long[screentexpos, x*y];
-    memset(screentexpos, 0, x*y*4);
+    memset(screentexpos, 0, x*y*sizeof(long));
     screentexpos_addcolor = new char[screentexpos_addcolor, x*y];
     memset(screentexpos_addcolor, 0, x*y);
     screentexpos_grayscale = new unsigned char[screentexpos_grayscale, x*y];
@@ -191,7 +191,7 @@ void graphicst::allocate(int x, int y) {
     screen_old = new unsigned char[screen_old, x*y*4];
     memset(screen_old, 0, x*y*4);
     screentexpos_old = new long[screentexpos_old, x*y];
-    memset(screentexpos_old, 0, x*y*4);
+    memset(screentexpos_old, 0, x*y*sizeof(long));
     screentexpos_addcolor_old = new char[screentexpos_addcolor_old, x*y];
     memset(screentexpos_addcolor_old, 0, x*y);
     screentexpos_grayscale_old = new unsigned char[screentexpos_grayscale_old, x*y];
