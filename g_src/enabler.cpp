@@ -29,7 +29,7 @@ static void report_error(const char *error_preface, const char *error_message)
   // +4 = +colon +space +newline +nul
   buf = new char[strlen(error_preface) + strlen(error_message) + 4];
   sprintf(buf, "%s: %s\n", error_preface, error_message);
-  MessageBox(NULL, buf, "SDL Error", MB_OK);
+  MessageBox(NULL, buf, "Error", MB_OK);
   fprintf(stderr, "%s", buf);
   delete [] buf;
 }
@@ -79,6 +79,7 @@ static texture_fullid screen_to_texid(int x, int y) {
 # include "renderer_curses.cpp"
 #endif
 #include "renderer_2d.cpp"
+#include "renderer_opengl.cpp"
 
 // The frame timer probably doesn't absolutely need to use globals,
 // but this code *works*. I'm not touching it.
@@ -291,9 +292,11 @@ void enablerst::eventLoop_SDL()
         break;
       case SDL_VIDEORESIZE:
         if (is_fullscreen())
-          cerr << "Caught resize event in fullscreen??\n";
-        else
+          errorlog << "Caught resize event in fullscreen??\n";
+        else {
+          gamelog << "Resizing window to " << event.resize.w << "x" << event.resize.h << endl << flush;
           ((renderer_sdl*)renderer)->resize(event.resize.w, event.resize.h);
+        }
         break;
       } // switch (event.type)
     } //while have event
@@ -326,12 +329,16 @@ int enablerst::loop(string cmdline) {
   
   // Allocate a renderer
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
+#ifdef CURSES
     renderer = new renderer_curses();
+#else
+    report_error("PRINT_MODE","TEXT not supported on windows");
+    exit(EXIT_FAILURE);
+#endif
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_2D)) {
     renderer = new renderer_2d();
   } else {
-    puts("No supported renderer selected!");
-    abort();
+    renderer = new renderer_opengl();
   }
 
   // At this point we should have a window that is setup to render DF.

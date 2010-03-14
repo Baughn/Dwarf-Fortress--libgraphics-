@@ -64,7 +64,7 @@ If you have a multi-core machine, 2DASYNC should be faster than 2D, and just as 
 
 Linux/OS X users may also use PRINT_MODE:TEXT for primitive ncurses output.
 
-[PRINT_MODE:2D]
+[PRINT_MODE:STANDARD]
 [SINGLE_BUFFER:NO]
 
 Change this to YES to keep the DF window on top of your other windows.
@@ -92,7 +92,9 @@ claim to support this will crash if asked to do so.
 
 [ARB_SYNC:OFF]
 
-This sets the applications vertical synchronization behavior.  Changing this to ON can impact your FPS if your G_FPS is high.  The other options are ON and DEFAULT.  DEFAULT uses whatever settings you have your system at in general.
+This sets the applications vertical synchronization behavior.
+Changing this to ON can impact your FPS if your G_FPS is
+high. ARB_SYNC is a better option, if your system supports it.
 
 [VSYNC:OFF]
 

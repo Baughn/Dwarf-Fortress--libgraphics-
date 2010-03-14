@@ -772,8 +772,8 @@ struct gl_texpos {
 // Being a texture catalog interface, with opengl and sdl capability
 class textures
 {
-  friend class gridrectst;
   friend class enablerst;
+  friend class renderer_opengl;
  private:
   vector<SDL_Surface *> raws;
   bool uploaded;
@@ -860,6 +860,7 @@ class enablerst : public enabler_inputst
 {
   friend class initst;
   friend class renderer_2d;
+  friend class renderer_opengl;
 
   string command_line;
   bool fullscreen;
