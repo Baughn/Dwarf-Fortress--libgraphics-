@@ -78,7 +78,10 @@ if profile:
 
 if optimize:
    if not clang:
-      env["CCFLAGS"]+=["-O3","-march=pentium3","-mfpmath=sse"]
+      if not M64:
+         env["CCFLAGS"]+=["-O3","-march=pentium3","-mfpmath=sse"]
+      else:
+         env["CCFLAGS"]+=["-O3"]
    else:
       env["CCFLAGS"].append("-O2") # Only to reduce WPO time
 
