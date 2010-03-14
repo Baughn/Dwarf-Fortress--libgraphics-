@@ -117,7 +117,7 @@ static int getch_utf8() {
   return -decode_utf8(input);
 }
 
-static void eventLoop_ncurses() {
+void enablerst::eventLoop_ncurses() {
   int x, y, oldx = 0, oldy = 0;
 
   while (loopvar) {
@@ -143,10 +143,10 @@ static void eventLoop_ncurses() {
           key = second;
         }
       }
-      enabler.add_input_ncurses(key, now, esc);
+      add_input_ncurses(key, now, esc);
     }
 
     // Run the game logic
-    enabler.do_frame();
+    do_frame();
   }
 }

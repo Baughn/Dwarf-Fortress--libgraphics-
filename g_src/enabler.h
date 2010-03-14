@@ -361,23 +361,6 @@ enum render_phase {
   phase_count
 };
 
-// A tuple of everything that 2D tile rendering depends on
-struct texture_fullid {
-  int texpos;
-  float r, g, b;
-  float br, bg, bb;
-
-  bool operator< (const struct texture_fullid &other) const {
-    if (texpos != other.texpos) return texpos < other.texpos;
-    if (r != other.r) return r < other.r;
-    if (g != other.g) return g < other.g;
-    if (b != other.b) return b < other.b;
-    if (br != other.br) return br < other.br;
-    if (bg != other.bg) return bg < other.bg;
-    return bb < other.bb;
-  }
-};
-
 class texture_bo {
   GLuint bo, tbo;
  public:
@@ -471,7 +454,6 @@ class shader {
 /*   void render_shader(render_phase, bool clear); */
 
 /*   // A tile cache for 2D mode */
-/*   map<texture_fullid, SDL_Surface*> tile_cache; */
 /*   SDL_Surface *tile_cache_lookup(texture_fullid &id); */
 
 /*   void update_viewport(); */
@@ -864,7 +846,12 @@ class renderer {
   virtual void update_tile(int x, int y) = 0;
   virtual void update_all() = 0;
   virtual void render() = 0;
-  virtual void set_fullscreen(bool full) {}
+  virtual void set_fullscreen() {} // Should read from enabler.is_fullscreen()
+};
+
+class renderer_sdl : public renderer {
+ public:
+  virtual void resize(int w, int h) = 0;
 };
 
 enum zoom_commands { zoom_in, zoom_out, zoom_toggle_gridzoom, zoom_reset };
@@ -872,15 +859,18 @@ enum zoom_commands { zoom_in, zoom_out, zoom_toggle_gridzoom, zoom_reset };
 class enablerst : public enabler_inputst
 {
   friend class initst;
-
-  float ccolor[16][3]; // The curses-RGB mapping used for non-curses display modes
+  friend class renderer_2d;
 
   string command_line;
   bool fullscreen;
   stack<pair<int,int> > overridden_grid_sizes;
 
   class renderer *renderer;
-
+  void eventLoop_SDL();
+#ifdef CURSES
+  void eventLoop_ncurses();
+#endif
+  
   // Frame timing calculations
   int calculated_fps, calculated_gfps;
   queue<int> frame_timings, gframe_timings; // Milisecond lengths of the last few frames
@@ -894,6 +884,8 @@ class enablerst : public enabler_inputst
 
   int fps, gfps;
  public:
+
+  float ccolor[16][3]; // The curses-RGB mapping used for non-curses display modes
   
   enablerst();
   unsigned long flag; // ENABLERFLAG_RENDER, ENABLERFLAG_MAXFPS
@@ -916,9 +908,9 @@ class enablerst : public enabler_inputst
   int calculate_fps();  // Calculate the actual provided (G)FPS
   int calculate_gfps();
 
-  // Mouse interface
+  // Mouse interface, such as it is
   void get_mouse_coords(int &x, int &y);
-  char mouse_lbut,mouse_rbut;
+  char mouse_lbut,mouse_rbut,mouse_lbut_down,mouse_rbut_down,mouse_lbut_lift,mouse_rbut_lift;
 
   // OpenGL state (wrappers)
   class textures textures; // Font/graphics texture catalog
@@ -933,9 +925,8 @@ class enablerst : public enabler_inputst
   // Window management
   bool is_fullscreen() { return fullscreen; }
   void toggle_fullscreen() {
-    if (fullscreen) renderer->set_fullscreen(false);
-    else renderer->set_fullscreen(true);
     fullscreen = !fullscreen;
+    renderer->set_fullscreen();
   }
   
 /*   friend class gridrectst; */
