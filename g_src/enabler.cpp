@@ -337,6 +337,15 @@ int enablerst::loop(string cmdline) {
 #endif
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_2D)) {
     renderer = new renderer_2d();
+  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER)) {
+    renderer = new renderer_accum_buffer();
+  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER)) {
+    renderer = new renderer_framebuffer();
+  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
+    if (init.display.partial_print_count)
+      renderer = new renderer_partial(init.display.partial_print_count);
+    else
+      renderer = new renderer_once();
   } else {
     renderer = new renderer_opengl();
   }

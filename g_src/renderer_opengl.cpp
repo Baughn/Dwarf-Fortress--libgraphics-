@@ -1,5 +1,6 @@
-
+// STANDARD
 class renderer_opengl : public renderer_sdl {
+protected:
   SDL_Surface *screen;
   
   bool init_video(int w, int h) {
@@ -47,7 +48,7 @@ class renderer_opengl : public renderer_sdl {
   // Vertexes, foreground color, background color, texture coordinates
   GLfloat *vertexes, *fg, *bg, *tex;
 
-  void write_tile(GLfloat x, GLfloat y, GLfloat *vertex) {
+  void write_tile_vertexes(GLfloat x, GLfloat y, GLfloat *vertex) {
     vertex[0]  = x;   // Upper left
     vertex[1]  = y;
     vertex[2]  = x+1; // Upper right
@@ -61,21 +62,30 @@ class renderer_opengl : public renderer_sdl {
     vertex[10] = x+1; // Lower right
     vertex[11] = y+1;
   }
+
+  virtual void allocate(int tiles) {
+    vertexes = static_cast<GLfloat*>(realloc(vertexes, sizeof(GLfloat) * tiles * 2 * 6));
+    assert(vertexes);
+    fg = static_cast<GLfloat*>(realloc(fg, sizeof(GLfloat) * tiles * 4 * 6));
+    assert(fg);
+    bg = static_cast<GLfloat*>(realloc(bg, sizeof(GLfloat) * tiles * 4 * 6));
+    assert(bg);
+    tex = static_cast<GLfloat*>(realloc(tex, sizeof(GLfloat) * tiles * 2 * 6));
+    assert(tex);
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertexes);
+  }
   
-  void init_opengl() {
+  virtual void init_opengl() {
     enabler.textures.upload_textures();
     // Allocate array memory
-    vertexes = new GLfloat[gps.dimx * gps.dimy * 2 * 6];
-    fg = new GLfloat[gps.dimx * gps.dimy * 4 * 6];
-    bg = new GLfloat[gps.dimx * gps.dimy * 4 * 6];
-    tex = new GLfloat[gps.dimx * gps.dimy * 2 * 6];
+    allocate(gps.dimx * gps.dimy);
     // Initialize the vertex array
     int tile = 0;
     for (GLfloat x = 0; x < gps.dimx; x++)
       for (GLfloat y = 0; y < gps.dimy; y++, tile++)
-        write_tile(x, y, vertexes + 6*2*tile);
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(2, GL_FLOAT, 0, vertexes);
+        write_tile_vertexes(x, y, vertexes + 6*2*tile);
     // Setup invariant state
     glEnableClientState(GL_COLOR_ARRAY);
     // Set up our coordinate system
@@ -86,22 +96,34 @@ class renderer_opengl : public renderer_sdl {
     gluOrtho2D(0, gps.dimx, gps.dimy, 0);
   }
 
-  void uninit_opengl() {
+  virtual void uninit_opengl() {
     enabler.textures.remove_uploaded_textures();
-    delete[] vertexes;
-    delete[] fg;
-    delete[] bg;
-    delete[] tex;
   }
-  
-public:
-  void update_tile(int x, int y) {
+
+  virtual void draw(int vertex_count) {
+    // Render the background colors
+    glDisable(GL_TEXTURE_2D);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisable(GL_BLEND);
+    glDisable(GL_ALPHA_TEST);
+    glColorPointer(4, GL_FLOAT, 0, bg);
+    glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+    // Render the foreground, colors and textures both
+    glEnable(GL_ALPHA_TEST);
+    glAlphaFunc(GL_NOTEQUAL, 0);
+    glEnable(GL_TEXTURE_2D);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glTexCoordPointer(2, GL_FLOAT, 0, tex);
+    glColorPointer(4, GL_FLOAT, 0, fg);
+    glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+    
+    printGLError();
+  }
+
+  void write_tile_arrays(int x, int y, GLfloat *fg, GLfloat *bg, GLfloat *tex) {
     struct texture_fullid id = screen_to_texid(x, y);
-    const int tile = x*gps.dimy + y;
-    // Update the arrays
-    GLfloat *fg  = this->fg + tile * 4 * 6;
-    GLfloat *bg  = this->bg + tile * 4 * 6;
-    GLfloat *tex = this->tex + tile * 2 * 6;
     const gl_texpos *txt = enabler.textures.gl_texpos;
     // TODO: Only bother to set the one that's actually read in flat-shading mode
     // And set flat-shading mode.
@@ -131,6 +153,16 @@ public:
     *(tex++) = txt[id.texpos].right;  // Lower right
     *(tex++) = txt[id.texpos].top;
   }
+  
+public:
+  void update_tile(int x, int y) {
+    const int tile = x*gps.dimy + y;
+    // Update the arrays
+    GLfloat *fg  = this->fg + tile * 4 * 6;
+    GLfloat *bg  = this->bg + tile * 4 * 6;
+    GLfloat *tex = this->tex + tile * 2 * 6;
+    write_tile_arrays(x, y, fg, bg, tex);
+  }
 
   void update_all() {
     glClear(GL_COLOR_BUFFER_BIT);
@@ -138,32 +170,20 @@ public:
       for (int y = 0; y < gps.dimy; y++)
         update_tile(x, y);
   }
-
+  
   void render() {
-    // Render the background colors
-    glDisable(GL_TEXTURE_2D);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    glDisable(GL_BLEND);
-    glDisable(GL_ALPHA_TEST);
-    glColorPointer(4, GL_FLOAT, 0, bg);
-    glDrawArrays(GL_TRIANGLES, 0, gps.dimx*gps.dimy*6);
-    // Render the foreground, colors and textures both
-    glEnable(GL_ALPHA_TEST);
-    glAlphaFunc(GL_NOTEQUAL, 0);
-    glEnable(GL_TEXTURE_2D);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glTexCoordPointer(2, GL_FLOAT, 0, tex);
-    glColorPointer(4, GL_FLOAT, 0, fg);
-    glDrawArrays(GL_TRIANGLES, 0, gps.dimx*gps.dimy*6);
-
-    
-    printGLError();
+    draw(gps.dimx*gps.dimy*6);
     SDL_GL_SwapBuffers();
   }
 
   renderer_opengl() {
+    // Init member variables so realloc'll work
+    screen   = NULL;
+    vertexes = NULL;
+    fg       = NULL;
+    bg       = NULL;
+    tex      = NULL;
+    
     // Disable key repeat
     SDL_EnableKeyRepeat(0, 0);
     // Set window title/icon.
@@ -235,5 +255,129 @@ public:
   void set_fullscreen() {
     resize(init.display.desired_fullscreen_width,
            init.display.desired_fullscreen_height);
+  }
+};
+
+// Specialization for PARTIAL:0
+class renderer_once : public renderer_opengl {
+  int tile_count;
+  
+protected:
+  void update_tile(int x, int y) {
+    write_tile_vertexes(x, y, vertexes + tile_count * 6 * 2);
+    write_tile_arrays(x, y,
+                      fg + tile_count * 6 * 4,
+                      bg + tile_count * 6 * 4,
+                      tex + tile_count * 6 * 2);
+    tile_count++;
+  }
+
+  void draw(int dummy) {
+    renderer_opengl::draw(tile_count*6);
+    tile_count = 0;
+  }
+
+public:
+  renderer_once() {
+    renderer_opengl::renderer_opengl();
+    tile_count = 0;
+  }
+};
+
+// PARTIAL:N
+class renderer_partial : public renderer_opengl {
+//   int buffersz;
+//   list<int> eras;
+//   int era_count;
+//   int tile_count;
+
+//   void update_tile(int x, int y) {
+//     if (tile_count == buffersz) {
+//       // Buffer is full, expand it.
+//       buffersz *= 2;
+//       allocate(buffersz);
+//     }
+//     write_tile_vertexes(x, y, vertexes + tile_count * 6 * 2);
+//     write_tile_arrays(x, y,
+//                       fg + tile_count * 6 * 4,
+//                       bg + tile_count * 6 * 4,
+//                       tex + tile_count * 6 * 2);
+//     tile_count++;
+//   }
+
+//   void draw(int dummy) {
+//     renderer_opengl::draw(tile_count*6);
+//     eras.push_back(tile_count);
+//     if (eras.size() == era_count) {
+//       // Right, time to retire the oldest era.
+//       int count = eras.front();
+//       eras.pop_front();
+      
+    
+  
+// public:
+//   renderer_partial(int eras) {
+//     renderer_opengl::renderer_opengl();
+//     allocate(gps.dimx * gps.dimy * 2); // Enough for a full update, and then some.
+//     buffersz = gps.dimx * gps.dimy * 2;
+//     era_count = eras;
+//     tile_count = 0;
+//   }
+public:
+  renderer_partial(int a) {
+    renderer_opengl::renderer_opengl();
+  }
+};
+
+class renderer_accum_buffer : public renderer_once {
+  void draw(int vertex_count) {
+    // Copy the previous frame's buffer back in
+    glAccum(GL_RETURN, 1);
+    renderer_once::draw(vertex_count);
+    // Store the screen contents back to the buffer
+    glAccum(GL_LOAD, 1);
+  }
+};
+
+class renderer_framebuffer : public renderer_once {
+  GLuint framebuffer, fb_texture;
+  
+  void init_opengl() {
+    glGenFramebuffersEXT(1, &framebuffer);
+    // Allocate FBO texture memory
+    glGenTextures(1, &fb_texture);
+    glBindTexture(GL_TEXTURE_2D, fb_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                 screen->w, screen->h,
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    
+    // Bind texture to FBO
+    glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, framebuffer);
+    glFramebufferTexture2DEXT(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
+                              GL_TEXTURE_2D, fb_texture, 0);
+    renderer_once::init_opengl();
+  }
+
+  void uninit_opengl() {
+    renderer_once::uninit_opengl();
+    glDeleteTextures(1, &fb_texture);
+    glDeleteFramebuffersEXT(1, &framebuffer);
+  }
+
+  void draw(int vertex_count) {
+    // Bind the framebuffer
+    glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, framebuffer);
+    glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, 0);
+    // Draw
+    renderer_once::draw(vertex_count);
+    // Draw the framebuffer to screen
+    glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, 0);
+    glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, framebuffer);
+    glBlitFramebufferEXT(0,0, screen->w, screen->h,
+                         0,0, screen->w, screen->h,
+                         GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    printGLError();
   }
 };
