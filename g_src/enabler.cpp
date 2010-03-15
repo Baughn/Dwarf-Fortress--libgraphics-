@@ -138,6 +138,7 @@ void enablerst::do_frame() {
   }
   
   // Render one graphical frame, if appropriate.
+  // TODO: Move sync to renderer_opengl
   if ((flag & ENABLERFLAG_RENDER) && gframes_outstanding > 0 &&
       (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
     if (sync) {
@@ -145,7 +146,6 @@ void enablerst::do_frame() {
       sync = NULL;
     }
     render_things(); // Call UI renderers in DF proper
-    render();        // ..then put them on-screen
     update_gfps();
     flag &= ~ENABLERFLAG_RENDER; // Mark this rendering as complete.
   } else {
