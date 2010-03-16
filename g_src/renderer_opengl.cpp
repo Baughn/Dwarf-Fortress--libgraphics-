@@ -35,12 +35,12 @@ protected:
         report_error("OpenGL", "Requested single-buffering not available");
     }
 
-    // (Re)initialize GLEW. Only needs to be done once on linux, on
-    // window forgetting will cause crashes.
+    // (Re)initialize GLEW. Technically only needs to be done once on
+    // linux, but on windows forgetting will cause crashes.
     glewInit();
 
     // Set the viewport
-    glViewport(0, 0, w, h);
+    glViewport(0, 0, screen->w, screen->h);
 
     return true;
   }
@@ -99,7 +99,7 @@ protected:
   virtual void uninit_opengl() {
     enabler.textures.remove_uploaded_textures();
   }
-
+  
   virtual void draw(int vertex_count) {
     // Render the background colors
     glDisable(GL_TEXTURE_2D);
@@ -279,53 +279,101 @@ protected:
 
 public:
   renderer_once() {
-    renderer_opengl::renderer_opengl();
     tile_count = 0;
   }
 };
 
 // PARTIAL:N
 class renderer_partial : public renderer_opengl {
-//   int buffersz;
-//   list<int> eras;
-//   int era_count;
-//   int tile_count;
+  int buffersz;
+  list<int> erasz; // Previous eras
+  int current_erasz; // And the current one
+  int sum_erasz;
+  int head, tail; // First unused tile, first used tile respectively
+  int redraw_count; // Number of eras to max out at
 
-//   void update_tile(int x, int y) {
-//     if (tile_count == buffersz) {
-//       // Buffer is full, expand it.
-//       buffersz *= 2;
-//       allocate(buffersz);
-//     }
-//     write_tile_vertexes(x, y, vertexes + tile_count * 6 * 2);
-//     write_tile_arrays(x, y,
-//                       fg + tile_count * 6 * 4,
-//                       bg + tile_count * 6 * 4,
-//                       tex + tile_count * 6 * 2);
-//     tile_count++;
-//   }
+  void update_tile(int x, int y) {
+    write_tile_vertexes(x, y, vertexes + head * 6 * 2);
+    write_tile_arrays(x, y,
+                      fg + head * 6 * 4,
+                      bg + head * 6 * 4,
+                      tex + head * 6 * 2);
+    head = (head + 1) % buffersz;
+    current_erasz++; sum_erasz++;
+    if (head == tail) {
+      gamelog << "Expanding partial-printing buffer" << endl;
+      cout << "Expanding partial-printing buffer" << endl;
+      // Buffer is full, expand it.
+      renderer_opengl::allocate(buffersz * 2);
+      // Move the tail to the end of the newly allocated space
+      tail += buffersz;
+      memmove(vertexes + tail * 6 * 4, fg + head * 6 * 2, sizeof(GLfloat) * 6 * 2 * (buffersz - head));
+      memmove(fg + tail * 6 * 4, fg + head * 6 * 4, sizeof(GLfloat) * 6 * 4 * (buffersz - head));
+      memmove(bg + tail * 6 * 4, fg + head * 6 * 4, sizeof(GLfloat) * 6 * 4 * (buffersz - head));
+      memmove(tex + tail * 6 * 4, fg + head * 6 * 2, sizeof(GLfloat) * 6 * 2 * (buffersz - head));
+      // And finish.
+      buffersz *= 2;
+    }
+  }
 
-//   void draw(int dummy) {
-//     renderer_opengl::draw(tile_count*6);
-//     eras.push_back(tile_count);
-//     if (eras.size() == era_count) {
-//       // Right, time to retire the oldest era.
-//       int count = eras.front();
-//       eras.pop_front();
-      
+  void draw_arrays(GLfloat *vertexes, GLfloat *fg, GLfloat *bg, GLfloat *tex, int tile_count) {
+    // Set vertex pointer
+    glVertexPointer(2, GL_FLOAT, 0, vertexes);
+    // Render the background colors
+    glDisable(GL_TEXTURE_2D);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisable(GL_BLEND);
+    glDisable(GL_ALPHA_TEST);
+    glColorPointer(4, GL_FLOAT, 0, bg);
+    glDrawArrays(GL_TRIANGLES, 0, tile_count * 6);
+    // Render the foreground, colors and textures both
+    glEnable(GL_ALPHA_TEST);
+    glAlphaFunc(GL_NOTEQUAL, 0);
+    glEnable(GL_TEXTURE_2D);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColorPointer(4, GL_FLOAT, 0, fg);
+    glTexCoordPointer(2, GL_FLOAT, 0, tex);
+    glDrawArrays(GL_TRIANGLES, 0, tile_count * 6);
+  }
+
+  void draw(int dummy) {
+    // cout << "head: " << head << ", tail: " << tail << ", sum_erasz " << sum_erasz << ", buffersz: " << buffersz << endl;
+    if (tail > head) {
+      // We're straddling the end of the array, so have to do this in two steps
+      draw_arrays(vertexes + tail * 6 * 2,
+                  fg + tail * 6 * 4,
+                  bg + tail * 6 * 4,
+                  tex + tail * 6 * 2,
+                  buffersz - tail);
+      draw_arrays(vertexes, fg, bg, tex, head-1);
+    } else {
+      draw_arrays(vertexes + tail * 6 * 2,
+                  fg + tail * 6 * 4,
+                  bg + tail * 6 * 4,
+                  tex + tail * 6 * 2,
+                  sum_erasz);
+    }
     
+    printGLError();
+    erasz.push_back(current_erasz); current_erasz = 0;
+    if (erasz.size() == redraw_count) {
+      // Right, time to retire the oldest era.
+      tail = (tail + erasz.front()) % buffersz;
+      sum_erasz -= erasz.front();
+      erasz.pop_front();
+    }
+  }
+
+  void allocate(int tile_count) { } // We manage buffers ourselves, thank you.
   
-// public:
-//   renderer_partial(int eras) {
-//     renderer_opengl::renderer_opengl();
-//     allocate(gps.dimx * gps.dimy * 2); // Enough for a full update, and then some.
-//     buffersz = gps.dimx * gps.dimy * 2;
-//     era_count = eras;
-//     tile_count = 0;
-//   }
 public:
-  renderer_partial(int a) {
-    renderer_opengl::renderer_opengl();
+  renderer_partial(int redraw_count) {
+    this->redraw_count = redraw_count;
+    buffersz = gps.dimx * gps.dimy;
+    renderer_opengl::allocate(buffersz);
+    current_erasz = head = tail = sum_erasz = 0;
   }
 };
 
