@@ -429,3 +429,21 @@ class renderer_framebuffer : public renderer_once {
     printGLError();
   }
 };
+
+class renderer_vbo : public renderer_opengl {
+  GLuint vbo; // Vertexes only
+
+  void init_opengl() {
+    renderer_opengl::init_opengl();
+    glGenBuffersARB(1, &vbo);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
+    glBufferDataARB(GL_ARRAY_BUFFER_ARB, gps.dimx*gps.dimy*6*2*sizeof(GLfloat), vertexes, GL_STATIC_DRAW_ARB);
+    glVertexPointer(2, GL_FLOAT, 0, 0);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+  }
+  
+  void uninit_opengl() {
+    glDeleteBuffersARB(1, &vbo);
+    renderer_opengl::uninit_opengl();
+  }
+};

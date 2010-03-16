@@ -346,6 +346,8 @@ int enablerst::loop(string cmdline) {
       renderer = new renderer_partial(init.display.partial_print_count);
     else
       renderer = new renderer_once();
+  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO)) {
+    renderer = new renderer_vbo();
   } else {
     renderer = new renderer_opengl();
   }
