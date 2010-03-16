@@ -289,8 +289,6 @@ void graphicst::display()
     return; // The rest is done on the GPU in shader mode.
   }
 
-  long d=0;
-
   long *c_buffer_texpos;
   float *c_buffer_r;
   float *c_buffer_g;
@@ -299,7 +297,6 @@ void graphicst::display()
   float *c_buffer_bg;
   float *c_buffer_bb;
 
-  int x2,y2;
   if (force_full_display_count) {
     memcpy(screen_old, screen, dimx*dimy*4*sizeof *screen);
     // TODO: Don't bother with this in non-graphical mode
@@ -311,36 +308,44 @@ void graphicst::display()
     // Update the entire screen
     enabler.update_all();
   } else {
-    for (x2=0; x2<init.display.grid_x; x2++) {
-      for (y2=0; y2<init.display.grid_y; y2++,d++) {
-        // Partial printing (and color-conversion): Big-ass if.
-        if (screen[x2*dimy*4 + y2*4 + 0] == screen_old[x2*dimy*4 + y2*4 + 0] &&
-            screen[x2*dimy*4 + y2*4 + 1] == screen_old[x2*dimy*4 + y2*4 + 1] &&
-            screen[x2*dimy*4 + y2*4 + 2] == screen_old[x2*dimy*4 + y2*4 + 2] &&
-            screen[x2*dimy*4 + y2*4 + 3] == screen_old[x2*dimy*4 + y2*4 + 3] &&
-            // TODO: Don't bother with this in non-graphical mode
-            screentexpos[x2*dimy + y2] == screentexpos_old[x2*dimy + y2] &&
-            screentexpos_addcolor[x2*dimy + y2] == screentexpos_addcolor_old[x2*dimy + y2] &&
-            screentexpos_grayscale[x2*dimy + y2] == screentexpos_grayscale_old[x2*dimy + y2] &&
-            screentexpos_cf[x2*dimy + y2] == screentexpos_cf_old[x2*dimy + y2] &&
-            screentexpos_cbr[x2*dimy + y2] == screentexpos_cbr_old[x2*dimy + y2])
-          {
-            // Nothing's changed, this clause deliberately empty
-          } else {
-          // Okay, the buffer has changed. First update the old-buffer.
-          screen_old[x2*dimy*4 + y2*4 + 0] = screen[x2*dimy*4 + y2*4 + 0];
-          screen_old[x2*dimy*4 + y2*4 + 1] = screen[x2*dimy*4 + y2*4 + 1];
-          screen_old[x2*dimy*4 + y2*4 + 2] = screen[x2*dimy*4 + y2*4 + 2];
-          screen_old[x2*dimy*4 + y2*4 + 3] = screen[x2*dimy*4 + y2*4 + 3];
-          // TODO: Skip this bit in non-graphics mode.
-          screentexpos_old[x2*dimy + y2] = screentexpos[x2*dimy + y2];
-          screentexpos_addcolor_old[x2*dimy + y2] = screentexpos_addcolor[x2*dimy + y2];
-          screentexpos_grayscale_old[x2*dimy + y2] = screentexpos_grayscale[x2*dimy + y2];
-          screentexpos_cf_old[x2*dimy + y2] = screentexpos_cf[x2*dimy + y2];
-          screentexpos_cbr_old[x2*dimy + y2] = screentexpos_cbr[x2*dimy + y2];
-          
-          // Then just inform enabler.
-          enabler.update_tile(x2, y2);
+    const int grid_x = init.display.grid_x;
+    const int grid_y = init.display.grid_y;
+    if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS)) {
+      for (int x2=0; x2 < grid_x; x2++) {
+        for (int y2=0; y2 < grid_y; y2++) {
+          const int off = x2*dimy*4 + y2*4;
+          // Partial printing (and color-conversion): Big-ass if.
+          if (*(int*)(screen + off) == *(int*)(screen_old + off) &&
+              screentexpos[off] == screentexpos_old[off] &&
+              screentexpos_addcolor[off] == screentexpos_addcolor_old[off] &&
+              screentexpos_grayscale[off] == screentexpos_grayscale_old[off] &&
+              screentexpos_cf[off] == screentexpos_cf_old[off] &&
+              screentexpos_cbr[off] == screentexpos_cbr_old[off])
+            {
+              // Nothing's changed, this clause deliberately empty
+            } else {
+            // Okay, the buffer has changed. First update the old-buffer.
+            *(int*)(screen_old + off) = *(int*)(screen + off);
+            screentexpos_old[off] = screentexpos[off];
+            screentexpos_addcolor_old[off] = screentexpos_addcolor[off];
+            screentexpos_grayscale_old[off] = screentexpos_grayscale[off];
+            screentexpos_cf_old[off] = screentexpos_cf[off];
+            screentexpos_cbr_old[off] = screentexpos_cbr[off];
+            
+            // Then just inform enabler.
+            enabler.update_tile(x2, y2);
+          }
+        }
+      }
+    } else {
+      for (int x2=0; x2<init.display.grid_x; x2++) {
+        for (int y2=0; y2<init.display.grid_y; y2++) {
+          const int off = x2*dimy*4 + y2*4;
+          // sizeof(int) = 4.. I very much hope.
+          if (*(int*)(screen + off) != *(int*)(screen_old + off)) {
+            *(int*)(screen_old + off) = *(int*)(screen + off);
+            enabler.update_tile(x2, y2);
+          }
         }
       }
     }
