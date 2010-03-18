@@ -275,7 +275,9 @@ public:
     int w = MIN(MAX(size.first, MIN_GRID_X), MAX_GRID_X);
     int h = MIN(MAX(size.second, MIN_GRID_Y), MAX_GRID_Y);
     if (gps.dimx == w || gps.dimy == h) return; // Nothing to do
+#ifdef DEBUG
     cout << "Resizing grid to " << w << "x" << h << endl;
+#endif
     gps.allocate(w, h);
     reshape_gl();
   }
@@ -293,7 +295,6 @@ public:
     /// Set up our coordinate system
     if (forced_steps + zoom_steps == 0 &&
         init.display.flag.has_flag(INIT_DISPLAY_FLAG_BLACK_SPACE)) {
-      cout << "Using black space" << endl;
       int size_x = gps.dimx * dispx,
         size_y = gps.dimy * dispy;
       int off_x = (screen->w - size_x) / 2,
@@ -309,7 +310,6 @@ public:
 
   // Parameters: window size
   void resize(int w, int h) {
-    cout << "New window size: " << w << "x" << h << endl;
     // (Re)calculate grid-size
     dispx = enabler.is_fullscreen() ?
       init.font.large_font_dispx :
@@ -317,7 +317,6 @@ public:
     dispy = enabler.is_fullscreen() ?
       init.font.large_font_dispy :
       init.font.small_font_dispy;
-    cout << "Font size: " << dispx << "x" << dispy << endl;
     natural_w = MAX(w / dispx,1);
     natural_h = MAX(h / dispy,1);
     // Compute forced_steps so we satisfy our grid-size limits
@@ -393,7 +392,6 @@ class renderer_partial : public renderer_opengl {
     current_erasz++; sum_erasz++;
     if (head == tail) {
       gamelog << "Expanding partial-printing buffer" << endl;
-      cout << "Expanding partial-printing buffer" << endl;
       // Buffer is full, expand it.
       renderer_opengl::allocate(buffersz * 2);
       // Move the tail to the end of the newly allocated space
@@ -430,7 +428,6 @@ class renderer_partial : public renderer_opengl {
   }
 
   void draw(int dummy) {
-    // cout << "head: " << head << ", tail: " << tail << ", sum_erasz " << sum_erasz << ", buffersz: " << buffersz << endl;
     if (tail > head) {
       // We're straddling the end of the array, so have to do this in two steps
       draw_arrays(vertexes + tail * 6 * 2,
