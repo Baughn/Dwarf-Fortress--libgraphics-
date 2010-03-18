@@ -8,7 +8,7 @@ circumstances, unpack a new DF on top of an older one.
 
 Change this to turn sound off.
 
-[SOUND:OFF]
+[SOUND:NO]
 
 The sound volume runs from 0 (off) to 255 (full).  You can set the volume from the ESC options menu as well.
 
@@ -16,7 +16,7 @@ The sound volume runs from 0 (off) to 255 (full).  You can set the volume from t
 
 Change this to skip the wonderful intro movies.
 
-[INTRO:ON]
+[INTRO:YES]
 
 This lets you set the starting windowed/fullscreen setting.  Can be YES, NO or PROMPT.
 
@@ -87,16 +87,16 @@ Use this to set the maximum graphical frame refresh rate during play.
 
 On cards that support the OpenGL ARB_sync extension, turning this on
 can improve framerates in GPU overload conditions, most notably when
-using the shader print-mode. It defaults to OFF, as many cards that
+using the shader print-mode. It defaults to NO, as many cards that
 claim to support this will crash if asked to do so.
 
-[ARB_SYNC:OFF]
+[ARB_SYNC:NO]
 
 This sets the applications vertical synchronization behavior.
-Changing this to ON can impact your FPS if your G_FPS is
+Changing this to YES can impact your FPS if your G_FPS is
 high. ARB_SYNC is a better option, if your system supports it.
 
-[VSYNC:OFF]
+[VSYNC:NO]
 
 Change this to NEAREST if you want the texture values to use the nearest pixel without averaging.
 Change this to LINEAR if you want the texture values to be averaged over the adjacent pixels.

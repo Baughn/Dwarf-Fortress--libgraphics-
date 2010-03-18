@@ -257,17 +257,17 @@ void initst::begin()
 					}
 				if(token=="VSYNC")
 					{
-					if(token2=="ON")
+					if(token2=="YES")
 						{
 						window.flag.add_flag(INIT_WINDOW_FLAG_VSYNC_ON);
 						}
-					if(token2=="OFF")
+					if(token2=="NO")
 						{
 						window.flag.add_flag(INIT_WINDOW_FLAG_VSYNC_OFF);
 						}
 					}
                                 if(token=="ARB_SYNC") {
-                                  if (token2 == "ON")
+                                  if (token2 == "YES")
                                     display.flag.add_flag(INIT_DISPLAY_FLAG_ARB_SYNC);
                                 }
 
@@ -354,14 +354,14 @@ void initst::begin()
 					}
 				if(!token.compare("SOUND"))
 					{
-					if(token2!="ON")
+					if(token2!="YES")
 						{
 						media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
 						}
 					}
 				if(!token.compare("INTRO"))
 					{
-					if(token2!="ON")
+					if(token2!="YES")
 						{
 						media.flag.add_flag(INIT_MEDIA_FLAG_INTRO_OFF);
 						}
