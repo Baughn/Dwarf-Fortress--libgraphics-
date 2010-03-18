@@ -138,11 +138,11 @@ void process_object_lines(textlinesst &lines, string &chktype) {
 void drawborder(const char *str, char style, const char *color) {
   gps.erasescreen();
   if (style) {
-    gps.changecolor(7,0,0);
+    gps.changecolor(7,7,0);
     for (int x=0; x < gps.dimx; x++) {
       gps.locate(0, x);
       gps.addchar(' ');
-      gps.locate(gps.dimy-1, 0);
+      gps.locate(gps.dimy-1, x);
       gps.addchar(' ');
     }
     for (int y=1; y < gps.dimy-1; y++) {
