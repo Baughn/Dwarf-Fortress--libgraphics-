@@ -274,7 +274,6 @@ public:
   void reshape(pair<int,int> size) {
     int w = MIN(MAX(size.first, MIN_GRID_X), MAX_GRID_X);
     int h = MIN(MAX(size.second, MIN_GRID_Y), MAX_GRID_Y);
-    if (gps.dimx == w || gps.dimy == h) return; // Nothing to do
 #ifdef DEBUG
     cout << "Resizing grid to " << w << "x" << h << endl;
 #endif
