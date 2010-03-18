@@ -244,36 +244,9 @@ void initst::begin()
 						}
 					}
 
-				if(token=="ZOOM_FACTOR")
+				if(token=="ZOOM_SPEED")
 					{
-					input.zoom_factor=1.1;
-					int32_t d[3]={0,0,0};
-					int32_t slot=-1;
-					int32_t i;
-					for(i=0;i<token2.length();++i)
-						{
-						if(token2[i]>='0'&&token2[i]<='9')
-							{
-							if(slot==-1)continue;
-
-							d[slot]=(int32_t)token2[i]-(int32_t)'0';
-							++slot;
-
-							if(slot>=3)break;
-							}
-						if(token2[i]=='.')slot=0;
-						}
-
-					if(slot>=0)
-						{
-						input.zoom_factor=1;
-						input.zoom_factor+=(double)d[0]*0.1;
-						input.zoom_factor+=(double)d[1]*0.01;
-						input.zoom_factor+=(double)d[2]*0.001;
-						
-						if(input.zoom_factor<=1)input.zoom_factor=1.1;
-						if(input.zoom_factor>=2)input.zoom_factor=1.1;
-						}
+                                          input.zoom_speed = convert_string_to_long(token2);
 					}
 				if(token=="MOUSE")
 					{

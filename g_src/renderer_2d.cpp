@@ -170,12 +170,13 @@ public:
     cout << "Font size: " << dispx << "x" << dispy << endl;
     const int gridx = MIN(MAX(w / dispx, MIN_GRID_X), MAX_GRID_X);
     const int gridy = MIN(MAX(h / dispy, MIN_GRID_Y), MAX_GRID_Y);
-    cout << "Resizing grid to " << gridx << "x" << gridy << endl;
+    cout << "Resizing grid to " << gridx << "x" << gridy << endl << endl;
     // Only reallocate the grid if it actually changes
     if (init.display.grid_x != gridx || init.display.grid_y != gridy)
       gps.allocate(gridx, gridy);
     // But always force a full display cycle
     gps.force_full_display_count = 1;
+    enabler.flag |= ENABLERFLAG_RENDER;
   }
 
   void set_fullscreen() {

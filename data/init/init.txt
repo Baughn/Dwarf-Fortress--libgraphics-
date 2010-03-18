@@ -64,7 +64,7 @@ If you have a multi-core machine, 2DASYNC should be faster than 2D, and just as 
 
 Linux/OS X users may also use PRINT_MODE:TEXT for primitive ncurses output.
 
-[PRINT_MODE:VBO]
+[PRINT_MODE:STANDARD]
 [SINGLE_BUFFER:NO]
 
 Change this to YES to keep the DF window on top of your other windows.
@@ -107,9 +107,10 @@ Change this to make the dwarfort.exe process have a different priority.  From hi
 
 [PRIORITY:NORMAL]
 
-Use this to set how fast the game zooms.  The default corresponds to multiplying by a factor of 1.1 each time the zoom action occurs.  You can set it anywhere from 1.001 to 1.999.
+Use this to set how fast the game zooms.  The default corresponds to
+increasing grid size by 10 units each time you zoom.
 
-[ZOOM_FACTOR:1.100]
+[ZOOM_SPEED:10]
 
 Change this to NO if you don't want to have the mouse involved at all.
 

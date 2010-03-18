@@ -384,6 +384,7 @@ void enablerst::release_grid_size() {
 }
 
 void enablerst::zoom_display(zoom_commands command) {
+  renderer->zoom(command);
 }
 
 int enablerst::calculate_fps() { return calculated_fps; }

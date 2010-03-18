@@ -755,20 +755,21 @@ typedef struct {									// Contains Information Vital To A Window
   BOOL				isVisible;				// Window Visible?
 } GL_Window;								// GL_Window
 
+enum zoom_commands { zoom_in, zoom_out, zoom_reset };
+
 class renderer {
  public:
   virtual void update_tile(int x, int y) = 0;
   virtual void update_all() = 0;
   virtual void render() = 0;
   virtual void set_fullscreen() {} // Should read from enabler.is_fullscreen()
+  virtual void zoom(zoom_commands cmd) {};
 };
 
 class renderer_sdl : public renderer {
  public:
   virtual void resize(int w, int h) = 0;
 };
-
-enum zoom_commands { zoom_in, zoom_out, zoom_toggle_gridzoom, zoom_reset };
 
 class enablerst : public enabler_inputst
 {

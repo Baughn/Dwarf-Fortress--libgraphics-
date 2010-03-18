@@ -910,8 +910,6 @@ char interfacest::loop() {
           enabler.zoom_display(zoom_in);
         if (era.count(INTERFACEKEY_ZOOM_OUT))
           enabler.zoom_display(zoom_out);
-        if (era.count(INTERFACEKEY_ZOOM_TOGGLE))
-          enabler.zoom_display(zoom_toggle_gridzoom);
         if (era.count(INTERFACEKEY_ZOOM_RESET))
           enabler.zoom_display(zoom_reset);
         // Macro commands

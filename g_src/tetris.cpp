@@ -63,6 +63,7 @@ public:
   }
   virtual void render() {
     gps.erasescreen();
+    drawborder("Matrix", 1, 0);
     for (lit i = lines.begin(); i != lines.end(); ++i) {
       for (int j = 0; j < i->s.size(); ++j) {
         gps.addchar(i->x, i->y + j, i->s[j], i->color, 0, 0);

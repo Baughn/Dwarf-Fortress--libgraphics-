@@ -2,6 +2,8 @@
 class renderer_opengl : public renderer_sdl {
 protected:
   SDL_Surface *screen;
+
+  int dispx, dispy; // Cache of the current font size
   
   bool init_video(int w, int h) {
     // Get ourselves an opengl-enabled SDL window
@@ -39,8 +41,9 @@ protected:
     // linux, but on windows forgetting will cause crashes.
     glewInit();
 
-    // Set the viewport
+    // Set the viewport and clear
     glViewport(0, 0, screen->w, screen->h);
+    glClear(GL_COLOR_BUFFER_BIT);
 
     return true;
   }
@@ -79,21 +82,6 @@ protected:
   
   virtual void init_opengl() {
     enabler.textures.upload_textures();
-    // Allocate array memory
-    allocate(gps.dimx * gps.dimy);
-    // Initialize the vertex array
-    int tile = 0;
-    for (GLfloat x = 0; x < gps.dimx; x++)
-      for (GLfloat y = 0; y < gps.dimy; y++, tile++)
-        write_tile_vertexes(x, y, vertexes + 6*2*tile);
-    // Setup invariant state
-    glEnableClientState(GL_COLOR_ARRAY);
-    // Set up our coordinate system
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(0, gps.dimx, gps.dimy, 0);
   }
 
   virtual void uninit_opengl() {
@@ -183,6 +171,7 @@ public:
     fg       = NULL;
     bg       = NULL;
     tex      = NULL;
+    zoom_steps = forced_steps = 0;
     
     // Disable key repeat
     SDL_EnableKeyRepeat(0, 0);
@@ -228,33 +217,135 @@ public:
     init_opengl();
   }
 
-  void resize(int w, int h) {
-    cout << "New window size: " << w << "x" << h << endl;
-    // (Re)calculate grid-size
+  int zoom_steps, forced_steps;
+  int natural_w, natural_h; // How large our view would be if it wasn't zoomed
+
+  void zoom(zoom_commands cmd) {
+    pair<int,int> before = compute_zoom(true);
+    int before_steps = zoom_steps;
+    switch (cmd) {
+    case zoom_in:    zoom_steps -= init.input.zoom_speed; break;
+    case zoom_out:   zoom_steps += init.input.zoom_speed; break;
+    case zoom_reset: zoom_steps = 0; compute_forced_zoom(); break;
+    }
+    pair<int,int> after = compute_zoom(true);
+    if (after == before && cmd != zoom_reset)
+      zoom_steps = before_steps;
+    else
+      reshape(after);
+  }
+
+  void compute_forced_zoom() {
+    forced_steps = 0;
+    pair<int,int> zoomed = compute_zoom();
+    while (zoomed.first < MIN_GRID_X || zoomed.second < MIN_GRID_Y) {
+      forced_steps++;
+      zoomed = compute_zoom();
+    }
+    while (zoomed.first > MAX_GRID_X || zoomed.second > MAX_GRID_Y) {
+      forced_steps--;
+      zoomed = compute_zoom();
+    }
+  }
+  
+  pair<int,int> compute_zoom(bool clamp = false) {
     const int dispx = enabler.is_fullscreen() ?
       init.font.large_font_dispx :
       init.font.small_font_dispx;
     const int dispy = enabler.is_fullscreen() ?
       init.font.large_font_dispy :
       init.font.small_font_dispy;
+    int w, h;
+    if (dispx < dispy) {
+      w = natural_w + zoom_steps + forced_steps;
+      h = double(natural_h) * (double(w) / double(natural_w));
+    } else {
+      h = natural_h + zoom_steps + forced_steps;
+      w = double(natural_w) * (double(h) / double(natural_h));
+    }
+    if (clamp) {
+      w = MIN(MAX(w, MIN_GRID_X), MAX_GRID_X);
+      h = MIN(MAX(h, MIN_GRID_Y), MAX_GRID_Y);
+    }
+    return make_pair<int,int>(w,h);
+  }
+
+  // Parameters: grid units
+  void reshape(pair<int,int> size) {
+    int w = MIN(MAX(size.first, MIN_GRID_X), MAX_GRID_X);
+    int h = MIN(MAX(size.second, MIN_GRID_Y), MAX_GRID_Y);
+    if (gps.dimx == w || gps.dimy == h) return; // Nothing to do
+    cout << "Resizing grid to " << w << "x" << h << endl;
+    gps.allocate(w, h);
+    reshape_gl();
+  }
+
+  virtual void reshape_gl() {
+    // Allocate array memory
+    allocate(gps.dimx * gps.dimy);
+    // Initialize the vertex array
+    int tile = 0;
+    for (GLfloat x = 0; x < gps.dimx; x++)
+      for (GLfloat y = 0; y < gps.dimy; y++, tile++)
+        write_tile_vertexes(x, y, vertexes + 6*2*tile);
+    // Setup invariant state
+    glEnableClientState(GL_COLOR_ARRAY);
+    /// Set up our coordinate system
+    if (forced_steps + zoom_steps == 0 &&
+        init.display.flag.has_flag(INIT_DISPLAY_FLAG_BLACK_SPACE)) {
+      cout << "Using black space" << endl;
+      int size_x = gps.dimx * dispx,
+        size_y = gps.dimy * dispy;
+      int off_x = (screen->w - size_x) / 2,
+        off_y = (screen->h - size_y) / 2;
+      glViewport(off_x, off_y, size_x, size_y);
+    }
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, gps.dimx, gps.dimy, 0);
+  }
+
+  // Parameters: window size
+  void resize(int w, int h) {
+    cout << "New window size: " << w << "x" << h << endl;
+    // (Re)calculate grid-size
+    dispx = enabler.is_fullscreen() ?
+      init.font.large_font_dispx :
+      init.font.small_font_dispx;
+    dispy = enabler.is_fullscreen() ?
+      init.font.large_font_dispy :
+      init.font.small_font_dispy;
     cout << "Font size: " << dispx << "x" << dispy << endl;
-    const int gridx = MIN(MAX(w / dispx, MIN_GRID_X), MAX_GRID_X);
-    const int gridy = MIN(MAX(h / dispy, MIN_GRID_Y), MAX_GRID_Y);
-    cout << "Resizing grid to " << gridx << "x" << gridy << endl;
-    // Only reallocate the grid if it actually changes
-    if (init.display.grid_x != gridx || init.display.grid_y != gridy)
-      gps.allocate(gridx, gridy);
-    // But always force a full display cycle
+    natural_w = MAX(w / dispx,1);
+    natural_h = MAX(h / dispy,1);
+    // Compute forced_steps so we satisfy our grid-size limits
+    compute_forced_zoom();
+    // Force a full display cycle
     gps.force_full_display_count = 1;
+    enabler.flag |= ENABLERFLAG_RENDER;
     // Reinitialize the video
     uninit_opengl();
     init_video(w, h);
     init_opengl();
+    reshape(compute_zoom());
   }
 
+private:
+  // Stores the window size when in fullscreen
+  int last_windowed_w, last_windowed_h;
+
+public:
   void set_fullscreen() {
-    resize(init.display.desired_fullscreen_width,
-           init.display.desired_fullscreen_height);
+    if (enabler.is_fullscreen()) {
+      last_windowed_w = screen->w;
+      last_windowed_h = screen->h;
+      resize(init.display.desired_fullscreen_width,
+             init.display.desired_fullscreen_height);
+    } else {
+      resize(last_windowed_w, last_windowed_h);
+    }
   }
 };
 
