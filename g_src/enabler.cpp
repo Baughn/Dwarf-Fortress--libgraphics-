@@ -266,12 +266,10 @@ void enablerst::do_frame() {
   if (gframes_outstanding < -5) gframes_outstanding = -5;
   if (frames_outstanding < -20) frames_outstanding = -20;
 
-  const bool render_async = init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC);
+  static const bool render_async = init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC);
 
   // If we're in async mode, we use last frame's buffers and last frame's render flag
   unsigned long cached_flag = flag;
-
-  bool running_frame = false;
   
   // Run the main loop, if appropriate.
   if (frames_outstanding >= 1 || (flag & ENABLERFLAG_MAXFPS)) {
@@ -285,8 +283,7 @@ void enablerst::do_frame() {
         renderer->swap_buffers();
       }
       // And run mainloop()
-      running_frame = true;
-      SDL_SemPost(run_frame);
+      trigger_async_loop();
     } else {
       if (mainloop())
         loopvar = 0;
@@ -315,12 +312,8 @@ void enablerst::do_frame() {
     gframes_outstanding = 0;
   }
 
-  if (running_frame) {
-    // Wait until the main-loop invocation has finished
-    SDL_SemWait(done_frame);
-    update_fps();
-  }
-
+  if (render_async)
+    reap_async_loop();
   
   // if (flag & ENABLERFLAG_MAXFPS)
   //   puts("max");
@@ -342,20 +335,18 @@ void enablerst::eventLoop_SDL()
   const SDL_Surface *screen = SDL_GetVideoSurface();
   Uint32 mouse_lastused = 0;
   SDL_ShowCursor(SDL_DISABLE);
-
+  static const bool render_async = init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC);
+ 
   // Initialize the grid
   renderer->resize(screen->w, screen->h);
 
   while (loopvar) {
     Uint32 now = SDL_GetTicks();
-    // Handle buffered zoom events
-    // while (!zoom_command_buffer.empty()) {
-    //   zoom_display_delayed(zoom_command_buffer.front());
-    //   zoom_command_buffer.pop();
-    // }
 
-    // Handle SDL events
     while (SDL_PollEvent(&event)) {
+      // Make sure mainloop isn't running while we're processing input
+      if (render_async) quiesce_async_loop();
+      // Handle SDL events
       switch (event.type) {
       case SDL_KEYDOWN:
         // Disable mouse if it's been long enough
@@ -470,7 +461,7 @@ void enablerst::eventLoop_SDL()
       } // switch (event.type)
     } //while have event
   
-    enabler.do_frame();
+    do_frame();
 #if !defined(NO_FMOD)
     // Call FMOD::System.update(). Manages a bunch of sound stuff.
     musicsound.update();

@@ -861,6 +861,33 @@ class enablerst : public enabler_inputst
 
   // Barriers for async rendering
   SDL_sem *run_frame, *done_frame;
+  int outstanding_frames; // How many async loops are outstanding
+  void trigger_async_loop() {
+    if (outstanding_frames > fps) {
+      // Too many outstanding frames
+      SDL_SemWait(done_frame);
+    } else
+      outstanding_frames++;
+    SDL_SemPost(run_frame);
+  }
+  void quiesce_async_loop() {
+    // Attempt to cancel frames first
+    while (SDL_SemTryWait(run_frame) == 0)
+      outstanding_frames--;
+    // Then wait for remaining ones (should just be 1) to finish
+    while (outstanding_frames) {
+      SDL_SemWait(done_frame);
+      update_fps();
+      outstanding_frames--;
+    }
+  }
+  void reap_async_loop() {
+    // Check for finished frames
+    while (SDL_SemTryWait(done_frame) == 0) {
+      outstanding_frames--;
+      update_fps();
+    }
+  }
   
  public:
 

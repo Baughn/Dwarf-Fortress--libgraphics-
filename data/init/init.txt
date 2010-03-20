@@ -68,7 +68,9 @@ Linux/OS X users may also use PRINT_MODE:TEXT for primitive ncurses output.
 [SINGLE_BUFFER:NO]
 
 Turning on PRINT_ASYNC may or may not increase framerates on
-multi-core machines. It will slow down a single-core one.
+multi-core machines. It will slow down a single-core one. It is also
+quite likely to crash DF, as all the bugs haven't been worked out yet.
+There is no relation to 2DASYNC.
 
 [PRINT_ASYNC:YES]
 
@@ -88,7 +90,7 @@ You may set FPS_CAP to 0 to make it uncapped.
 
 Use this to set the maximum graphical frame refresh rate during play.
 
-[G_FPS_CAP:500]
+[G_FPS_CAP:50]
 
 On cards that support the OpenGL ARB_sync extension, turning this on
 can improve framerates in GPU overload conditions, most notably when
