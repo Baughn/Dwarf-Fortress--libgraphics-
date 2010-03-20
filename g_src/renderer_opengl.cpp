@@ -1,5 +1,5 @@
 // STANDARD
-class renderer_opengl : public renderer_sdl {
+class renderer_opengl : public renderer {
 protected:
   SDL_Surface *screen;
 
@@ -277,7 +277,7 @@ public:
 #ifdef DEBUG
     cout << "Resizing grid to " << w << "x" << h << endl;
 #endif
-    gps.allocate(w, h);
+    gps_allocate(w, h);
     reshape_gl();
   }
 
@@ -456,8 +456,8 @@ class renderer_partial : public renderer_opengl {
   void allocate(int tile_count) { } // We manage buffers ourselves, thank you.
   
 public:
-  renderer_partial(int redraw_count) {
-    this->redraw_count = redraw_count;
+  renderer_partial() {
+    redraw_count = init.display.partial_print_count;
     buffersz = gps.dimx * gps.dimy;
     renderer_opengl::allocate(buffersz);
     current_erasz = head = tail = sum_erasz = 0;

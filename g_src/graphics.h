@@ -31,17 +31,9 @@ class graphicst
 		unsigned char *screentexpos_cf;
 		unsigned char *screentexpos_cbr;
 
-                // Shader-mode stuff
-                int pbo_mapped; // -1 if PBOs not in use, otherwise an index into shader_pbo
-                // PBO layout (we use a single PBO for all buffers):
-                // screen, then screentexpos, then _addcolor, then _grayscale, then _cf, then _cbr
-                // All 64-byte aligned.
-                GLuint shader_pbo[2]; // We alternate between writing into and rendering these PBOs
-                size_t shader_pbo_sz;
-                off_t offset_texpos, offset_addcolor, offset_grayscale, offset_cf, offset_cbr;
-                GLuint shader_tbo; // Texture buffer object
-                void swap_pbos();
-                
+                // Calling this is not enough in itself. You also need to call swap_front/back.
+                void resize(int x, int y);
+                                
 		long clipx[2],clipy[2];
 		long tex_pos[TEXTURENUM];
 
@@ -71,14 +63,8 @@ class graphicst
                         screentexpos_cf = NULL;
                         screentexpos_cbr = NULL;
                         screen = NULL;
-                        pbo_mapped = -1;
-
-                        allocate(MAX_GRID_X, MAX_GRID_Y);
                         }
 
-                void allocate(int x, int y);
-                void unallocate();
-                
                 void locate(long y,long x)
                 {
                   // No point in clamping here, addchar clamps too.
@@ -120,13 +106,10 @@ class graphicst
 		void erasescreen_clip();
 		void erasescreen();
                 void erasescreen_rect(int x1, int x2, int y1, int y2);
-		void renewscreen();
 		void setclipping(long x1,long x2,long y1,long y2);
 
 		void add_tile(long texp,char addcolor);
 		void add_tile_grayscale(long texp,char cf,char cbr);
-
-		void display();
 
 		void prepare_graphics();
 

@@ -31,7 +31,7 @@ static int charmap[256] = {
 
 class renderer_curses : public renderer {
   std::map<std::pair<int,int>,int> color_pairs; // For curses. MOVEME.
-  
+
   // Map from DF color to ncurses color
   static int ncurses_map_color(int color) {
     if (color < 0) abort();
@@ -91,6 +91,11 @@ public:
     refresh();
   }
 
+  void resize(int x, int y) {
+    gps_allocate(x, y);
+    erase();
+  }
+
   renderer_curses() {
     // Initialize curses
     initscr();
@@ -124,8 +129,7 @@ void enablerst::eventLoop_ncurses() {
     // Check for terminal resize
     getmaxyx(stdscr, y, x);
     if (y != oldy || x != oldx) {
-      gps.allocate(x, y);
-      erase();
+      renderer->resize(x, y);
       oldx = x; oldy = y;
     }
     

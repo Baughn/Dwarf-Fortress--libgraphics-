@@ -114,9 +114,161 @@ enablerst::enablerst() {
   dummy_mutex = NULL;
   calculated_fps = calculated_gfps = frame_sum = gframe_sum = frame_last = gframe_last = 0;
   fps = 100; gfps = 20;
+  run_frame = SDL_CreateSemaphore(0);
+  done_frame = SDL_CreateSemaphore(0);
+}
+
+void renderer::display()
+{
+  const int dimx = init.display.grid_x;
+  const int dimy = init.display.grid_y;
+  if (gps.force_full_display_count) {
+    memcpy(screen_old, screen, dimx*dimy*4*sizeof *screen);
+    // TODO: Don't bother with this in non-graphical mode
+    memcpy(screentexpos_old, screentexpos, dimx*dimy*sizeof *screentexpos);
+    memcpy(screentexpos_addcolor_old, screentexpos_addcolor, dimx*dimy*sizeof *screentexpos_addcolor);
+    memcpy(screentexpos_grayscale_old, screentexpos_grayscale, dimx*dimy*sizeof *screentexpos_grayscale);
+    memcpy(screentexpos_cf_old, screentexpos_cf, dimx*dimy*sizeof *screentexpos_cf);
+    memcpy(screentexpos_cbr_old, screentexpos_cbr, dimx*dimy*sizeof *screentexpos_cbr);
+    // Update the entire screen
+    enabler.update_all();
+  } else {
+    if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS)) {
+      for (int x2=0; x2 < dimx; x2++) {
+        for (int y2=0; y2 < dimy; y2++) {
+          const int off = x2*dimy*4 + y2*4;
+          // Partial printing (and color-conversion): Big-ass if.
+          if (*(int*)(screen + off) == *(int*)(screen_old + off) &&
+              screentexpos[off] == screentexpos_old[off] &&
+              screentexpos_addcolor[off] == screentexpos_addcolor_old[off] &&
+              screentexpos_grayscale[off] == screentexpos_grayscale_old[off] &&
+              screentexpos_cf[off] == screentexpos_cf_old[off] &&
+              screentexpos_cbr[off] == screentexpos_cbr_old[off])
+            {
+              // Nothing's changed, this clause deliberately empty
+            } else {
+            // Okay, the buffer has changed. First update the old-buffer.
+            *(int*)(screen_old + off) = *(int*)(screen + off);
+            screentexpos_old[off] = screentexpos[off];
+            screentexpos_addcolor_old[off] = screentexpos_addcolor[off];
+            screentexpos_grayscale_old[off] = screentexpos_grayscale[off];
+            screentexpos_cf_old[off] = screentexpos_cf[off];
+            screentexpos_cbr_old[off] = screentexpos_cbr[off];
+            
+            // Then just inform enabler.
+            enabler.update_tile(x2, y2);
+          }
+        }
+      }
+    } else {
+      for (int x2=0; x2 < dimx; x2++) {
+        for (int y2=0; y2 < dimy; y2++) {
+          const int off = x2*dimy*4 + y2*4;
+          // sizeof(int) = 4.. I very much hope.
+          if (*(int*)(screen + off) != *(int*)(screen_old + off)) {
+            *(int*)(screen_old + off) = *(int*)(screen + off);
+            enabler.update_tile(x2, y2);
+          }
+        }
+      }
+    }
+  }
+  if (gps.force_full_display_count > 0) gps.force_full_display_count--;
+}
+
+void renderer::gps_allocate(int x, int y) {
+  if (screen) delete[] screen;
+  if (screentexpos) delete[] screentexpos;
+  if (screentexpos_addcolor) delete[] screentexpos_addcolor;
+  if (screentexpos_grayscale) delete[] screentexpos_grayscale;
+  if (screentexpos_cf) delete[] screentexpos_cf;
+  if (screentexpos_cbr) delete[] screentexpos_cbr;
+  if (screen_old) delete[] screen_old;
+  if (screentexpos_old) delete[] screentexpos_old;
+  if (screentexpos_addcolor_old) delete[] screentexpos_addcolor_old;
+  if (screentexpos_grayscale_old) delete[] screentexpos_grayscale_old;
+  if (screentexpos_cf_old) delete[] screentexpos_cf_old;
+  if (screentexpos_cbr_old) delete[] screentexpos_cbr_old;
+  if (screen_spare) delete[] screen_spare;
+  if (screentexpos_spare) delete[] screentexpos_spare;
+  if (screentexpos_addcolor_spare) delete[] screentexpos_addcolor_spare;
+  if (screentexpos_grayscale_spare) delete[] screentexpos_grayscale_spare;
+  if (screentexpos_cf_spare) delete[] screentexpos_cf_spare;
+  if (screentexpos_cbr_spare) delete[] screentexpos_cbr_spare;
+  
+  gps.screen = screen = new unsigned char[x*y*4];
+  memset(screen, 0, x*y*4);
+  gps.screentexpos = screentexpos = new long[x*y];
+  memset(screentexpos, 0, x*y*sizeof(long));
+  gps.screentexpos_addcolor = screentexpos_addcolor = new char[x*y];
+  memset(screentexpos_addcolor, 0, x*y);
+  gps.screentexpos_grayscale = screentexpos_grayscale = new unsigned char[x*y];
+  memset(screentexpos_grayscale, 0, x*y);
+  gps.screentexpos_cf = screentexpos_cf = new unsigned char[x*y];
+  memset(screentexpos_cf, 0, x*y);
+  gps.screentexpos_cbr = screentexpos_cbr = new unsigned char[x*y];
+  memset(screentexpos_cbr, 0, x*y);
+
+  screen_old = new unsigned char[x*y*4];
+  memset(screen, 0, x*y*4);
+  screentexpos_old = new long[x*y];
+  memset(screentexpos, 0, x*y*sizeof(long));
+  screentexpos_addcolor_old = new char[x*y];
+  memset(screentexpos_addcolor, 0, x*y);
+  screentexpos_grayscale_old = new unsigned char[x*y];
+  memset(screentexpos_grayscale, 0, x*y);
+  screentexpos_cf_old = new unsigned char[x*y];
+  memset(screentexpos_cf, 0, x*y);
+  screentexpos_cbr_old = new unsigned char[x*y];
+  memset(screentexpos_cbr, 0, x*y);
+
+
+  // In async mode, gps operations draw into the spare arrays, while
+  // the renderer draws the normal set
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC)) {
+    gps.screen = screen_spare = new unsigned char[x*y*4];
+    memset(screen_spare, 0, x*y*4);
+    gps.screentexpos = screentexpos_spare = new long[x*y];
+    memset(screentexpos_spare, 0, x*y*sizeof(long));
+    gps.screentexpos_addcolor = screentexpos_addcolor_spare = new char[x*y];
+    memset(screentexpos_addcolor_spare, 0, x*y);
+    gps.screentexpos_grayscale = screentexpos_grayscale_spare = new unsigned char[x*y];
+    memset(screentexpos_grayscale_spare, 0, x*y);
+    gps.screentexpos_cf = screentexpos_cf_spare = new unsigned char[x*y];
+    memset(screentexpos_cf_spare, 0, x*y);
+    gps.screentexpos_cbr = screentexpos_cbr_spare = new unsigned char[x*y];
+    memset(screentexpos_cbr_spare, 0, x*y);
+  }
+  
+  gps.resize(x,y);
+}
+
+void renderer::swap_buffers() {
+  assert (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC));
+  // Swap spare and main arrays
+  screen_spare = screen; screen = gps.screen;
+  screentexpos_spare = screentexpos; screentexpos = gps.screentexpos;
+  screentexpos_addcolor_spare = screentexpos_addcolor; screentexpos_addcolor = gps.screentexpos_addcolor;
+  screentexpos_grayscale_spare = screentexpos_grayscale; screentexpos_grayscale = gps.screentexpos_grayscale;
+  screentexpos_cf_spare = screentexpos_cf; screentexpos_cf = gps.screentexpos_cf;
+  screentexpos_cbr_spare = screentexpos_cbr; screentexpos_cbr = gps.screentexpos_cbr;
+}
+
+void enablerst::async_loop() {
+  for (;;) {
+    // Wait until we're supposed to run a frame
+    SDL_SemWait(run_frame);
+    int ret = mainloop();
+    if (ret) loopvar = 0;
+    // Notify main thread of frame completion
+    SDL_SemPost(done_frame);
+    // And quit if done
+    if (ret) return;
+  }
 }
 
 void enablerst::do_frame() {
+  // printf("f: %g, g: %d\n", frames_outstanding, gframes_outstanding);
   const double fps_per_gfps = (double)fps / (double)gfps;
   // Clamp max number of outstanding frames/gframes to a sane number
   // Yes, this is a race condition, but the comparison and assignment are
@@ -128,37 +280,68 @@ void enablerst::do_frame() {
   if (gframes_outstanding < -5) gframes_outstanding = -5;
   if (frames_outstanding < -20) frames_outstanding = -20;
 
+  const bool render_async = init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC);
+
+  // If we're in async mode, we use last frame's buffers and last frame's render flag
+  unsigned long cached_flag = flag;
+
+  bool running_frame = false;
+  
   // Run the main loop, if appropriate.
   if (frames_outstanding >= 1 || (flag & ENABLERFLAG_MAXFPS)) {
     // puts("loop");
     frames_outstanding -= 1;
-    if (mainloop())
-      loopvar = 0;
-    update_fps();
+    if (render_async) {
+      if ((flag & ENABLERFLAG_RENDER) && gframes_outstanding) {
+        render_things(); // Render the UI
+        flag &= ~ENABLERFLAG_RENDER;
+        // Swap display buffers
+        renderer->swap_buffers();
+      }
+      // And run mainloop()
+      running_frame = true;
+      SDL_SemPost(run_frame);
+    } else {
+      if (mainloop())
+        loopvar = 0;
+      update_fps();
+      cached_flag = flag; // Since we're not in async mode, we use this frame's flag
+    }
   }
   
   // Render one graphical frame, if appropriate.
   // TODO: Move sync to renderer_opengl
-  if ((flag & ENABLERFLAG_RENDER) && gframes_outstanding > 0 &&
+  if ((cached_flag & ENABLERFLAG_RENDER) && gframes_outstanding > 0 &&
       (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
     if (sync) {
       glDeleteSync(sync);
       sync = NULL;
     }
-    render_things(); // Call UI renderers in DF proper
+    if (!render_async)
+      render_things(); // Call UI renderers in DF proper
+    // Render
+    renderer->display();
+    renderer->render();
+    if (!render_async)
+      flag &= ~ENABLERFLAG_RENDER; // Mark this rendering as complete.
     update_gfps();
-    flag &= ~ENABLERFLAG_RENDER; // Mark this rendering as complete.
   } else {
     gframes_outstanding = 0;
   }
 
+  if (running_frame) {
+    // Wait until the main-loop invocation has finished
+    SDL_SemWait(done_frame);
+    update_fps();
+  }
+
+  
   // if (flag & ENABLERFLAG_MAXFPS)
   //   puts("max");
   // if (frames_outstanding > 0)
   //   std::cout << "frames: " << frames_outstanding << '\n';
   
   // Sleep if appropriate
-  // printf("f: %g, g: %d\n", frames_outstanding, gframes_outstanding);
   if (gframes_outstanding <= 0 &&
       frames_outstanding <= 0) {
     // Sleep until the timer thread signals us
@@ -175,7 +358,7 @@ void enablerst::eventLoop_SDL()
   SDL_ShowCursor(SDL_DISABLE);
 
   // Initialize the grid
-  ((renderer_sdl*)renderer)->resize(screen->w, screen->h);
+  renderer->resize(screen->w, screen->h);
 
   while (loopvar) {
     Uint32 now = SDL_GetTicks();
@@ -295,7 +478,7 @@ void enablerst::eventLoop_SDL()
           errorlog << "Caught resize event in fullscreen??\n";
         else {
           gamelog << "Resizing window to " << event.resize.w << "x" << event.resize.h << endl << flush;
-          ((renderer_sdl*)renderer)->resize(event.resize.w, event.resize.h);
+          renderer->resize(event.resize.w, event.resize.h);
         }
         break;
       } // switch (event.type)
@@ -308,7 +491,6 @@ void enablerst::eventLoop_SDL()
 #endif
   }
 }
-
 
 int enablerst::loop(string cmdline) {
   command_line = cmdline;
@@ -343,7 +525,7 @@ int enablerst::loop(string cmdline) {
     renderer = new renderer_framebuffer();
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
     if (init.display.partial_print_count)
-      renderer = new renderer_partial(init.display.partial_print_count);
+      renderer = new renderer_partial();
     else
       renderer = new renderer_once();
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO)) {
@@ -413,11 +595,18 @@ void enablerst::update_gfps() {
 }
 
 void enablerst::set_fps(int fps) {
+  if (fps == 0)
+    fps = 1048576;
   this->fps = fps;
 }
 
 void enablerst::set_gfps(int gfps) {
   this->gfps = gfps;
+}
+
+int call_loop(void *dummy) {
+  enabler.async_loop();
+  return 0;
 }
 
 int main (int argc, char* argv[]) {
@@ -463,6 +652,10 @@ int main (int argc, char* argv[]) {
     char *option = argv[i];
     cmdLine += option;
     cmdLine += " ";
+  }
+  // Spawn computation thread, if we're in async mode
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC)) {
+    SDL_CreateThread(call_loop, NULL);
   }
   int result = enabler.loop(cmdLine);
 

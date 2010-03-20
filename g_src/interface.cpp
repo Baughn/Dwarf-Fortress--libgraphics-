@@ -407,8 +407,6 @@ void viewscreen_movieplayerst::render()
 			gps.addst(savename);
 			}
 		}
-
-	gps.renewscreen();
 }
 
 void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)

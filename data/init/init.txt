@@ -64,8 +64,13 @@ If you have a multi-core machine, 2DASYNC should be faster than 2D, and just as 
 
 Linux/OS X users may also use PRINT_MODE:TEXT for primitive ncurses output.
 
-[PRINT_MODE:STANDARD]
+[PRINT_MODE:2D]
 [SINGLE_BUFFER:NO]
+
+Turning on PRINT_ASYNC may or may not increase framerates on
+multi-core machines. It will slow down a single-core one.
+
+[PRINT_ASYNC:YES]
 
 Change this to YES to keep the DF window on top of your other windows.
 
@@ -79,11 +84,11 @@ Use this to set the maximum frame rate during play.  The movies are always cappe
 
 You may set FPS_CAP to 0 to make it uncapped.
 
-[FPS_CAP:100]
+[FPS_CAP:0]
 
 Use this to set the maximum graphical frame refresh rate during play.
 
-[G_FPS_CAP:50]
+[G_FPS_CAP:500]
 
 On cards that support the OpenGL ARB_sync extension, turning this on
 can improve framerates in GPU overload conditions, most notably when

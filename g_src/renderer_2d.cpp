@@ -1,5 +1,5 @@
 
-class renderer_2d : public renderer_sdl {
+class renderer_2d : public renderer {
   SDL_Surface *screen;
   map<texture_fullid, SDL_Surface*> tile_cache;
 
@@ -173,7 +173,7 @@ public:
     cout << "Resizing grid to " << gridx << "x" << gridy << endl << endl;
     // Only reallocate the grid if it actually changes
     if (init.display.grid_x != gridx || init.display.grid_y != gridy)
-      gps.allocate(gridx, gridy);
+      gps_allocate(gridx, gridy);
     // But always force a full display cycle
     gps.force_full_display_count = 1;
     enabler.flag |= ENABLERFLAG_RENDER;

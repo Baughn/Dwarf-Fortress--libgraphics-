@@ -7,6 +7,7 @@
 
 #include "platform.h"
 #include <SDL/SDL.h>
+#include <SDL/SDL_thread.h>
 #ifdef __APPLE__
 # include <SDL_image/SDL_image.h>
 #else
@@ -758,17 +759,58 @@ typedef struct {									// Contains Information Vital To A Window
 enum zoom_commands { zoom_in, zoom_out, zoom_reset };
 
 class renderer {
+  unsigned char *screen;
+  long *screentexpos;
+  char *screentexpos_addcolor;
+  unsigned char *screentexpos_grayscale;
+  unsigned char *screentexpos_cf;
+  unsigned char *screentexpos_cbr;
+  // For partial printing:
+  unsigned char *screen_old;
+  long *screentexpos_old;
+  char *screentexpos_addcolor_old;
+  unsigned char *screentexpos_grayscale_old;
+  unsigned char *screentexpos_cf_old;
+  unsigned char *screentexpos_cbr_old;
+  // For async rendering (so NULL otherwise)
+  unsigned char *screen_spare;
+  long *screentexpos_spare;
+  char *screentexpos_addcolor_spare;
+  unsigned char *screentexpos_grayscale_spare;
+  unsigned char *screentexpos_cf_spare;
+  unsigned char *screentexpos_cbr_spare;
+
+ protected:
+  void gps_allocate(int x, int y);
  public:
+  void display();
   virtual void update_tile(int x, int y) = 0;
   virtual void update_all() = 0;
   virtual void render() = 0;
   virtual void set_fullscreen() {} // Should read from enabler.is_fullscreen()
   virtual void zoom(zoom_commands cmd) {};
-};
-
-class renderer_sdl : public renderer {
- public:
   virtual void resize(int w, int h) = 0;
+  void swap_buffers();
+  renderer() {
+    screen = NULL;
+    screentexpos = NULL;
+    screentexpos_addcolor = NULL;
+    screentexpos_grayscale = NULL;
+    screentexpos_cf = NULL;
+    screentexpos_cbr = NULL;
+    screen_old = NULL;
+    screentexpos_old = NULL;
+    screentexpos_addcolor_old = NULL;
+    screentexpos_grayscale_old = NULL;
+    screentexpos_cf_old = NULL;
+    screentexpos_cbr_old = NULL;
+    screen_spare = NULL;
+    screentexpos_spare = NULL;
+    screentexpos_addcolor_spare = NULL;
+    screentexpos_grayscale_spare = NULL;
+    screentexpos_cf_spare = NULL;
+    screentexpos_cbr_spare = NULL;
+  }
 };
 
 class enablerst : public enabler_inputst
@@ -797,8 +839,11 @@ class enablerst : public enabler_inputst
   void update_gfps();
   SDL_cond *timer_cond; // Triggered once per gframe, for wake-up calls
   SDL_mutex *dummy_mutex;
-
   int fps, gfps;
+
+  // Barriers for async rendering
+  SDL_sem *run_frame, *done_frame;
+  
  public:
 
   float ccolor[16][3]; // The curses-RGB mapping used for non-curses display modes
@@ -807,6 +852,7 @@ class enablerst : public enabler_inputst
   unsigned long flag; // ENABLERFLAG_RENDER, ENABLERFLAG_MAXFPS
 
   int loop(string cmdline);
+  void async_loop();
   void do_frame();
 
   // Renderer interface
