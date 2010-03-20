@@ -122,18 +122,20 @@ void renderer::display()
 {
   const int dimx = init.display.grid_x;
   const int dimy = init.display.grid_y;
+  static bool use_graphics = init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS);
   if (gps.force_full_display_count) {
     memcpy(screen_old, screen, dimx*dimy*4*sizeof *screen);
-    // TODO: Don't bother with this in non-graphical mode
-    memcpy(screentexpos_old, screentexpos, dimx*dimy*sizeof *screentexpos);
-    memcpy(screentexpos_addcolor_old, screentexpos_addcolor, dimx*dimy*sizeof *screentexpos_addcolor);
-    memcpy(screentexpos_grayscale_old, screentexpos_grayscale, dimx*dimy*sizeof *screentexpos_grayscale);
-    memcpy(screentexpos_cf_old, screentexpos_cf, dimx*dimy*sizeof *screentexpos_cf);
-    memcpy(screentexpos_cbr_old, screentexpos_cbr, dimx*dimy*sizeof *screentexpos_cbr);
+    if (use_graphics) {
+      memcpy(screentexpos_old, screentexpos, dimx*dimy*sizeof *screentexpos);
+      memcpy(screentexpos_addcolor_old, screentexpos_addcolor, dimx*dimy*sizeof *screentexpos_addcolor);
+      memcpy(screentexpos_grayscale_old, screentexpos_grayscale, dimx*dimy*sizeof *screentexpos_grayscale);
+      memcpy(screentexpos_cf_old, screentexpos_cf, dimx*dimy*sizeof *screentexpos_cf);
+      memcpy(screentexpos_cbr_old, screentexpos_cbr, dimx*dimy*sizeof *screentexpos_cbr);
+    }
     // Update the entire screen
     enabler.update_all();
   } else {
-    if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS)) {
+    if (use_graphics) {
       for (int x2=0; x2 < dimx; x2++) {
         for (int y2=0; y2 < dimy; y2++) {
           const int off = x2*dimy*4 + y2*4;
@@ -155,8 +157,7 @@ void renderer::display()
             screentexpos_cf_old[off] = screentexpos_cf[off];
             screentexpos_cbr_old[off] = screentexpos_cbr[off];
             
-            // Then just inform enabler.
-            enabler.update_tile(x2, y2);
+            update_tile(x2, y2);
           }
         }
       }
@@ -167,7 +168,7 @@ void renderer::display()
           // sizeof(int) = 4.. I very much hope.
           if (*(int*)(screen + off) != *(int*)(screen_old + off)) {
             *(int*)(screen_old + off) = *(int*)(screen + off);
-            enabler.update_tile(x2, y2);
+            update_tile(x2, y2);
           }
         }
       }
