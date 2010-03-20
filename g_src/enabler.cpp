@@ -34,29 +34,13 @@ static void report_error(const char *error_preface, const char *error_message)
   delete [] buf;
 }
 
-struct texture_fullid {
-  int texpos;
-  float r, g, b;
-  float br, bg, bb;
-
-  bool operator< (const struct texture_fullid &other) const {
-    if (texpos != other.texpos) return texpos < other.texpos;
-    if (r != other.r) return r < other.r;
-    if (g != other.g) return g < other.g;
-    if (b != other.b) return b < other.b;
-    if (br != other.br) return br < other.br;
-    if (bg != other.bg) return bg < other.bg;
-    return bb < other.bb;
-  }
-};
-
-static texture_fullid screen_to_texid(int x, int y) {
+texture_fullid renderer::screen_to_texid(int x, int y) {
   struct texture_fullid ret;
   const int tile = x * gps.dimy + y;
-  const int ch = gps.screen[tile*4 + 0];
-  const int bold = (gps.screen[tile*4 + 3] != 0) * 8;
-  const int fg = gps.screen[tile*4 + 1] + bold;
-  const int bg = gps.screen[tile*4 + 2] + bold;
+  const int ch = screen[tile*4 + 0];
+  const int bold = (screen[tile*4 + 3] != 0) * 8;
+  const int fg = screen[tile*4 + 1] + bold;
+  const int bg = screen[tile*4 + 2] + bold;
 
   assert(fg >= 0 && fg < 16);
   assert(bg >= 0 && bg < 16);
@@ -70,6 +54,8 @@ static texture_fullid screen_to_texid(int x, int y) {
   ret.br = enabler.ccolor[bg][0];
   ret.bg = enabler.ccolor[bg][1];
   ret.bb = enabler.ccolor[bg][2];
+
+  // TODO: Account for graphics mode
 
   return ret;
 }
@@ -211,17 +197,17 @@ void renderer::gps_allocate(int x, int y) {
   memset(screentexpos_cbr, 0, x*y);
 
   screen_old = new unsigned char[x*y*4];
-  memset(screen, 0, x*y*4);
+  memset(screen_old, 0, x*y*4);
   screentexpos_old = new long[x*y];
-  memset(screentexpos, 0, x*y*sizeof(long));
+  memset(screentexpos_old, 0, x*y*sizeof(long));
   screentexpos_addcolor_old = new char[x*y];
-  memset(screentexpos_addcolor, 0, x*y);
+  memset(screentexpos_addcolor_old, 0, x*y);
   screentexpos_grayscale_old = new unsigned char[x*y];
-  memset(screentexpos_grayscale, 0, x*y);
+  memset(screentexpos_grayscale_old, 0, x*y);
   screentexpos_cf_old = new unsigned char[x*y];
-  memset(screentexpos_cf, 0, x*y);
+  memset(screentexpos_cf_old, 0, x*y);
   screentexpos_cbr_old = new unsigned char[x*y];
-  memset(screentexpos_cbr, 0, x*y);
+  memset(screentexpos_cbr_old, 0, x*y);
 
 
   // In async mode, gps operations draw into the spare arrays, while
@@ -245,14 +231,13 @@ void renderer::gps_allocate(int x, int y) {
 }
 
 void renderer::swap_buffers() {
-  assert (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC));
   // Swap spare and main arrays
-  screen_spare = screen; screen = gps.screen;
-  screentexpos_spare = screentexpos; screentexpos = gps.screentexpos;
-  screentexpos_addcolor_spare = screentexpos_addcolor; screentexpos_addcolor = gps.screentexpos_addcolor;
-  screentexpos_grayscale_spare = screentexpos_grayscale; screentexpos_grayscale = gps.screentexpos_grayscale;
-  screentexpos_cf_spare = screentexpos_cf; screentexpos_cf = gps.screentexpos_cf;
-  screentexpos_cbr_spare = screentexpos_cbr; screentexpos_cbr = gps.screentexpos_cbr;
+  screen_spare = screen; screen = gps.screen; gps.screen = screen_spare;
+  screentexpos_spare = screentexpos; screentexpos = gps.screentexpos; gps.screentexpos = screentexpos_spare;
+  screentexpos_addcolor_spare = screentexpos_addcolor; screentexpos_addcolor = gps.screentexpos_addcolor; gps.screentexpos_addcolor = screentexpos_addcolor_spare;
+  screentexpos_grayscale_spare = screentexpos_grayscale; screentexpos_grayscale = gps.screentexpos_grayscale; gps.screentexpos_grayscale = screentexpos_grayscale_spare;
+  screentexpos_cf_spare = screentexpos_cf; screentexpos_cf = gps.screentexpos_cf; gps.screentexpos_cf = screentexpos_cf_spare;
+  screentexpos_cbr_spare = screentexpos_cbr; screentexpos_cbr = gps.screentexpos_cbr; gps.screentexpos_cbr = screentexpos_cbr_spare;
 }
 
 void enablerst::async_loop() {
@@ -319,7 +304,7 @@ void enablerst::do_frame() {
       sync = NULL;
     }
     if (!render_async)
-      render_things(); // Call UI renderers in DF proper
+      render_things(); // Call UI renderers in DF proper - but not while mainloop is running!
     // Render
     renderer->display();
     renderer->render();

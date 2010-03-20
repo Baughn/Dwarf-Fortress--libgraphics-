@@ -86,6 +86,7 @@ class renderer_2d : public renderer {
 
     // (Re)create the window
     screen = SDL_SetVideoMode(w, h, 32, flags);
+    if (screen == NULL) cout << "INIT FAILED!" << endl;
 
     return screen != NULL;
   }

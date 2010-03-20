@@ -758,6 +758,23 @@ typedef struct {									// Contains Information Vital To A Window
 
 enum zoom_commands { zoom_in, zoom_out, zoom_reset };
 
+
+struct texture_fullid {
+  int texpos;
+  float r, g, b;
+  float br, bg, bb;
+
+  bool operator< (const struct texture_fullid &other) const {
+    if (texpos != other.texpos) return texpos < other.texpos;
+    if (r != other.r) return r < other.r;
+    if (g != other.g) return g < other.g;
+    if (b != other.b) return b < other.b;
+    if (br != other.br) return br < other.br;
+    if (bg != other.bg) return bg < other.bg;
+    return bb < other.bb;
+  }
+};
+
 class renderer {
   unsigned char *screen;
   long *screentexpos;
@@ -782,6 +799,7 @@ class renderer {
 
  protected:
   void gps_allocate(int x, int y);
+  texture_fullid screen_to_texid(int x, int y);
  public:
   void display();
   virtual void update_tile(int x, int y) = 0;
