@@ -123,9 +123,10 @@ void renderer::display()
     enabler.update_all();
   } else {
     if (use_graphics) {
+      int off = 0;
       for (int x2=0; x2 < dimx; x2++) {
-        for (int y2=0; y2 < dimy; y2++) {
-          const int off = x2*dimy*4 + y2*4;
+        for (int y2=0; y2 < dimy; y2++, ++off) {
+          // TODO: Use pointers instead of offsets in this code too, if it's a win. Check in DF later.
           // Partial printing (and color-conversion): Big-ass if.
           if (*(int*)(screen + off) == *(int*)(screen_old + off) &&
               screentexpos[off] == screentexpos_old[off] &&
@@ -149,12 +150,11 @@ void renderer::display()
         }
       }
     } else {
-      for (int x2=0; x2 < dimx; x2++) {
-        for (int y2=0; y2 < dimy; y2++) {
-          const int off = x2*dimy*4 + y2*4;
-          // sizeof(int) = 4.. I very much hope.
-          if (*(int*)(screen + off) != *(int*)(screen_old + off)) {
-            *(int*)(screen_old + off) = *(int*)(screen + off);
+      Uint32 *screenp = (Uint32*)screen, *oldp = (Uint32*)screen_old;
+      for (int x2=0; x2 < dimx; ++x2) {
+        for (int y2=0; y2 < dimy; ++y2, ++screenp, ++oldp) {
+          if (*screenp != *oldp) {
+            *oldp = *screenp;
             update_tile(x2, y2);
           }
         }
