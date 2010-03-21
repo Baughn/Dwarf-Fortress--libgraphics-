@@ -105,6 +105,12 @@ public:
     nodelay(stdscr, true);
     start_color();
     curs_set(0);
+    mmask_t dummy;
+    // mousemask(ALL_MOUSE_EVENTS, &dummy);
+  }
+
+  bool get_mouse_coords(int &x, int &y) {
+    return false;
   }
 };
 
@@ -124,11 +130,15 @@ static int getch_utf8() {
 
 void enablerst::eventLoop_ncurses() {
   int x, y, oldx = 0, oldy = 0;
-
+  static const bool render_async = init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC);
+  renderer_curses *renderer = static_cast<renderer_curses*>(this->renderer);
+  
   while (loopvar) {
     // Check for terminal resize
     getmaxyx(stdscr, y, x);
     if (y != oldy || x != oldx) {
+      if (render_async)
+        quiesce_async_loop();
       renderer->resize(x, y);
       oldx = x; oldy = y;
     }
@@ -139,8 +149,15 @@ void enablerst::eventLoop_ncurses() {
     // events for enabler_input.
     int key;
     while ((key = getch_utf8())) {
+      if (render_async)
+        quiesce_async_loop();
       bool esc = false;
-      if (key == -27) { // esc
+      if (key == KEY_MOUSE) {
+        MEVENT ev;
+        if (getmouse(&ev) == OK) {
+          // TODO: Deal with curses mouse input. And turn it on above.
+        }
+      } else if (key == -27) { // esc
         int second = getch_utf8();
         if (second) { // That was an escape sequence
           esc = true;

@@ -345,6 +345,10 @@ public:
       resize(last_windowed_w, last_windowed_h);
     }
   }
+
+  bool get_mouse_coords(int &x, int &y) {
+    return false;
+  }
 };
 
 // Specialization for PARTIAL:0

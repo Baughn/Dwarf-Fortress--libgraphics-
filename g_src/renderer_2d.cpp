@@ -2,6 +2,7 @@
 class renderer_2d : public renderer {
   SDL_Surface *screen;
   map<texture_fullid, SDL_Surface*> tile_cache;
+  int dispx, dispy, dimx, dimy;
 
   SDL_Surface *tile_cache_lookup(texture_fullid &id) {
     map<texture_fullid, SDL_Surface*>::iterator it = tile_cache.find(id);
@@ -162,19 +163,19 @@ public:
     cout << "New window size: " << w << "x" << h << endl;
     init_video(w, h);
     // (Re)calculate grid-size
-    const int dispx = enabler.is_fullscreen() ?
+    dispx = enabler.is_fullscreen() ?
       init.font.large_font_dispx :
       init.font.small_font_dispx;
-    const int dispy = enabler.is_fullscreen() ?
+    dispy = enabler.is_fullscreen() ?
       init.font.large_font_dispy :
       init.font.small_font_dispy;
     cout << "Font size: " << dispx << "x" << dispy << endl;
-    const int gridx = MIN(MAX(w / dispx, MIN_GRID_X), MAX_GRID_X);
-    const int gridy = MIN(MAX(h / dispy, MIN_GRID_Y), MAX_GRID_Y);
-    cout << "Resizing grid to " << gridx << "x" << gridy << endl << endl;
+    dimx = MIN(MAX(w / dispx, MIN_GRID_X), MAX_GRID_X);
+    dimy = MIN(MAX(h / dispy, MIN_GRID_Y), MAX_GRID_Y);
+    cout << "Resizing grid to " << dimx << "x" << dimy << endl << endl;
     // Only reallocate the grid if it actually changes
-    if (init.display.grid_x != gridx || init.display.grid_y != gridy)
-      gps_allocate(gridx, gridy);
+    if (init.display.grid_x != dimx || init.display.grid_y != dimy)
+      gps_allocate(dimx, dimy);
     // But always force a full display cycle
     gps.force_full_display_count = 1;
     enabler.flag |= ENABLERFLAG_RENDER;
@@ -183,5 +184,17 @@ public:
   void set_fullscreen() {
     resize(init.display.desired_fullscreen_width,
            init.display.desired_fullscreen_height);
+  }
+
+  bool get_mouse_coords(int &x, int &y) {
+    // Origin is always 0,0. Simple.
+    int mouse_x, mouse_y;
+    SDL_GetMouseState(&mouse_x, &mouse_y);
+    if (mouse_x < 0 || mouse_x >= dispx*dimx ||
+        mouse_y < 0 || mouse_y >= dispy*dimy)
+      return false;
+    x = mouse_x / dispx;
+    y = mouse_y / dispy;
+    return true;
   }
 };

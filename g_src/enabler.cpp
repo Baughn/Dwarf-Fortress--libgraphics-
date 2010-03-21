@@ -392,6 +392,24 @@ void enablerst::eventLoop_SDL()
             enabler.add_input(event, now);
         }
         break;
+      case SDL_MOUSEMOTION:
+        // Deal with the mouse hiding bit
+        mouse_lastused = now;
+        if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
+          // turn on mouse picture
+          // enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
+        } else {
+          SDL_ShowCursor(SDL_ENABLE);
+        }
+        // Break if mouse usage is off
+        if (init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) break;
+        // Check whether the renderer considers this valid input or not
+        int foo, bar;
+        if (renderer->get_mouse_coords(foo, bar))
+          enabler.tracking_on = 1;
+        else
+          enabler.tracking_on = 0;
+        break;
       case SDL_ACTIVEEVENT:
         enabler.clear_input();
         if (event.active.state & SDL_APPACTIVE) {
@@ -404,64 +422,6 @@ void enablerst::eventLoop_SDL()
       case SDL_VIDEOEXPOSE:
         gps.force_full_display_count++;
         enabler.flag|=ENABLERFLAG_RENDER;
-        break;
-      case SDL_MOUSEMOTION:
-        // Deal with the mouse hiding bit
-        mouse_lastused = now;
-        if(init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_PICTURE)) {
-          // turn on mouse picture
-          // enabler.set_tile(gps.tex_pos[TEXTURE_MOUSE], TEXTURE_MOUSE,enabler.mouse_x, enabler.mouse_y);
-        } else {
-          SDL_ShowCursor(SDL_ENABLE);
-        }
-        // Is the mouse over the screen surface?
-        // if(!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
-        //   if (event.motion.x >= origin_x && event.motion.x < origin_x + size_x &&
-        //       event.motion.y >= origin_y && event.motion.y < origin_y + size_y) {
-        //     // Store last position
-        //     enabler.oldmouse_x = enabler.mouse_x;
-        //     enabler.oldmouse_y = enabler.mouse_y;
-        //     enabler.tracking_on = 1;
-        //     // Set viewport_x/y as appropriate, and fixup mouse position for zoom
-        //     // We use only the central 60% of the window for setting viewport origin.
-        //     if (!zoom_grid) {
-        //       double mouse_x = (double)event.motion.x / size_x,
-        //         mouse_y = (double)event.motion.y / size_y;
-        //       double percentage = 0.60;
-        //       mouse_x /= percentage;
-        //       mouse_y /= percentage;
-        //       mouse_x -= (1-percentage)/2;
-        //       mouse_y -= (1-percentage)/2;
-        //       mouse_x = MIN(MAX(mouse_x,0),1);
-        //       mouse_y = MIN(MAX(mouse_y,0),1);
-        //       double new_viewport_x = mouse_x, new_viewport_y = mouse_y;
-        //       if (new_viewport_x != viewport_x || new_viewport_y != viewport_y) {
-        //         viewport_x = new_viewport_x;
-        //         viewport_y = new_viewport_y;
-        //         gps.force_full_display_count++;
-        //       }
-        //       double visible = 1/viewport_zoom,
-        //         invisible = 1 - visible;
-        //       double visible_w = enabler.window_width * visible,
-        //         visible_h = enabler.window_height * visible;
-        //       enabler.mouse_x = ((double)event.motion.x / enabler.window_width) * visible_w + (invisible*viewport_x*enabler.window_width);
-        //       enabler.mouse_y = ((double)event.motion.y / enabler.window_height) * visible_h + (invisible*viewport_y*enabler.window_height);
-        //     } else {
-        //       enabler.mouse_x = event.motion.x;
-        //       enabler.mouse_y = event.motion.y;
-        //     }
-        //   } else {
-        //     enabler.oldmouse_x = -1;
-        //     enabler.oldmouse_y = -1;
-        //     enabler.mouse_x = -1;
-        //     enabler.mouse_y = -1;
-        //     enabler.mouse_lbut = 0;
-        //     enabler.mouse_rbut = 0;
-        //     enabler.mouse_lbut_lift = 0;
-        //     enabler.mouse_rbut_lift = 0;
-        //     enabler.tracking_on = 0;
-        //   }
-        // } //init mouse on
         break;
       case SDL_VIDEORESIZE:
         if (is_fullscreen())

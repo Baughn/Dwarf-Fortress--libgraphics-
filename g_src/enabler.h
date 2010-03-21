@@ -829,6 +829,7 @@ class renderer {
     screentexpos_cf_spare = NULL;
     screentexpos_cbr_spare = NULL;
   }
+  virtual bool get_mouse_coords(int &x, int &y) = 0;
 };
 
 class enablerst : public enabler_inputst
@@ -918,8 +919,11 @@ class enablerst : public enabler_inputst
   int calculate_gfps();
 
   // Mouse interface, such as it is
-  void get_mouse_coords(int &x, int &y);
+  bool get_mouse_coords(int &x, int &y) { // Returns false if the mouse is out of bounds
+    return renderer->get_mouse_coords(x, y);
+  }
   char mouse_lbut,mouse_rbut,mouse_lbut_down,mouse_rbut_down,mouse_lbut_lift,mouse_rbut_lift;
+  char tracking_on;   // Whether we're tracking the mouse or not
 
   // OpenGL state (wrappers)
   class textures textures; // Font/graphics texture catalog
@@ -937,175 +941,11 @@ class enablerst : public enabler_inputst
     fullscreen = !fullscreen;
     renderer->set_fullscreen();
   }
-  
-/*   friend class gridrectst; */
-/*   friend class tilest; */
-/*   friend class textures; */
-  
-/*   unsigned long flag; // ENABLERFLAG_RENDER, ENABLERFLAG_MAXFPS */
-/*   char tracking_on;   // Whether we're tracking the mouse or not */
 
-/*   string command_line; */
-
-
-/*   int loop(void); */
-
-/*   void terminate_application(GL_Window* window); */
-/*   char create_full_screen; */
-/*   char inactive_mode; */
-/*   void reshape_GL(int width,int height); */
-/*   void render(enum render_phase); */
-/*   void render_tiles(enum render_phase, bool clear); */
-/*   void graphicsinit(); */
-/*   long gridrect_create(long dimx,long dimy); */
-/*   long cursesrect_create(long font_id,long x,long y,long dimx,long dimy); */
-/*   gridrectst *get_gridrect(long rect_id); */
-/*   void toggle_fullscreen() */
-/*   { */
-/*     toggle_fullscreen(&window); */
-/*   } */
-/*   // Display a particular tile at a particular window-relative location */
-/*   // Pass -1 as tex_pos to remove a particular tile. Using the same id twice */
-/*   // overwrites the last call. */
-/*   void set_tile(long tex_pos, int id, int x, int y); */
-/*   void add_gennum_tile(long gennum,double dimx,double dimy,double letx,double lety,char alpha); */
-/*   void set_color(float r,float g,float b,float a=1); */
-/*   void enable_fade(float r,float g,float b,float a,float t); */
-/*   void disable_fade(); */
-/*   void set_font(long font_id) */
-/*   { */
-/*     active_font_id=font_id; */
-/*   } */
-/*   void print_string(const string &str,char centered=0,short length_lim=1000,char crammed_lets=0); */
-/*   void set_center(double newx,double newy) */
-/*   { */
-/*     center_x=newx; */
-/*     center_y=newy; */
-/*   } */
-/*   void set_clear_color(float newr,float newg,float newb,float newa) */
-/*   { */
-/*     if(fade_t==0) */
-/*       { */
-/* 	clear_r=newr;clear_g=newg;clear_b=newb;clear_a=newa; */
-/*       } */
-/*     else */
-/*       { */
-/* 	clear_r=newr*(1.0f-fade_t)+fade_r*fade_t; */
-/* 	clear_g=newg*(1.0f-fade_t)+fade_g*fade_t; */
-/* 	clear_b=newb*(1.0f-fade_t)+fade_b*fade_t; */
-/* 	clear_a=newa*(1.0f-fade_t)+fade_a*fade_t; */
-/*       } */
-/*   } */
-/*   unsigned long get_timer() */
-/*   { */
-/*     if(main_qprate.QuadPart==0)return 0; */
-/*     else return qpc.QuadPart; */
-/*   } */
-
-/* void copy_texture_data(unsigned char *dest,long destx,long desty,char destalpha, */
-/* 			unsigned char *src,long srcx,long srcy,char srcalpha, */
-/* 			long offx,long offy, */
-/* 			float rmult,float gmult,float bmult,char use_trans,long *color_data=NULL,unsigned long flag=0); */
-
-/* void save_texture_data_to_bmp(unsigned char *bitmapImage,long dimx,long dimy,long alpha,string &filename); */
-
-
-/*  void flip_uchar_array(unsigned char *buff,long dimx,long dimy,long bytes_per_pixel,unsigned long flag); */
-/*  void get_texture_data_dims(long pos,short &width,short &height,char &alpha); */
-
-/*   void read_pixels(int x,int y,int width,int height,unsigned char *buffer); */
-
-/*   enablerst(); */
-/*   ~enablerst() */
-/*     { */
-/*       long t; */
-/*       for(t=(long)gridrect.size()-1;t>=0;t--) */
-/* 	{ */
-/* 	  delete gridrect[t]; */
-/* 	} */
-/*       gridrect.clear(); */
-/*     } */
-/*   void enable_buffer_draw(){buffer_draw=1;} */
-/*   void disable_buffer_draw(){buffer_draw=0;} */
-/*   char doing_buffer_draw(){return buffer_draw;} */
-
-/*   LARGE_INTEGER qpfr; */
-/*   LARGE_INTEGER main_qprate,qprate,g_qprate; */
-/*   LARGE_INTEGER qpc,qpc2,g_qpc; */
-		
-/*   double frames_outstanding; */
-
-/*   Uint32 now; //we only need to be getting the tick time once */
-
-/*   unsigned long current_render_count; */
-/*   unsigned long secondary_render_count; */
-
-/*   long oldmouse_x,oldmouse_y,mouse_x,mouse_y; */
-/*   char mouse_lbut_down,mouse_rbut_down; */
-/*   char mouse_lbut_lift,mouse_rbut_lift; */
-
-/*   text_systemst text_system; */
-/*   char change_screen_resolution (int width, int height, int bitsPerPixel); */
-
-/*   void refresh_tiles(); */
-
-/*   int window_width,window_height; */
-
-/*   void do_frame(); */
-/*   class textures textures; */
-
-/*  private: */
-/*   long next_tile_slot; */
-/*   long active_font_id; */
-
-/*   char is_program_looping; */
-/*   svector<gridrectst *> gridrect; */
-/*   long next_gridrect_id; */
-/*   long next_texture_id; */
-/*   long next_texture_data_id; */
-/*   double locx,locy,locz; */
-/*   double center_x,center_y; */
-/*   float color_r,color_g,color_b,color_a; */
-/*   float clear_r,clear_g,clear_b,clear_a; */
-/*   float fade_r,fade_g,fade_b,fade_a,fade_t; */
-/*   char buffer_draw; */
-
-/*   // Tile-map used by set_tile */
-/*   map<int,struct tile> tiles; */
-/*   // Vertex and texture arrays generated from above map */
-/*   GLfloat *tile_vertices; */
-/*   GLfloat *tile_texcoords; */
-
-
-/*   char create_window_GL (GL_Window* window); */
-/*   char destroy_window_GL (GL_Window* window); */
-/*   char register_window_class (void); */
-/*   void toggle_fullscreen(GL_Window* window); */
-/*   void create_textures(); */
-/*   void remove_textures(); */
-
-/*   GLsync sync; */
-
-/*  public: */
-/*   bool RunningMacro; */
-/*   bool use_opengl; // If false, everything goes via SDL 2D output instead */
-
-/*   void reset_gl(GL_Window* window); */
-/*   void reset_gl() */
-/*   { */
-/*     reset_gl(&window); */
-/*   } */
-
-/*   bool prep_for_image_export(); */
-/*   void post_image_export(); */
-  
+  // Conversations
+  text_systemst text_system;
 };
-
-void convert_to_rgb(float &r,float &g,float &b,char col,char bright);
 #endif
-
-/* pair<int,int> window_to_grid(int x, int y); */
-/* pair<int,int> resize_grid(const int w_req, const int h_req); */
 
 // Function prototypes for deep-DF calls
 char beginroutine();
