@@ -241,16 +241,21 @@ void renderer::swap_buffers() {
   screentexpos_cbr_spare = screentexpos_cbr; screentexpos_cbr = gps.screentexpos_cbr; gps.screentexpos_cbr = screentexpos_cbr_spare;
 }
 
+static volatile bool render_async_now = false;
+
 void enablerst::async_loop() {
   for (;;) {
     SDL_NumJoysticks(); // Hook for dfhack
     // Wait until we're supposed to run a frame
     SDL_SemWait(run_frame);
     int ret = mainloop();
-    if (flag & ENABLERFLAG_RENDER && gframes_outstanding) {
-      SDL_mutexP(gpslock);
+    if ((flag & ENABLERFLAG_RENDER) && gframes_outstanding > 0 && !render_async_now) {
+      gframes_outstanding--;
+      render_async_now = true;
+      // cout << "render 1" << endl;
       render_things();
       flag &= ~ENABLERFLAG_RENDER;
+      SDL_mutexP(gpslock);
       renderer->swap_buffers();
       SDL_mutexV(gpslock);
     }
@@ -276,13 +281,16 @@ void enablerst::do_frame() {
 
   static const bool render_async = init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC);
 
+  bool async_limit = true;
+  
   // Run the main loop, if appropriate.
   if (frames_outstanding >= 1 || (flag & ENABLERFLAG_MAXFPS)) {
     // puts("loop");
     frames_outstanding -= 1;
     if (render_async) {
       // Run mainloop()
-      trigger_async_loop();
+      if (trigger_async_loop())
+        async_limit = false;
     } else {
       SDL_NumJoysticks(); // Hook for dfhack
       if (mainloop())
@@ -293,27 +301,28 @@ void enablerst::do_frame() {
   
   // Render one graphical frame, if appropriate.
   // TODO: Move sync to renderer_opengl
-  if ((render_async || (flag & ENABLERFLAG_RENDER)) && gframes_outstanding > 0 &&
-      (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
+  if (render_async) {
+    if (render_async_now) {
+      SDL_mutexP(gpslock);
+      renderer->display();
+      SDL_mutexV(gpslock);
+      renderer->render();
+      update_gfps();
+      render_async_now = false;
+    }
+  } else if ((flag & ENABLERFLAG_RENDER) && gframes_outstanding > 0 &&
+             (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
     if (sync) {
       glDeleteSync(sync);
       sync = NULL;
     }
-    if (!render_async)
-      render_things(); // Call UI renderers in DF proper - but not while mainloop might be running!
+    render_things();
     // Render
-    if (render_async)
-      SDL_mutexP(gpslock);
     renderer->display();
-    if (render_async)
-      SDL_mutexV(gpslock);
     renderer->render();
-    if (!render_async)
-      flag &= ~ENABLERFLAG_RENDER; // Mark this rendering as complete.
+    flag &= ~ENABLERFLAG_RENDER; // Mark this rendering as complete.
     gframes_outstanding--;
     update_gfps();
-  } else {
-    gframes_outstanding = 0;
   }
 
   if (render_async)
@@ -325,8 +334,8 @@ void enablerst::do_frame() {
   //   std::cout << "frames: " << frames_outstanding << '\n';
   
   // Sleep if appropriate
-  if (gframes_outstanding <= 0 &&
-      frames_outstanding <= 0) {
+  if ((gframes_outstanding <= 0 || render_async) &&
+      ((render_async && async_limit) || frames_outstanding <= 0)) {
     // Sleep until the timer thread signals us
     if(!(flag & ENABLERFLAG_MAXFPS))SDL_CondWait(timer_cond, dummy_mutex);
   }

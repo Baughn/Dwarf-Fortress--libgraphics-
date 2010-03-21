@@ -90,6 +90,8 @@ public:
       l.color = basic_random(7) + 1;
       lines.push_back(l);
     }
+    // Pretend this takes a while
+    SDL_Delay(2);
   }
   virtual void resize(int w, int h) {
     // Clear out lines that are now off-screen

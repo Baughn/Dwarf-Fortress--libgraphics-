@@ -863,13 +863,14 @@ class enablerst : public enabler_inputst
   SDL_sem *run_frame, *done_frame;
   SDL_mutex *gpslock;
   int outstanding_frames; // How many async loops are outstanding
-  void trigger_async_loop() {
+  bool trigger_async_loop() {
     if (outstanding_frames > fps) {
       // Too many outstanding frames
-      SDL_SemWait(done_frame);
+      return false;
     } else
       outstanding_frames++;
     SDL_SemPost(run_frame);
+    return true;
   }
   void quiesce_async_loop() {
     // Attempt to cancel frames first
