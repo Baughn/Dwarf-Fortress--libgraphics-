@@ -102,6 +102,7 @@ enablerst::enablerst() {
   fps = 100; gfps = 20;
   run_frame = SDL_CreateSemaphore(0);
   done_frame = SDL_CreateSemaphore(0);
+  gpslock = SDL_CreateMutex();
 }
 
 void renderer::display()
@@ -242,9 +243,17 @@ void renderer::swap_buffers() {
 
 void enablerst::async_loop() {
   for (;;) {
+    SDL_NumJoysticks(); // Hook for dfhack
     // Wait until we're supposed to run a frame
     SDL_SemWait(run_frame);
     int ret = mainloop();
+    if (flag & ENABLERFLAG_RENDER && gframes_outstanding) {
+      SDL_mutexP(gpslock);
+      render_things();
+      flag &= ~ENABLERFLAG_RENDER;
+      renderer->swap_buffers();
+      SDL_mutexV(gpslock);
+    }
     if (ret) loopvar = 0;
     // Notify main thread of frame completion
     SDL_SemPost(done_frame);
@@ -261,52 +270,47 @@ void enablerst::do_frame() {
   // individually atomic so worst-case it's clamped to 5 when it "should" be 6
   // or something. No problem there.
   if (gframes_outstanding > 5) gframes_outstanding = 5;
-  if (frames_outstanding > fps_per_gfps*2+1) frames_outstanding = fps_per_gfps*2+1;
-  //ENABLERFLAG_MAXFPS can lead to negative values, at least for frames_outstanding
   if (gframes_outstanding < -5) gframes_outstanding = -5;
+  if (frames_outstanding > fps_per_gfps*2+1) frames_outstanding = fps_per_gfps*2+1;
   if (frames_outstanding < -20) frames_outstanding = -20;
 
   static const bool render_async = init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC);
 
-  // If we're in async mode, we use last frame's buffers and last frame's render flag
-  unsigned long cached_flag = flag;
-  
   // Run the main loop, if appropriate.
   if (frames_outstanding >= 1 || (flag & ENABLERFLAG_MAXFPS)) {
     // puts("loop");
     frames_outstanding -= 1;
     if (render_async) {
-      if ((flag & ENABLERFLAG_RENDER) && gframes_outstanding) {
-        render_things(); // Render the UI
-        flag &= ~ENABLERFLAG_RENDER;
-        // Swap display buffers
-        renderer->swap_buffers();
-      }
-      // And run mainloop()
+      // Run mainloop()
       trigger_async_loop();
     } else {
+      SDL_NumJoysticks(); // Hook for dfhack
       if (mainloop())
         loopvar = 0;
       update_fps();
-      cached_flag = flag; // Since we're not in async mode, we use this frame's flag
     }
   }
   
   // Render one graphical frame, if appropriate.
   // TODO: Move sync to renderer_opengl
-  if ((cached_flag & ENABLERFLAG_RENDER) && gframes_outstanding > 0 &&
+  if ((render_async || (flag & ENABLERFLAG_RENDER)) && gframes_outstanding > 0 &&
       (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
     if (sync) {
       glDeleteSync(sync);
       sync = NULL;
     }
     if (!render_async)
-      render_things(); // Call UI renderers in DF proper - but not while mainloop is running!
+      render_things(); // Call UI renderers in DF proper - but not while mainloop might be running!
     // Render
+    if (render_async)
+      SDL_mutexP(gpslock);
     renderer->display();
+    if (render_async)
+      SDL_mutexV(gpslock);
     renderer->render();
     if (!render_async)
       flag &= ~ENABLERFLAG_RENDER; // Mark this rendering as complete.
+    gframes_outstanding--;
     update_gfps();
   } else {
     gframes_outstanding = 0;

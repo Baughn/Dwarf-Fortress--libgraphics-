@@ -861,6 +861,7 @@ class enablerst : public enabler_inputst
 
   // Barriers for async rendering
   SDL_sem *run_frame, *done_frame;
+  SDL_mutex *gpslock;
   int outstanding_frames; // How many async loops are outstanding
   void trigger_async_loop() {
     if (outstanding_frames > fps) {
