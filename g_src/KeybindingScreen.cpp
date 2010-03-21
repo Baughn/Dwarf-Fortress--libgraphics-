@@ -281,6 +281,7 @@ MacroScreenLoad::MacroScreenLoad() {
     if (it->length() > width) width = it->length();
     menu.add(*it, *it);
   }
+  enabler.flag |= ENABLERFLAG_RENDER;
   // render();
   // gps.renewscreen();
 }
@@ -316,6 +317,7 @@ void MacroScreenLoad::render() {
 }
 
 MacroScreenSave::MacroScreenSave() {
+  enabler.flag |= ENABLERFLAG_RENDER;
 }
 
 void MacroScreenSave::logic() {
