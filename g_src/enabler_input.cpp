@@ -857,6 +857,46 @@ void enabler_inputst::load_macro_from_file(const string &file) {
     } else if (line == "\tEnd of group") {
       if (group.size()) macro.push_back(group);
       group.clear();
+    } else if (line.substr(0,2) != "\t\t" ) {
+      if( line.substr(1).find("\t") != string::npos) {
+        // expecting /t##/tCMD for a repeated command
+        istringstream ss(line.substr(1));
+        int count;
+        string remainingline;
+
+        if(ss >> count) {
+          ss >> remainingline;
+          if(remainingline.size()) {
+            for(int i=0; i < count; i++) {
+              map<string,InterfaceKey>::iterator it = bindingNames.right.find(remainingline);
+              if (it == bindingNames.right.end()) {
+                cout << "Binding name unknown while loading macro: " << line.substr(1) << endl;
+              } else {
+                group.insert(it->second);
+                if (group.size()) macro.push_back(group);
+                group.clear();
+              }
+            }
+          }
+          else {
+            cout << "Binding missing while loading macro: " << line.substr(1) << endl;
+          }
+        } else {
+          cout << "Quantity not numeric or Unexpected tab(s) while loading macro: " << line.substr(1) << endl;
+        }
+      }
+      else
+      {
+        // expecting /tCMD for a non-grouped command
+        map<string,InterfaceKey>::iterator it = bindingNames.right.find(line.substr(1));
+        if (it == bindingNames.right.end()) {
+          cout << "Binding name unknown while loading macro: " << line.substr(1) << endl;
+        } else {
+          group.insert(it->second);
+          if (group.size()) macro.push_back(group);
+          group.clear();
+        }
+      }
     } else {
       map<string,InterfaceKey>::iterator it = bindingNames.right.find(line.substr(2));
       if (it == bindingNames.right.end())
