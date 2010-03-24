@@ -67,42 +67,15 @@ texture_fullid renderer::screen_to_texid(int x, int y) {
 #include "renderer_2d.cpp"
 #include "renderer_opengl.cpp"
 
-// The frame timer probably doesn't absolutely need to use globals,
-// but this code *works*. I'm not touching it.
-#ifdef unix
-// sig_atomic_t is guaranteed to be atomic.
-static volatile sig_atomic_t gframes_outstanding;
-#else
-// int *should* be, but is not guaranteed. OTOH, on windows it is.
-// Also, if the very rare race condition does somehow trigger, and mess
-// things up (which it shouldn't), the next check will clamp it anyway.
-static volatile signed int gframes_outstanding;
-#endif
-static double frames_outstanding;
-
-static Uint32 timer_tick(Uint32 interval, void *param) {
-  SDL_cond *c = (SDL_cond*)param;
-  gframes_outstanding++;
-  const int fps = enabler.get_fps(),
-    gfps = enabler.get_gfps();
-  double fps_per_gfps = (double)fps / (double)gfps;
-
-  frames_outstanding += fps_per_gfps;
-  SDL_CondSignal(c); // Wake up the sleeper if necessary
-  return interval;
-}
 
 enablerst::enablerst() {
   fullscreen = false;
   sync = NULL;
   renderer = NULL;
-  timer_cond = NULL;
-  dummy_mutex = NULL;
   calculated_fps = calculated_gfps = frame_sum = gframe_sum = frame_last = gframe_last = 0;
   fps = 100; gfps = 20;
-  run_frame = SDL_CreateSemaphore(0);
-  done_frame = SDL_CreateSemaphore(0);
-  gpslock = SDL_CreateMutex();
+  fps_per_gfps = fps / gfps;
+  last_tick = 0;
 }
 
 void renderer::display()
@@ -211,22 +184,20 @@ void renderer::gps_allocate(int x, int y) {
   memset(screentexpos_cbr_old, 0, x*y);
 
 
-  // In async mode, gps operations draw into the spare arrays, while
+  // gps operations draw into the spare arrays, while
   // the renderer draws the normal set
-  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC)) {
-    gps.screen = screen_spare = new unsigned char[x*y*4];
-    memset(screen_spare, 0, x*y*4);
-    gps.screentexpos = screentexpos_spare = new long[x*y];
-    memset(screentexpos_spare, 0, x*y*sizeof(long));
-    gps.screentexpos_addcolor = screentexpos_addcolor_spare = new char[x*y];
-    memset(screentexpos_addcolor_spare, 0, x*y);
-    gps.screentexpos_grayscale = screentexpos_grayscale_spare = new unsigned char[x*y];
-    memset(screentexpos_grayscale_spare, 0, x*y);
-    gps.screentexpos_cf = screentexpos_cf_spare = new unsigned char[x*y];
-    memset(screentexpos_cf_spare, 0, x*y);
-    gps.screentexpos_cbr = screentexpos_cbr_spare = new unsigned char[x*y];
-    memset(screentexpos_cbr_spare, 0, x*y);
-  }
+  gps.screen = screen_spare = new unsigned char[x*y*4];
+  memset(screen_spare, 0, x*y*4);
+  gps.screentexpos = screentexpos_spare = new long[x*y];
+  memset(screentexpos_spare, 0, x*y*sizeof(long));
+  gps.screentexpos_addcolor = screentexpos_addcolor_spare = new char[x*y];
+  memset(screentexpos_addcolor_spare, 0, x*y);
+  gps.screentexpos_grayscale = screentexpos_grayscale_spare = new unsigned char[x*y];
+  memset(screentexpos_grayscale_spare, 0, x*y);
+  gps.screentexpos_cf = screentexpos_cf_spare = new unsigned char[x*y];
+  memset(screentexpos_cf_spare, 0, x*y);
+  gps.screentexpos_cbr = screentexpos_cbr_spare = new unsigned char[x*y];
+  memset(screentexpos_cbr_spare, 0, x*y);
   
   gps.resize(x,y);
 }
@@ -244,100 +215,112 @@ void renderer::swap_buffers() {
 static volatile bool render_async_now = false;
 
 void enablerst::async_loop() {
+  bool paused = false;
+  unsigned int frames = 0; // Number of frames we've been asked to run
+  int fps = 100; // Just a thread-local copy
   for (;;) {
     SDL_NumJoysticks(); // Hook for dfhack
-    // Wait until we're supposed to run a frame
-    SDL_SemWait(run_frame);
-    int ret = mainloop();
-    if ((flag & ENABLERFLAG_RENDER) && gframes_outstanding > 0 && !render_async_now) {
-      gframes_outstanding--;
-      render_async_now = true;
-      // cout << "render 1" << endl;
-      render_things();
-      flag &= ~ENABLERFLAG_RENDER;
-      SDL_mutexP(gpslock);
-      renderer->swap_buffers();
-      SDL_mutexV(gpslock);
+    // cout << "FRAMES: " << frames << endl;
+    // Check for commands
+    async_cmd cmd;
+    bool have_cmd = true;
+    do {
+      if (paused || frames == 0)
+        async_tobox.read(cmd);
+      else
+        have_cmd = async_tobox.try_read(cmd);
+      // Obey the command, would you kindly.
+      if (have_cmd) {
+        switch (cmd.cmd) {
+        case async_cmd::pause:
+          paused = true;
+          // puts("Paused");
+          async_cmd_completed.unlock();
+          break;
+        case async_cmd::start:
+          paused = false;
+          // puts("UNpaused");
+          break;
+        case async_cmd::swap:
+          if (flag & ENABLERFLAG_RENDER) {
+            render_things();
+            renderer->swap_buffers();
+            flag &= ~ENABLERFLAG_RENDER;
+            update_gfps();
+          }
+          async_cmd_completed.unlock();
+          break;
+        case async_cmd::inc:
+          frames += cmd.val;
+          if (frames > fps*3) frames = fps*3; // Just in case
+          break;
+        case async_cmd::set_fps:
+          fps = cmd.val;
+          break;
+        }
+      }
+    } while (have_cmd);
+    // Run the main-loop, maybe
+    if (!paused && frames) {
+      if (mainloop()) {
+        async_msg msg = async_quit;
+        async_frombox.write(msg);
+        return; // Yeah, we're done.
+      }
+      frames--;
+      update_fps();
     }
-    if (ret) loopvar = 0;
-    // Notify main thread of frame completion
-    SDL_SemPost(done_frame);
-    // And quit if done
-    if (ret) return;
   }
 }
 
 void enablerst::do_frame() {
-  // printf("f: %g, g: %d\n", frames_outstanding, gframes_outstanding);
-  const double fps_per_gfps = (double)fps / (double)gfps;
-  // Clamp max number of outstanding frames/gframes to a sane number
-  // Yes, this is a race condition, but the comparison and assignment are
-  // individually atomic so worst-case it's clamped to 5 when it "should" be 6
-  // or something. No problem there.
-  if (gframes_outstanding > 5) gframes_outstanding = 5;
-  if (gframes_outstanding < -5) gframes_outstanding = -5;
-  if (frames_outstanding > fps_per_gfps*2+1) frames_outstanding = fps_per_gfps*2+1;
-  if (frames_outstanding < -20) frames_outstanding = -20;
+  // Check how long it's been, exactly
+  const Uint32 now = SDL_GetTicks();
+  const Uint32 interval = CLAMP(now - last_tick, 0, 1000); // Anything above a second doesn't count
+  // cout << last_tick << " + " << interval << " = " << now << endl;
+  last_tick = now;
 
-  static const bool render_async = init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC);
-
-  bool async_limit = true;
-  
-  // Run the main loop, if appropriate.
-  if (frames_outstanding >= 1 || (flag & ENABLERFLAG_MAXFPS)) {
-    // puts("loop");
-    frames_outstanding -= 1;
-    if (render_async) {
-      // Run mainloop()
-      if (trigger_async_loop())
-        async_limit = false;
-    } else {
-      SDL_NumJoysticks(); // Hook for dfhack
-      if (mainloop())
-        loopvar = 0;
-      update_fps();
-    }
+  // Update outstanding-frame counts
+  outstanding_frames += interval * fps / 1000;
+  outstanding_gframes += interval * gfps / 1000;
+  if (outstanding_gframes > 3) {
+    outstanding_gframes = 3;
+    static int told = 0;
+    told++;
+    if (told < 10)
+      puts("gframes stalled");
   }
-  
-  // Render one graphical frame, if appropriate.
-  // TODO: Move sync to renderer_opengl
-  if (render_async) {
-    if (render_async_now) {
-      SDL_mutexP(gpslock);
-      renderer->display();
-      SDL_mutexV(gpslock);
-      renderer->render();
-      update_gfps();
-      render_async_now = false;
-    }
-  } else if ((flag & ENABLERFLAG_RENDER) && gframes_outstanding > 0 &&
-             (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
-    if (sync) {
-      glDeleteSync(sync);
-      sync = NULL;
-    }
-    render_things();
-    // Render
+  // cout << outstanding_frames << " " << outstanding_gframes << endl;
+ 
+  // Update the loop's tick-counter suitably
+  if (outstanding_frames >= 1) {
+    async_cmd cmd;
+    cmd.cmd = async_cmd::inc;
+    cmd.val = outstanding_frames;
+    outstanding_frames -= cmd.val;
+    async_tobox.write(cmd);
+  }
+
+  // If it's time to render..
+  if (outstanding_gframes >= 1 &&
+      (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
+    // Get the async-loop to render_things and swap
+    async_cmd cmd;
+    cmd.cmd = async_cmd::swap;
+    async_tobox.write(cmd);
+    async_cmd_completed.lock();
+    // Then finish here
     renderer->display();
     renderer->render();
-    flag &= ~ENABLERFLAG_RENDER; // Mark this rendering as complete.
-    gframes_outstanding--;
-    update_gfps();
+    outstanding_gframes--;
   }
 
-  if (render_async)
-    reap_async_loop();
-  
-  // if (flag & ENABLERFLAG_MAXFPS)
-  //   puts("max");
-  // if (frames_outstanding > 0)
-  //   std::cout << "frames: " << frames_outstanding << '\n';
-  
-  // Sleep if appropriate
-  if ((gframes_outstanding <= 0 || render_async) &&
-      ((render_async && async_limit) || frames_outstanding <= 0)) {
-    // Sleep until the timer thread signals us
-    if(!(flag & ENABLERFLAG_MAXFPS))SDL_CondWait(timer_cond, dummy_mutex);
+  // Sleep until the next gframe
+  if (outstanding_gframes < 1) {
+    float fragment = 1 - outstanding_gframes;
+    float milliseconds = fragment / gfps * 1000;
+    // cout << milliseconds << endl;
+    SDL_Delay(milliseconds);
   }
 }
 
@@ -348,17 +331,20 @@ void enablerst::eventLoop_SDL()
   const SDL_Surface *screen = SDL_GetVideoSurface();
   Uint32 mouse_lastused = 0;
   SDL_ShowCursor(SDL_DISABLE);
-  static const bool render_async = init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC);
  
   // Initialize the grid
   renderer->resize(screen->w, screen->h);
 
   while (loopvar) {
     Uint32 now = SDL_GetTicks();
+    bool paused_loop = false;
 
     while (SDL_PollEvent(&event)) {
       // Make sure mainloop isn't running while we're processing input
-      if (render_async) quiesce_async_loop();
+      if (!paused_loop) {
+        pause_async_loop();
+        paused_loop = true;
+      }
       // Handle SDL events
       switch (event.type) {
       case SDL_KEYDOWN:
@@ -433,12 +419,18 @@ void enablerst::eventLoop_SDL()
         break;
       } // switch (event.type)
     } //while have event
+    if (paused_loop)
+      unpause_async_loop();
   
     do_frame();
 #if !defined(NO_FMOD)
     // Call FMOD::System.update(). Manages a bunch of sound stuff.
     musicsound.update();
 #endif
+    // Check for quit message
+    async_msg msg;
+    if (async_frombox.try_read(msg) && msg == async_quit)
+      loopvar = 0;
   }
 }
 
@@ -448,16 +440,6 @@ int enablerst::loop(string cmdline) {
   // Call DF's initialization routine
   if (!beginroutine())
     exit(EXIT_FAILURE);
-
-  // Initialize an interval timer for gframes, with
-  // a semaphore that the main loop can sleep on.
-  SDL_cond *c = SDL_CreateCond();
-  SDL_TimerID timer = SDL_AddTimer(1000 / gfps, timer_tick, c);
-  timer_cond = c;
-  // We need this to keep SDL happy
-  dummy_mutex = SDL_CreateMutex();
-  SDL_mutexP(dummy_mutex);
-  frames_outstanding = 0;
   
   // Allocate a renderer
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
@@ -548,10 +530,16 @@ void enablerst::set_fps(int fps) {
   if (fps == 0)
     fps = 1048576;
   this->fps = fps;
+  fps_per_gfps = fps / gfps;
+  struct async_cmd cmd;
+  cmd.cmd = async_cmd::set_fps;
+  cmd.val = fps;
+  async_tobox.write(cmd);
 }
 
 void enablerst::set_gfps(int gfps) {
   this->gfps = gfps;
+  fps_per_gfps = fps / gfps;
 }
 
 int call_loop(void *dummy) {
@@ -603,10 +591,8 @@ int main (int argc, char* argv[]) {
     cmdLine += option;
     cmdLine += " ";
   }
-  // Spawn computation thread, if we're in async mode
-  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC)) {
-    SDL_CreateThread(call_loop, NULL);
-  }
+  // Spawn simulation thread
+  SDL_CreateThread(call_loop, NULL);
   int result = enabler.loop(cmdLine);
 
   SDL_Quit();

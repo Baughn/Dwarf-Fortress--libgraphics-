@@ -130,16 +130,15 @@ static int getch_utf8() {
 
 void enablerst::eventLoop_ncurses() {
   int x, y, oldx = 0, oldy = 0;
-  static const bool render_async = init.display.flag.has_flag(INIT_DISPLAY_FLAG_ASYNC);
   renderer_curses *renderer = static_cast<renderer_curses*>(this->renderer);
   
   while (loopvar) {
     // Check for terminal resize
     getmaxyx(stdscr, y, x);
     if (y != oldy || x != oldx) {
-      if (render_async)
-        quiesce_async_loop();
+      pause_async_loop();
       renderer->resize(x, y);
+      unpause_async_loop();
       oldx = x; oldy = y;
     }
     
@@ -148,9 +147,12 @@ void enablerst::eventLoop_ncurses() {
     // Read keyboard input, if any, and transform to artificial SDL
     // events for enabler_input.
     int key;
+    bool paused_loop = false;
     while ((key = getch_utf8())) {
-      if (render_async)
-        quiesce_async_loop();
+      if (!paused_loop) {
+        pause_async_loop();
+        paused_loop = true;
+      }
       bool esc = false;
       if (key == KEY_MOUSE) {
         MEVENT ev;
@@ -167,7 +169,10 @@ void enablerst::eventLoop_ncurses() {
       add_input_ncurses(key, now, esc);
     }
 
-    // Run the game logic
+    if (paused_loop)
+      unpause_async_loop();
+
+    // Run the common logic
     do_frame();
   }
 }

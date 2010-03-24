@@ -91,7 +91,9 @@ public:
       lines.push_back(l);
     }
     // Pretend this takes a while
-    SDL_Delay(2);
+    // SDL_Delay(2);
+    Uint32 start = SDL_GetTicks();
+    while (SDL_GetTicks() - start < 3);
   }
   virtual void resize(int w, int h) {
     // Clear out lines that are now off-screen

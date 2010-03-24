@@ -12,6 +12,9 @@
 #ifndef ARRSZ
 # define ARRSZ(arr) (sizeof (arr) / sizeof ((arr)[0]))
 #endif
+#ifndef CLAMP
+#define CLAMP(x,a,b) MIN(MAX((x),(a)),(b))
+#endif
 
 // GL error macro
 extern int glerrorcount;

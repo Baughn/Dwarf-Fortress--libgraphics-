@@ -38,6 +38,7 @@ using std::queue;
 #include "endian.h"
 #include "files.h"
 #include "enabler_input.h"
+#include "mail.hpp"
 
 #define ENABLER
 
@@ -848,7 +849,7 @@ class enablerst : public enabler_inputst
   void eventLoop_ncurses();
 #endif
   
-  // Frame timing calculations
+  // Framerate calculations
   int calculated_fps, calculated_gfps;
   queue<int> frame_timings, gframe_timings; // Milisecond lengths of the last few frames
   int frame_sum, gframe_sum;
@@ -856,40 +857,34 @@ class enablerst : public enabler_inputst
   void do_update_fps(queue<int> &q, int &sum, int &last, int &calc);
   void update_fps();
   void update_gfps();
-  SDL_cond *timer_cond; // Triggered once per gframe, for wake-up calls
-  SDL_mutex *dummy_mutex;
-  int fps, gfps;
 
-  // Barriers for async rendering
-  SDL_sem *run_frame, *done_frame;
-  SDL_mutex *gpslock;
-  int outstanding_frames; // How many async loops are outstanding
-  bool trigger_async_loop() {
-    if (outstanding_frames > fps) {
-      // Too many outstanding frames
-      return false;
-    } else
-      outstanding_frames++;
-    SDL_SemPost(run_frame);
-    return true;
+  // Frame timing calculations
+  float fps, gfps;
+  float fps_per_gfps;
+  Uint32 last_tick;
+  float outstanding_frames, outstanding_gframes;
+
+  // Async rendering
+  struct async_cmd {
+    enum { pause, start, swap, inc, set_fps } cmd;
+    int val; // If async_inc, number of extra frames to run. If set_fps, current value of fps.
+  };
+    
+  enum async_msg { async_quit };
+  Chan<async_cmd> async_tobox;
+  Lock<true> async_cmd_completed;
+  Chan<async_msg> async_frombox;
+
+  void pause_async_loop() {
+    struct async_cmd cmd;
+    cmd.cmd = async_cmd::pause;
+    async_tobox.write(cmd);
+    async_cmd_completed.lock();
   }
-  void quiesce_async_loop() {
-    // Attempt to cancel frames first
-    while (SDL_SemTryWait(run_frame) == 0)
-      outstanding_frames--;
-    // Then wait for remaining ones (should just be 1) to finish
-    while (outstanding_frames) {
-      SDL_SemWait(done_frame);
-      update_fps();
-      outstanding_frames--;
-    }
-  }
-  void reap_async_loop() {
-    // Check for finished frames
-    while (SDL_SemTryWait(done_frame) == 0) {
-      outstanding_frames--;
-      update_fps();
-    }
+  void unpause_async_loop() {
+    struct async_cmd cmd;
+    cmd.cmd = async_cmd::start;
+    async_tobox.write(cmd);
   }
   
  public:

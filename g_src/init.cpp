@@ -270,10 +270,6 @@ void initst::begin()
                                   if (token2 == "YES")
                                     display.flag.add_flag(INIT_DISPLAY_FLAG_ARB_SYNC);
                                 }
-                                if(token=="PRINT_ASYNC") {
-                                  if (token2 == "YES")
-                                    display.flag.add_flag(INIT_DISPLAY_FLAG_ASYNC);
-                                }
 
 #ifdef WIN32
 				if(token=="PRIORITY")
