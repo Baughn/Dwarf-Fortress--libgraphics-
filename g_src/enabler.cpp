@@ -216,6 +216,7 @@ void enablerst::async_loop() {
           break;
         case async_cmd::render:
           if (flag & ENABLERFLAG_RENDER) {
+            renderer->swap_arrays();
             render_things();
             flag &= ~ENABLERFLAG_RENDER;
             update_gfps();
@@ -279,7 +280,6 @@ void enablerst::do_frame() {
     // Then finish here
     renderer->display();
     renderer->render();
-    renderer->swap_arrays();
     outstanding_gframes--;
   }
 
