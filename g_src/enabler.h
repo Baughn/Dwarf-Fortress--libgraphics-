@@ -757,7 +757,7 @@ typedef struct {									// Contains Information Vital To A Window
   BOOL				isVisible;				// Window Visible?
 } GL_Window;								// GL_Window
 
-enum zoom_commands { zoom_in, zoom_out, zoom_reset };
+enum zoom_commands { zoom_in, zoom_out, zoom_reset, zoom_fullscreen };
 
 
 struct texture_fullid {
@@ -860,6 +860,7 @@ class enablerst : public enabler_inputst
   enum async_msg { async_quit, async_complete };
   Chan<async_cmd> async_tobox;
   Chan<async_msg> async_frombox;
+  Chan<zoom_commands> async_zoom;
 
   void pause_async_loop();
   void async_wait();
@@ -909,7 +910,7 @@ class enablerst : public enabler_inputst
   bool is_fullscreen() { return fullscreen; }
   void toggle_fullscreen() {
     fullscreen = !fullscreen;
-    renderer->set_fullscreen();
+    async_zoom.write(zoom_fullscreen);
   }
 
   // Conversations

@@ -307,6 +307,20 @@ void enablerst::eventLoop_SDL()
     Uint32 now = SDL_GetTicks();
     bool paused_loop = false;
 
+    // Check for zoom commands
+    zoom_commands zoom;
+    while (async_zoom.try_read(zoom)) {
+      if (!paused_loop) {
+        pause_async_loop();
+        paused_loop = true;
+      }
+      if (zoom == zoom_fullscreen)
+        renderer->set_fullscreen();
+      else
+        renderer->zoom(zoom);
+    }
+
+    // Check for SDL events
     while (SDL_PollEvent(&event)) {
       // Make sure mainloop isn't running while we're processing input
       if (!paused_loop) {
@@ -462,7 +476,7 @@ void enablerst::release_grid_size() {
 }
 
 void enablerst::zoom_display(zoom_commands command) {
-  renderer->zoom(command);
+  async_zoom.write(command);
 }
 
 int enablerst::calculate_fps() { return calculated_fps; }
