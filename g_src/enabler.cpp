@@ -573,6 +573,12 @@ int main (int argc, char* argv[]) {
   }
 #endif
 
+#ifdef WIN32
+  // Attempt to get as good a timer as possible
+  int ms = 1;
+  while (timeBeginPeriod(ms) != TIMERROR_NOERROR) ms++;
+#endif
+
   // Initialise relevant SDL subsystems.
   int retval = SDL_Init(SDL_INIT_TIMER | (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT) ? 0 : SDL_INIT_VIDEO));
   // Report failure?
@@ -600,6 +606,10 @@ int main (int argc, char* argv[]) {
 #ifdef CURSES
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT))
     endwin();
+#endif
+  
+#ifdef WIN32
+  timeEndPeriod(ms);
 #endif
   
   return result;
