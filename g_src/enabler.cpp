@@ -220,6 +220,7 @@ void enablerst::pause_async_loop()  {
 }
 
 void enablerst::async_wait() {
+  if (loopvar == 0) return;
   async_msg r;
   async_frombox.read(r);
   if (r == async_quit)
@@ -297,10 +298,6 @@ void enablerst::do_frame() {
   outstanding_gframes += interval * gfps / 1000;
   if (outstanding_gframes > 3) {
     outstanding_gframes = 3;
-    static int told = 0;
-    told++;
-    if (told < 10)
-      puts("gframes stalled");
   }
   // cout << outstanding_frames << " " << outstanding_gframes << endl;
  
