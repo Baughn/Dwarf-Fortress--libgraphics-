@@ -75,7 +75,7 @@ extern musicsoundst musicsound;
 extern GameMode gamemode;
 extern GameType gametype;
 
-extern long movie_version;
+extern int movie_version;
 
 
 
@@ -155,16 +155,16 @@ void viewscreen_movieplayerst::logic()
 
 		if(is_playing)
 			{
-			long half_frame_size=init.display.grid_x*init.display.grid_y;
+			int half_frame_size=init.display.grid_x*init.display.grid_y;
 
 #ifndef NO_FMOD
 			//PLAY ANY RELEVANT SOUNDS
 			if(gview.supermovie_delaystep==gview.supermovie_delayrate)
 				{
-				long fr=gview.supermovie_pos/(half_frame_size*2);
+				int fr=gview.supermovie_pos/(half_frame_size*2);
 				if(fr>=0&&fr<200)
 					{
-					long c,sd;
+					int c,sd;
 					for(c=0;c<16;c++)
 						{
 						sd=gview.supermovie_sound_time[fr][c];
@@ -223,7 +223,7 @@ void viewscreen_movieplayerst::render()
 	//LOAD A MOVIE BUFFER BY BUFFER
 	if(is_playing)
 		{
-		long half_frame_size=init.display.grid_x*init.display.grid_y;
+		int half_frame_size=init.display.grid_x*init.display.grid_y;
 
 		//PRINT THE NEXT FRAME AND ADVANCE POSITION
 		drawborder(NULL,-1);
@@ -263,7 +263,7 @@ void viewscreen_movieplayerst::render()
 		{
 		if(editing_menu)
 			{
-			long tx,ty;
+			int tx,ty;
 			unsigned char c=0;
 			for(ty=0;ty<16;ty++)
 				{
@@ -294,8 +294,8 @@ void viewscreen_movieplayerst::render()
 			gps.addst("1/100 sec per frame: ");convert_long_to_string(gview.supermovie_delayrate,str);
 			gps.addst(str);
 
-			long scroll=(editing_selected_sound/25)*25;
-			long e;
+			int scroll=(editing_selected_sound/25)*25;
+			int e;
 			for(e=scroll;e<scroll+25&&e<gview.supermovie_sound.str.size();e++)
 				{
 				if(e==editing_selected_sound)gps.changecolor(7,0,1);
@@ -304,7 +304,7 @@ void viewscreen_movieplayerst::render()
 				gps.addst(gview.supermovie_sound.str[e]->dat);
 				}
 
-			long frame=gview.supermovie_pos/4000,sd;
+			int frame=gview.supermovie_pos/4000,sd;
 			for(e=0;e<SOUND_CHANNELNUM;e++)
 				{
 				gps.changecolor(2,0,1);
@@ -324,7 +324,7 @@ void viewscreen_movieplayerst::render()
 			{
 			drawborder(NULL,-1);
 
-			long curp=gview.supermovie_pos;
+			int curp=gview.supermovie_pos;
 			int x2,y2;
 			for(x2=0;x2<80;x2++)
 				{
@@ -366,7 +366,7 @@ void viewscreen_movieplayerst::render()
 
 			if(enabler.mouse_y<150)gps.locate(24,60);
 			else gps.locate(0,60);
-			long sx,sy;
+			int sx,sy;
 			gps.get_mouse_text_coords(sx,sy);
 			gps.changecolor(7,0,1);
 			gps.addst("(");
@@ -487,7 +487,7 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 			{
 			if(enabler.mouse_lbut&&enabler.tracking_on)
 				{
-				long sx,sy;
+				int sx,sy;
 				gps.get_mouse_text_coords(sx,sy);
 
 				if(sx>=0&&sx<80&&sy>=0&&sy<25)
@@ -506,7 +506,7 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 						{
 						editing_selected_sound=sy;
 						}
-					long frame=gview.supermovie_pos/4000;
+					int frame=gview.supermovie_pos/4000;
 					if(sx>=52&&sx<=78&&sy>=0&&sy<SOUND_CHANNELNUM)
 						{
 						gview.supermovie_sound_time[frame][sy]=editing_selected_sound;
@@ -555,12 +555,12 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 				{
 				if(gview.c!=0)
 					{
-					long sx,sy;
+					int sx,sy;
 					gps.get_mouse_text_coords(sx,sy);
 
 					if(sx>=0&&sx<80&&sy>=0&&sy<25)
 						{
-						long curpos=gview.supermovie_pos+sy+sx*25;
+						int curpos=gview.supermovie_pos+sy+sx*25;
 						gview.supermoviebuffer[curpos]=gview.c;
 						gview.supermoviebuffer[curpos+2000]=(editing_screenf&7)+((editing_screenb&7)<<3);
 						if(editing_screenbright)gview.supermoviebuffer[curpos+2000]+=64;
@@ -605,7 +605,7 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 				if(gview.c== 'c')editing_copy_from=gview.supermovie_pos;
 				if(gview.c== 'p')
 					{
-					long i;
+					int i;
 					for(i=0;i<4000;i++)
 						{
 						gview.supermoviebuffer[gview.supermovie_pos+i]=gview.supermoviebuffer[editing_copy_from+i];
@@ -621,12 +621,12 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 
 			if(enabler.mouse_lbut&&enabler.tracking_on)
 				{
-				long sx,sy;
+				int sx,sy;
 				gps.get_mouse_text_coords(sx,sy);
 
 				if(sx>=0&&sx<80&&sy>=0&&sy<25)
 					{
-					long curpos=gview.supermovie_pos+sy+sx*25;
+					int curpos=gview.supermovie_pos+sy+sx*25;
 					gview.supermoviebuffer[curpos]=editing_char;
 					gview.supermoviebuffer[curpos+2000]=(editing_screenf&7)+((editing_screenb&7)<<3);
 					if(editing_screenbright)gview.supermoviebuffer[curpos+2000]+=64;
@@ -641,7 +641,7 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 
 		if(!entering&&gview.c== 'S')
 			{
-			long opos=gview.supermovie_pos;
+			int opos=gview.supermovie_pos;
 			gview.first_movie_write=1;
 			gview.supermovie_pos=end_frame_pos+4000;
 
@@ -743,7 +743,7 @@ viewscreen_movieplayerst::viewscreen_movieplayerst()
 	end_frame_pos=0;
 	gview.supermovie_sound.clean();
 #ifndef NO_FMOD
-	long i,c;
+	int i,c;
 	for(i=0;i<200;i++)
 		{
 		for(c=0;c<SOUND_CHANNELNUM;c++)gview.supermovie_sound_time[i][c]=-1;
@@ -987,9 +987,9 @@ void interfacest::removescreen(viewscreenst *scr)
 	delete scr;
 }
 
-long interfacest::write_movie_chunk()
+int interfacest::write_movie_chunk()
 {
-	long inputsize=supermovie_pos;
+	int inputsize=supermovie_pos;
 	if(inputsize>MOVIEBUFFSIZE)inputsize=MOVIEBUFFSIZE;
 
 	//DUMP CURRENT BUFFER INTO A COMPRESSION STREAM
@@ -1025,7 +1025,7 @@ long interfacest::write_movie_chunk()
 	err = deflateEnd(&c_stream);
 	CHECK_ERR(err, "deflateEnd");
 
-	long length=0;
+	int length=0;
 
 	if(c_stream.total_out>0)
 		{
@@ -1044,8 +1044,8 @@ long interfacest::write_movie_chunk()
 			//WRITE A HEADER
 			if(first_movie_write)
 				{
-				long swp_l=byteswap(movie_version);
-				f.write((const char *)&swp_l,sizeof(long));
+				int swp_l=byteswap(movie_version);
+				f.write((const char *)&swp_l,sizeof(int));
 
 
 				cursesmovie_headerst cmh;
@@ -1057,9 +1057,9 @@ long interfacest::write_movie_chunk()
 					cmh.delayrate=byteswap(cmh.delayrate);
 				f.write((const char *)&cmh,sizeof(cursesmovie_headerst));
 
-				long s;
+				int s;
 				s=byteswap(gview.supermovie_sound.str.size());
-				f.write((const char *)&s,sizeof(long));
+				f.write((const char *)&s,sizeof(int));
 				char buf[50];
 				for(s=0;s<gview.supermovie_sound.str.size();s++)
 					{
@@ -1067,7 +1067,7 @@ long interfacest::write_movie_chunk()
 					f.write(buf,sizeof(char)*50);
 					}
 
-				long i1,i2;
+				int i1,i2;
 				for(i1=0;i1<200;i1++)
 					{
 					for(i2=0;i2<SOUND_CHANNELNUM;i2++)
@@ -1077,20 +1077,20 @@ long interfacest::write_movie_chunk()
 #else
                         swp_l=-1;
 #endif
-						f.write((const char *)&swp_l,sizeof(long));
+						f.write((const char *)&swp_l,sizeof(int));
 						}
 					}
 				}
 
 			//WRITE IT
-			long compsize=byteswap(c_stream.total_out);
-			f.write((const char *)&compsize,sizeof(long));
+			int compsize=byteswap(c_stream.total_out);
+			f.write((const char *)&compsize,sizeof(int));
 			f.write((const char *)supermoviebuffer_comp,c_stream.total_out);
 
 			f.seekg(0,ios::beg);
-			long beg=f.tellg();
+			int beg=f.tellg();
 			f.seekg(0,ios::end);
-			long end=f.tellg();
+			int end=f.tellg();
 			length=end-beg;
 
 			f.close();
@@ -1103,7 +1103,7 @@ long interfacest::write_movie_chunk()
 	return length;
 }
 
-void interfacest::read_movie_chunk(long &maxmoviepos,char &is_playing)
+void interfacest::read_movie_chunk(int &maxmoviepos,char &is_playing)
 {
 	//OPEN UP THE MOVIE FILE AND MOVE TO CORRECT POSITION
 	std::fstream f;
@@ -1112,10 +1112,10 @@ void interfacest::read_movie_chunk(long &maxmoviepos,char &is_playing)
 	if(f.is_open())
 		{
 		f.seekg(0,ios::beg);
-		long beg=f.tellg();
+		int beg=f.tellg();
 		f.seekg(0,ios::end);
-		long end=f.tellg();
-		long file_size=end-beg;
+		int end=f.tellg();
+		int file_size=end-beg;
 
 		if(gview.nextfilepos<file_size)
 			{
@@ -1125,8 +1125,8 @@ void interfacest::read_movie_chunk(long &maxmoviepos,char &is_playing)
 			char fail=0;
 			if(gview.nextfilepos==0)
 				{
-				long loadversion;
-				f.read((char *)&loadversion,sizeof(long));
+				int loadversion;
+				f.read((char *)&loadversion,sizeof(int));
 				loadversion=byteswap(loadversion);
 
 				if(loadversion>movie_version)fail=1;
@@ -1145,12 +1145,12 @@ void interfacest::read_movie_chunk(long &maxmoviepos,char &is_playing)
 				gview.supermovie_sound.clean();
 				if(loadversion>=10001)
 					{
-					long num;
-					f.read((char *)&num,sizeof(long));
+					int num;
+					f.read((char *)&num,sizeof(int));
 					num=byteswap(num);
-					gview.nextfilepos+=sizeof(long);
+					gview.nextfilepos+=sizeof(int);
 					char buf[50];
-					long s;
+					int s;
 					for(s=0;s<num;s++)
 						{
 						f.read(buf,sizeof(char)*50);
@@ -1159,24 +1159,24 @@ void interfacest::read_movie_chunk(long &maxmoviepos,char &is_playing)
 						gview.nextfilepos+=sizeof(char)*50;
 						}
 
-					long i1,i2,swp_l;
+					int i1,i2,swp_l;
 					for(i1=0;i1<200;i1++)
 						{
 						for(i2=0;i2<SOUND_CHANNELNUM;i2++)
 							{
-							f.read((char *)&swp_l,sizeof(long));
+							f.read((char *)&swp_l,sizeof(int));
 #ifndef NO_FMOD
 							gview.supermovie_sound_time[i1][i2]=byteswap(swp_l);
 #endif
 							}
 						}
 
-					gview.nextfilepos+=sizeof(long)*200*SOUND_CHANNELNUM;
+					gview.nextfilepos+=sizeof(int)*200*SOUND_CHANNELNUM;
 					}
 				else
 					{
 #ifndef NO_FMOD
-					long i,c;
+					int i,c;
 					for(i=0;i<200;i++)
 						{
 						for(c=0;c<SOUND_CHANNELNUM;c++)gview.supermovie_sound_time[i][c]=-1;
@@ -1184,11 +1184,11 @@ void interfacest::read_movie_chunk(long &maxmoviepos,char &is_playing)
 #endif
 					}
 
-				gview.nextfilepos+=sizeof(long)+sizeof(cursesmovie_headerst);
+				gview.nextfilepos+=sizeof(int)+sizeof(cursesmovie_headerst);
 
 #ifndef NO_FMOD
 				//HANDLE SOUND LOADING
-				long s;
+				int s;
 				for(s=0;s<gview.supermovie_sound.str.size();s++)
 					{
 					string filename="data/sound/";
@@ -1203,11 +1203,11 @@ void interfacest::read_movie_chunk(long &maxmoviepos,char &is_playing)
 			if(!fail)
 				{
 				//READ IT
-				f.read((char *)&gview.currentblocksize,sizeof(long));
+				f.read((char *)&gview.currentblocksize,sizeof(int));
 				gview.currentblocksize=byteswap(gview.currentblocksize);
 				f.read((char *)gview.supermoviebuffer_comp,gview.currentblocksize);
 
-				gview.nextfilepos+=gview.currentblocksize+sizeof(long);
+				gview.nextfilepos+=gview.currentblocksize+sizeof(int);
 
 				//UNCOMPRESS IT
 				z_stream d_stream; // decompression stream
@@ -1299,10 +1299,10 @@ void interfacest::handlemovie(char flushall)
 					}
 				}
 
-			long frame_size=init.display.grid_x*init.display.grid_y*2;
+			int frame_size=init.display.grid_x*init.display.grid_y*2;
 			if(supermovie_pos+frame_size>=MOVIEBUFFSIZE||flushall)
 				{
-				long length=write_movie_chunk();
+				int length=write_movie_chunk();
 
 				if(length>5000000)
 					{
@@ -1323,7 +1323,7 @@ void interfacest::print_interface_token(InterfaceKey key)
 	gps.changecolor(o_screenf,o_screenb,o_screenbright);
 }
 
-char standardstringentry(std::set<InterfaceKey> &events,char *str,int maxlen,unsigned long flag)
+char standardstringentry(std::set<InterfaceKey> &events,char *str,int maxlen,unsigned int flag)
 {
 	string str2;
 	str2=str;
@@ -1332,7 +1332,7 @@ char standardstringentry(std::set<InterfaceKey> &events,char *str,int maxlen,uns
 	return ret;
 }
 
-char standardstringentry(std::set<InterfaceKey> &events,string &str,int maxlen,unsigned long flag)
+char standardstringentry(std::set<InterfaceKey> &events,string &str,int maxlen,unsigned int flag)
 {
 	unsigned char entry=255;
 	if(flag & STRINGENTRY_LETTERS)
@@ -1693,11 +1693,11 @@ char standardstringentry(std::set<InterfaceKey> &events,string &str,int maxlen,u
 	return 0;
 }
 
-char standardscrolling(std::set<InterfaceKey> &events,short &selection,long min,long max,long jump,unsigned long flag)
+char standardscrolling(std::set<InterfaceKey> &events,short &selection,int min,int max,int jump,unsigned int flag)
 {
 	short osel=selection;
 
-	long seltemp=selection;
+	int seltemp=selection;
 	standardscrolling(events,seltemp,min,max,jump,flag);
 	selection=seltemp;
 
@@ -1705,7 +1705,7 @@ char standardscrolling(std::set<InterfaceKey> &events,short &selection,long min,
 	else return 0;
 }
 
-void finishscrolling(long &selection,long min,long max,long jump,unsigned long flag,char littlekey)
+void finishscrolling(int &selection,int min,int max,int jump,unsigned int flag,char littlekey)
 {
 	if(flag & SCROLLING_NOSELECT)
 		{
@@ -1729,7 +1729,7 @@ void finishscrolling(long &selection,long min,long max,long jump,unsigned long f
 		}
 }
 
-char standardscrolling(std::set<InterfaceKey> &events,long &selection,long min,long max,long jump,unsigned long flag)
+char standardscrolling(std::set<InterfaceKey> &events,int &selection,int min,int max,int jump,unsigned int flag)
 {
 	short osel=selection;
 
@@ -1756,15 +1756,15 @@ char standardscrolling(std::set<InterfaceKey> &events,long &selection,long min,l
 	else return 0;
 }
 
-char secondaryscrolling(std::set<InterfaceKey> &events,short &selection,long min,long max,long jump,unsigned long flag)
+char secondaryscrolling(std::set<InterfaceKey> &events,short &selection,int min,int max,int jump,unsigned int flag)
 {
-	long temp=selection;
+	int temp=selection;
 	char ret=secondaryscrolling(events,temp,min,max,jump,flag);
 	selection=temp;
 	return ret;
 }
 
-char secondaryscrolling(std::set<InterfaceKey> &events,long &selection,long min,long max,long jump,unsigned long flag)
+char secondaryscrolling(std::set<InterfaceKey> &events,int &selection,int min,int max,int jump,unsigned int flag)
 {
 	short osel=selection;
 

@@ -12,8 +12,8 @@ using std::string;
 
 struct cursesmovie_headerst
 {
-	long dimx,dimy;
-	long delayrate;
+	int dimx,dimy;
+	int delayrate;
 };
 
 class viewscreen_movieplayerst : viewscreenst
@@ -36,21 +36,21 @@ class viewscreen_movieplayerst : viewscreenst
 		char editing;
 		char text_mode;
 		unsigned char editing_char;
-		long editing_copy_from;
+		int editing_copy_from;
 		short editing_screenf;
 		short editing_screenb;
 		short editing_screenbright;
-		long editing_selected_sound;
+		int editing_selected_sound;
 		char editing_menu;
 		string savename;
 		string force_file;
 		char is_playing;
 		char is_forced_play;
 		char quit_if_no_play;
-		long maxmoviepos;
-		long end_frame_pos;
+		int maxmoviepos;
+		int end_frame_pos;
 
-		long selfile;
+		int selfile;
 		svector<char *> filelist;
 
 		viewscreen_movieplayerst();
@@ -77,10 +77,10 @@ class interfacest
 
 	public:
 		viewscreenst view;
-		unsigned long flag;
+		unsigned int flag;
 
-		long shutdown_interface_tickcount;
-		long shutdown_interface_for_ms;
+		int shutdown_interface_tickcount;
+		int shutdown_interface_for_ms;
 
 		char loop();
 		void remove_to_first();
@@ -98,17 +98,17 @@ class interfacest
 
 	protected:
 		char supermovie_on;
-		long supermovie_pos;
-		long supermovie_delayrate;
-		long supermovie_delaystep;
+		int supermovie_pos;
+		int supermovie_delayrate;
+		int supermovie_delaystep;
 		stringvectst supermovie_sound;
 #ifndef NO_FMOD
-		long supermovie_sound_time[200][SOUND_CHANNELNUM];
+		int supermovie_sound_time[200][SOUND_CHANNELNUM];
 #endif
 		unsigned char supermoviebuffer[MOVIEBUFFSIZE];
 		unsigned char supermoviebuffer_comp[COMPMOVIEBUFFSIZE];
-		long currentblocksize;
-		long nextfilepos;
+		int currentblocksize;
+		int nextfilepos;
 		char first_movie_write;
 		string movie_file;
 
@@ -120,25 +120,25 @@ class interfacest
 		void finish_movie();
 		void use_movie_input();
 
-		long write_movie_chunk();
-		void read_movie_chunk(long &maxmoviepos,char &is_playing);
+		int write_movie_chunk();
+		void read_movie_chunk(int &maxmoviepos,char &is_playing);
 };
 
 #define SCROLLING_NOSELECT BIT1
 #define SCROLLING_NO_WRAP BIT2
 #define SCROLLING_REVERSE BIT3
-void finishscrolling(long &selection,long min,long max,long jump,unsigned long flag,char littlekey);
-char standardscrolling(std::set<InterfaceKey> &events,short &selection,long min,long max,long jump,unsigned long flag=0);
-char standardscrolling(std::set<InterfaceKey> &events,long &selection,long min,long max,long jump,unsigned long flag=0);
-char secondaryscrolling(std::set<InterfaceKey> &events,short &scroll,long min,long max,long jump,unsigned long flag=0);
-char secondaryscrolling(std::set<InterfaceKey> &events,long &scroll,long min,long max,long jump,unsigned long flag=0);
+void finishscrolling(int &selection,int min,int max,int jump,unsigned int flag,char littlekey);
+char standardscrolling(std::set<InterfaceKey> &events,short &selection,int min,int max,int jump,unsigned int flag=0);
+char standardscrolling(std::set<InterfaceKey> &events,int &selection,int min,int max,int jump,unsigned int flag=0);
+char secondaryscrolling(std::set<InterfaceKey> &events,short &scroll,int min,int max,int jump,unsigned int flag=0);
+char secondaryscrolling(std::set<InterfaceKey> &events,int &scroll,int min,int max,int jump,unsigned int flag=0);
 #define STRINGENTRY_LETTERS BIT1
 #define STRINGENTRY_SPACE BIT2
 #define STRINGENTRY_NUMBERS BIT3
 #define STRINGENTRY_CAPS BIT4
 #define STRINGENTRY_SYMBOLS BIT5
-char standardstringentry(std::set<InterfaceKey> &events,char *str,int maxlen,unsigned long flag);
-char standardstringentry(std::set<InterfaceKey> &events,string &str,int maxlen,unsigned long flag);
+char standardstringentry(std::set<InterfaceKey> &events,char *str,int maxlen,unsigned int flag);
+char standardstringentry(std::set<InterfaceKey> &events,string &str,int maxlen,unsigned int flag);
 
 void drawborder(const char *str,char style=0,const char *colorstr=NULL);
 
