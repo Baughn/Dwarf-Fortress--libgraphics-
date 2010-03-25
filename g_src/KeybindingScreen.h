@@ -40,6 +40,7 @@ public:
   virtual void render();
   virtual void help();
   virtual void logic();
+  virtual char is_option_screen() { return 1; }
 };
 
 class MacroScreenLoad : public viewscreenst {
@@ -51,6 +52,7 @@ class MacroScreenLoad : public viewscreenst {
   virtual void logic();
   virtual void render();
   virtual void feed(std::set<InterfaceKey> &events);
+  virtual char is_option_screen() { return 1; }
 };
 
 class MacroScreenSave : public viewscreenst {
@@ -60,6 +62,7 @@ public:
   virtual void logic();
   virtual void render();
   virtual void feed(std::set<InterfaceKey> &events);
+  virtual char is_option_screen() { return 1; }
 };
 
 

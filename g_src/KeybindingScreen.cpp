@@ -127,6 +127,9 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
       break;
     }
   }
+  if (input.count(INTERFACEKEY_OPTIONS)) {
+    breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
+  }
   if (input.count(INTERFACEKEY_LEAVESCREEN)) {
     if (mode == mode_register)
       mode = mode_keyR;
@@ -299,6 +302,9 @@ void MacroScreenLoad::feed(set<InterfaceKey> &input) {
   } else {
     menu.feed(input);
   }
+  if (input.count(INTERFACEKEY_OPTIONS)) {
+    breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
+  }
 }
 
 void MacroScreenLoad::logic() {
@@ -332,6 +338,9 @@ void MacroScreenSave::feed(set<InterfaceKey> &input) {
       enabler.save_macro(n);
     breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
     return;
+  }
+  if (input.count(INTERFACEKEY_OPTIONS)) {
+    breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
   }
 }
 
