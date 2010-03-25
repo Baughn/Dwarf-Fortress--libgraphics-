@@ -79,16 +79,15 @@ Use this to set the maximum frame rate during play.  The movies are always cappe
 
 You may set FPS_CAP to 0 to make it uncapped.
 
-[FPS_CAP:50]
+[FPS_CAP:100]
 
 Use this to set the maximum graphical frame refresh rate during play.
 
 [G_FPS_CAP:50]
 
 On cards that support the OpenGL ARB_sync extension, turning this on
-can improve framerates in GPU overload conditions, most notably when
-using the shader print-mode. It defaults to NO, as many cards that
-claim to support this will crash if asked to do so.
+can improve framerates in GPU overload conditions. It defaults to NO,
+as many cards that claim to support this will crash if asked to do so.
 
 [ARB_SYNC:NO]
 

@@ -15,7 +15,7 @@ initst init;
 interfacest gview;
 texture_handlerst texture;
 GameMode gamemode;
-long movie_version;
+long movie_version = 10001;
 
 long basic_seed;
 int mt_index[MT_BUFFER_NUM];
@@ -108,6 +108,8 @@ public:
 
 char beginroutine() {
   mt_init();
+  viewscreen_movieplayerst *m = viewscreen_movieplayerst::create(INTERFACE_PUSH_AT_BACK);
+  m->force_play("data/initial_movies/dwarf_fortress.cmv");
   gview.addscreen(new Matrix, INTERFACE_PUSH_AT_BACK, NULL);
   return 1;
 }
