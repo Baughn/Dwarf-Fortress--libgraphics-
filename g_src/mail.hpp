@@ -23,12 +23,12 @@ public:
     r = val;
     SDL_SemPost(empty);
   }
-  void write(T &v) {
+  void write(const T &v) {
     SDL_SemWait(empty);
     val = v;
     SDL_SemPost(fill);
   }
-  bool try_write(T &v) { // Returns true if the write succeeded
+  bool try_write(const T &v) { // Returns true if the write succeeded
     if (SDL_SemTryWait(empty) == 0) {
       val = v;
       SDL_SemPost(fill);
@@ -94,7 +94,7 @@ public:
     vals.val.pop();
     vals.unlock();
   }
-  void write(T &w) {
+  void write(const T &w) {
     vals.lock();
     vals.val.push(w);
     vals.unlock();

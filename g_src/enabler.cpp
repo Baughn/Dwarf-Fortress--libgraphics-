@@ -212,7 +212,20 @@ void renderer::swap_buffers() {
   screentexpos_cbr_spare = screentexpos_cbr; screentexpos_cbr = gps.screentexpos_cbr; gps.screentexpos_cbr = screentexpos_cbr_spare;
 }
 
-static volatile bool render_async_now = false;
+void enablerst::pause_async_loop()  {
+  struct async_cmd cmd;
+  cmd.cmd = async_cmd::pause;
+  async_tobox.write(cmd);
+  async_wait();
+}
+
+void enablerst::async_wait() {
+  async_msg r;
+  async_frombox.read(r);
+  if (r == async_quit)
+    loopvar = 0;
+}
+
 
 void enablerst::async_loop() {
   bool paused = false;
@@ -235,7 +248,7 @@ void enablerst::async_loop() {
         case async_cmd::pause:
           paused = true;
           // puts("Paused");
-          async_cmd_completed.unlock();
+          async_frombox.write(async_complete);
           break;
         case async_cmd::start:
           paused = false;
@@ -248,7 +261,7 @@ void enablerst::async_loop() {
             flag &= ~ENABLERFLAG_RENDER;
             update_gfps();
           }
-          async_cmd_completed.unlock();
+          async_frombox.write(async_complete);
           break;
         case async_cmd::inc:
           frames += cmd.val;
@@ -263,9 +276,8 @@ void enablerst::async_loop() {
     // Run the main-loop, maybe
     if (!paused && frames) {
       if (mainloop()) {
-        async_msg msg = async_quit;
-        async_frombox.write(msg);
-        return; // Yeah, we're done.
+        async_frombox.write(async_quit);
+        return; // We're done.
       }
       frames--;
       update_fps();
@@ -308,7 +320,7 @@ void enablerst::do_frame() {
     async_cmd cmd;
     cmd.cmd = async_cmd::swap;
     async_tobox.write(cmd);
-    async_cmd_completed.lock();
+    async_wait();
     // Then finish here
     renderer->display();
     renderer->render();
@@ -427,10 +439,6 @@ void enablerst::eventLoop_SDL()
     // Call FMOD::System.update(). Manages a bunch of sound stuff.
     musicsound.update();
 #endif
-    // Check for quit message
-    async_msg msg;
-    if (async_frombox.try_read(msg) && msg == async_quit)
-      loopvar = 0;
   }
 }
 

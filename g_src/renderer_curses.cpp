@@ -174,9 +174,5 @@ void enablerst::eventLoop_ncurses() {
 
     // Run the common logic
     do_frame();
-    // Check for quit message
-    async_msg msg;
-    if (async_frombox.try_read(msg) && msg == async_quit)
-      loopvar = 0;
   }
 }

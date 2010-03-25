@@ -870,17 +870,12 @@ class enablerst : public enabler_inputst
     int val; // If async_inc, number of extra frames to run. If set_fps, current value of fps.
   };
     
-  enum async_msg { async_quit };
+  enum async_msg { async_quit, async_complete };
   Chan<async_cmd> async_tobox;
-  Lock<true> async_cmd_completed;
   Chan<async_msg> async_frombox;
 
-  void pause_async_loop() {
-    struct async_cmd cmd;
-    cmd.cmd = async_cmd::pause;
-    async_tobox.write(cmd);
-    async_cmd_completed.lock();
-  }
+  void pause_async_loop();
+  void async_wait();
   void unpause_async_loop() {
     struct async_cmd cmd;
     cmd.cmd = async_cmd::start;
