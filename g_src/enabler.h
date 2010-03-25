@@ -802,6 +802,7 @@ class renderer {
   virtual void set_fullscreen() {} // Should read from enabler.is_fullscreen()
   virtual void zoom(zoom_commands cmd) {};
   virtual void resize(int w, int h) = 0;
+  void swap_arrays();
   renderer() {
     screen = NULL;
     screentexpos = NULL;

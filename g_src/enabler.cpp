@@ -84,14 +84,6 @@ void renderer::display()
   const int dimy = init.display.grid_y;
   static bool use_graphics = init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS);
   if (gps.force_full_display_count) {
-    memcpy(screen_old, screen, dimx*dimy*4*sizeof *screen);
-    if (use_graphics) {
-      memcpy(screentexpos_old, screentexpos, dimx*dimy*sizeof *screentexpos);
-      memcpy(screentexpos_addcolor_old, screentexpos_addcolor, dimx*dimy*sizeof *screentexpos_addcolor);
-      memcpy(screentexpos_grayscale_old, screentexpos_grayscale, dimx*dimy*sizeof *screentexpos_grayscale);
-      memcpy(screentexpos_cf_old, screentexpos_cf, dimx*dimy*sizeof *screentexpos_cf);
-      memcpy(screentexpos_cbr_old, screentexpos_cbr, dimx*dimy*sizeof *screentexpos_cbr);
-    }
     // Update the entire screen
     enabler.update_all();
   } else {
@@ -110,14 +102,6 @@ void renderer::display()
             {
               // Nothing's changed, this clause deliberately empty
             } else {
-            // Okay, the buffer has changed. First update the old-buffer.
-            *(int*)(screen_old + off) = *(int*)(screen + off);
-            screentexpos_old[off] = screentexpos[off];
-            screentexpos_addcolor_old[off] = screentexpos_addcolor[off];
-            screentexpos_grayscale_old[off] = screentexpos_grayscale[off];
-            screentexpos_cf_old[off] = screentexpos_cf[off];
-            screentexpos_cbr_old[off] = screentexpos_cbr[off];
-            
             update_tile(x2, y2);
           }
         }
@@ -127,7 +111,6 @@ void renderer::display()
       for (int x2=0; x2 < dimx; ++x2) {
         for (int y2=0; y2 < dimy; ++y2, ++screenp, ++oldp) {
           if (*screenp != *oldp) {
-            *oldp = *screenp;
             update_tile(x2, y2);
           }
         }
@@ -178,6 +161,15 @@ void renderer::gps_allocate(int x, int y) {
   memset(screentexpos_cbr_old, 0, x*y);
   
   gps.resize(x,y);
+}
+
+void renderer::swap_arrays() {
+  screen = screen_old; screen_old = gps.screen; gps.screen = screen;
+  screentexpos = screentexpos_old; screentexpos_old = gps.screentexpos; gps.screentexpos = screentexpos;
+  screentexpos_addcolor = screentexpos_addcolor_old; screentexpos_addcolor_old = gps.screentexpos_addcolor; gps.screentexpos_addcolor = screentexpos_addcolor;
+  screentexpos_grayscale = screentexpos_grayscale_old; screentexpos_grayscale_old = gps.screentexpos_grayscale; gps.screentexpos_grayscale = screentexpos_grayscale;
+  screentexpos_cf = screentexpos_cf_old; screentexpos_cf_old = gps.screentexpos_cf; gps.screentexpos_cf = screentexpos_cf;
+  screentexpos_cbr = screentexpos_cbr_old; screentexpos_cbr_old = gps.screentexpos_cbr; gps.screentexpos_cbr = screentexpos_cbr;
 }
 
 void enablerst::pause_async_loop()  {
@@ -287,6 +279,7 @@ void enablerst::do_frame() {
     // Then finish here
     renderer->display();
     renderer->render();
+    renderer->swap_arrays();
     outstanding_gframes--;
   }
 
