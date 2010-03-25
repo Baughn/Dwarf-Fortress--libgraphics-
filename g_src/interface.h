@@ -26,7 +26,7 @@ class viewscreen_movieplayerst : viewscreenst
 		virtual void render();
 		virtual char movies_okay(){return 0;}
 		void clearfilelist();
-		void force_play(string &file);
+		void force_play(const string &file);
 
 		virtual char is_option_screen(){if(is_playing)return 2;else return 0;}
 

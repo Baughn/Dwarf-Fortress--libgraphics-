@@ -115,7 +115,7 @@ viewscreen_movieplayerst *viewscreen_movieplayerst::create(char pushtype,viewscr
 	return newv;
 }
 
-void viewscreen_movieplayerst::force_play(string &file)
+void viewscreen_movieplayerst::force_play(const string &file)
 {
 	force_file=file;
 	is_forced_play=1;
