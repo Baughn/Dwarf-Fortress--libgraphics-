@@ -85,7 +85,7 @@ void renderer::display()
   static bool use_graphics = init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS);
   if (gps.force_full_display_count) {
     // Update the entire screen
-    enabler.update_all();
+    update_all();
   } else {
     if (use_graphics) {
       int off = 0;

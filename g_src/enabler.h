@@ -879,13 +879,6 @@ class enablerst : public enabler_inputst
   int loop(string cmdline);
   void async_loop();
   void do_frame();
-
-  // Renderer interface
-  // The update functions read their data from gps, and do whatever preparations are necessary
-  // for render() to do its job
-  void update_tile(int x, int y) { renderer->update_tile(x,y); }
-  void update_all() { renderer->update_all(); } // Renders the *entire* array, thus reducing function calls
-  void render() { renderer->render(); }         // Draw the frame to screen
   
   // Framerate interface
   void set_fps(int fps);
