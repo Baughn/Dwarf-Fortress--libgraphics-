@@ -150,12 +150,6 @@ void renderer::gps_allocate(int x, int y) {
   if (screentexpos_grayscale_old) delete[] screentexpos_grayscale_old;
   if (screentexpos_cf_old) delete[] screentexpos_cf_old;
   if (screentexpos_cbr_old) delete[] screentexpos_cbr_old;
-  if (screen_spare) delete[] screen_spare;
-  if (screentexpos_spare) delete[] screentexpos_spare;
-  if (screentexpos_addcolor_spare) delete[] screentexpos_addcolor_spare;
-  if (screentexpos_grayscale_spare) delete[] screentexpos_grayscale_spare;
-  if (screentexpos_cf_spare) delete[] screentexpos_cf_spare;
-  if (screentexpos_cbr_spare) delete[] screentexpos_cbr_spare;
   
   gps.screen = screen = new unsigned char[x*y*4];
   memset(screen, 0, x*y*4);
@@ -182,34 +176,8 @@ void renderer::gps_allocate(int x, int y) {
   memset(screentexpos_cf_old, 0, x*y);
   screentexpos_cbr_old = new unsigned char[x*y];
   memset(screentexpos_cbr_old, 0, x*y);
-
-
-  // gps operations draw into the spare arrays, while
-  // the renderer draws the normal set
-  gps.screen = screen_spare = new unsigned char[x*y*4];
-  memset(screen_spare, 0, x*y*4);
-  gps.screentexpos = screentexpos_spare = new long[x*y];
-  memset(screentexpos_spare, 0, x*y*sizeof(long));
-  gps.screentexpos_addcolor = screentexpos_addcolor_spare = new char[x*y];
-  memset(screentexpos_addcolor_spare, 0, x*y);
-  gps.screentexpos_grayscale = screentexpos_grayscale_spare = new unsigned char[x*y];
-  memset(screentexpos_grayscale_spare, 0, x*y);
-  gps.screentexpos_cf = screentexpos_cf_spare = new unsigned char[x*y];
-  memset(screentexpos_cf_spare, 0, x*y);
-  gps.screentexpos_cbr = screentexpos_cbr_spare = new unsigned char[x*y];
-  memset(screentexpos_cbr_spare, 0, x*y);
   
   gps.resize(x,y);
-}
-
-void renderer::swap_buffers() {
-  // Swap spare and main arrays
-  screen_spare = screen; screen = gps.screen; gps.screen = screen_spare;
-  screentexpos_spare = screentexpos; screentexpos = gps.screentexpos; gps.screentexpos = screentexpos_spare;
-  screentexpos_addcolor_spare = screentexpos_addcolor; screentexpos_addcolor = gps.screentexpos_addcolor; gps.screentexpos_addcolor = screentexpos_addcolor_spare;
-  screentexpos_grayscale_spare = screentexpos_grayscale; screentexpos_grayscale = gps.screentexpos_grayscale; gps.screentexpos_grayscale = screentexpos_grayscale_spare;
-  screentexpos_cf_spare = screentexpos_cf; screentexpos_cf = gps.screentexpos_cf; gps.screentexpos_cf = screentexpos_cf_spare;
-  screentexpos_cbr_spare = screentexpos_cbr; screentexpos_cbr = gps.screentexpos_cbr; gps.screentexpos_cbr = screentexpos_cbr_spare;
 }
 
 void enablerst::pause_async_loop()  {
@@ -226,7 +194,6 @@ void enablerst::async_wait() {
   if (r == async_quit)
     loopvar = 0;
 }
-
 
 void enablerst::async_loop() {
   bool paused = false;
@@ -255,10 +222,9 @@ void enablerst::async_loop() {
           paused = false;
           // puts("UNpaused");
           break;
-        case async_cmd::swap:
+        case async_cmd::render:
           if (flag & ENABLERFLAG_RENDER) {
             render_things();
-            renderer->swap_buffers();
             flag &= ~ENABLERFLAG_RENDER;
             update_gfps();
           }
@@ -313,9 +279,9 @@ void enablerst::do_frame() {
   // If it's time to render..
   if (outstanding_gframes >= 1 &&
       (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
-    // Get the async-loop to render_things and swap
+    // Get the async-loop to render_things
     async_cmd cmd;
-    cmd.cmd = async_cmd::swap;
+    cmd.cmd = async_cmd::render;
     async_tobox.write(cmd);
     async_wait();
     // Then finish here

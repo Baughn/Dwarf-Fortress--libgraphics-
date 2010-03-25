@@ -790,13 +790,6 @@ class renderer {
   unsigned char *screentexpos_grayscale_old;
   unsigned char *screentexpos_cf_old;
   unsigned char *screentexpos_cbr_old;
-  // For async rendering (so NULL otherwise)
-  unsigned char *screen_spare;
-  long *screentexpos_spare;
-  char *screentexpos_addcolor_spare;
-  unsigned char *screentexpos_grayscale_spare;
-  unsigned char *screentexpos_cf_spare;
-  unsigned char *screentexpos_cbr_spare;
 
  protected:
   void gps_allocate(int x, int y);
@@ -809,7 +802,6 @@ class renderer {
   virtual void set_fullscreen() {} // Should read from enabler.is_fullscreen()
   virtual void zoom(zoom_commands cmd) {};
   virtual void resize(int w, int h) = 0;
-  void swap_buffers();
   renderer() {
     screen = NULL;
     screentexpos = NULL;
@@ -823,12 +815,6 @@ class renderer {
     screentexpos_grayscale_old = NULL;
     screentexpos_cf_old = NULL;
     screentexpos_cbr_old = NULL;
-    screen_spare = NULL;
-    screentexpos_spare = NULL;
-    screentexpos_addcolor_spare = NULL;
-    screentexpos_grayscale_spare = NULL;
-    screentexpos_cf_spare = NULL;
-    screentexpos_cbr_spare = NULL;
   }
   virtual bool get_mouse_coords(int &x, int &y) = 0;
 };
@@ -866,7 +852,7 @@ class enablerst : public enabler_inputst
 
   // Async rendering
   struct async_cmd {
-    enum { pause, start, swap, inc, set_fps } cmd;
+    enum { pause, start, render, inc, set_fps } cmd;
     int val; // If async_inc, number of extra frames to run. If set_fps, current value of fps.
   };
     
