@@ -179,12 +179,38 @@ void enablerst::pause_async_loop()  {
   async_wait();
 }
 
+// Wait until the previous command has been acknowledged, /or/
+// async_loop has quit. Incidentally execute any requests in the
+// meantime.
 void enablerst::async_wait() {
   if (loopvar == 0) return;
   async_msg r;
-  async_frombox.read(r);
-  if (r == async_quit)
-    loopvar = 0;
+  for (;;) {
+    async_frombox.read(r);
+    switch (r.msg) {
+    case async_msg::quit:
+      loopvar = 0;
+      return;
+    case async_msg::complete:
+      return;
+    case async_msg::set_fps:
+      set_fps(r.fps);
+      async_fromcomplete.write();
+      break;
+    case async_msg::set_gfps:
+      set_gfps(r.fps);
+      async_fromcomplete.write();
+      break;
+    case async_msg::push_resize:
+      override_grid_size(r.x, r.y);
+      async_fromcomplete.write();
+      break;
+    case async_msg::pop_resize:
+      release_grid_size();
+      async_fromcomplete.write();
+      break;
+    }
+  }
 }
 
 void enablerst::async_loop() {
@@ -208,7 +234,7 @@ void enablerst::async_loop() {
         case async_cmd::pause:
           paused = true;
           // puts("Paused");
-          async_frombox.write(async_complete);
+          async_frombox.write(async_msg(async_msg::complete));
           break;
         case async_cmd::start:
           paused = false;
@@ -221,7 +247,7 @@ void enablerst::async_loop() {
             flag &= ~ENABLERFLAG_RENDER;
             update_gfps();
           }
-          async_frombox.write(async_complete);
+          async_frombox.write(async_msg(async_msg::complete));
           break;
         case async_cmd::inc:
           frames += cmd.val;
@@ -236,7 +262,7 @@ void enablerst::async_loop() {
     // Run the main-loop, maybe
     if (!paused && frames) {
       if (mainloop()) {
-        async_frombox.write(async_quit);
+        async_frombox.write(async_msg(async_msg::quit));
         return; // We're done.
       }
       frames--;
@@ -262,8 +288,7 @@ void enablerst::do_frame() {
  
   // Update the loop's tick-counter suitably
   if (outstanding_frames >= 1) {
-    async_cmd cmd;
-    cmd.cmd = async_cmd::inc;
+    async_cmd cmd(async_cmd::inc);
     cmd.val = outstanding_frames;
     outstanding_frames -= cmd.val;
     async_tobox.write(cmd);
@@ -273,8 +298,7 @@ void enablerst::do_frame() {
   if (outstanding_gframes >= 1 &&
       (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
     // Get the async-loop to render_things
-    async_cmd cmd;
-    cmd.cmd = async_cmd::render;
+    async_cmd cmd(async_cmd::render);
     async_tobox.write(cmd);
     async_wait();
     // Then finish here
@@ -461,18 +485,29 @@ int enablerst::loop(string cmdline) {
 }
 
 void enablerst::override_grid_size(int x, int y) {
-  overridden_grid_sizes.push(make_pair<int,int>(init.display.grid_x,init.display.grid_y));
-  init.display.grid_x = x;
-  init.display.grid_y = y;
+  if (SDL_ThreadID() != renderer_threadid) {
+    // Ask the renderer to do it
+    async_msg m(async_msg::push_resize);
+    m.x = x; m.y = y;
+    async_frombox.write(m);
+    async_fromcomplete.read();
+  } else {
+    // We are the renderer; do it.
+    overridden_grid_sizes.push(make_pair<int,int>(init.display.grid_x,init.display.grid_y));
+    renderer->grid_resize(x, y);
+  }
 }
 
 void enablerst::release_grid_size() {
-  if (!overridden_grid_sizes.size()) return;
-  pair<int,int> sz = overridden_grid_sizes.top();
-  overridden_grid_sizes.pop();
-
-  init.display.grid_x = sz.first;
-  init.display.grid_y = sz.second;
+  if (SDL_ThreadID() != renderer_threadid) {
+    async_frombox.write(async_msg(async_msg::pop_resize));
+    async_fromcomplete.read();
+  } else {
+    if (!overridden_grid_sizes.size()) return;
+    pair<int,int> sz = overridden_grid_sizes.top();
+    overridden_grid_sizes.pop();
+    renderer->grid_resize(sz.first, sz.second);
+  }
 }
 
 void enablerst::zoom_display(zoom_commands command) {
@@ -505,19 +540,35 @@ void enablerst::update_gfps() {
 }
 
 void enablerst::set_fps(int fps) {
-  if (fps == 0)
-    fps = 1048576;
-  this->fps = fps;
-  fps_per_gfps = fps / gfps;
-  struct async_cmd cmd;
-  cmd.cmd = async_cmd::set_fps;
-  cmd.val = fps;
-  async_tobox.write(cmd);
+  if (SDL_ThreadID() != renderer_threadid) {
+    async_msg m(async_msg::set_fps);
+    m.fps = fps;
+    async_frombox.write(m);
+    async_fromcomplete.read();
+  } else {
+    if (fps == 0)
+      fps = 1048576;
+    this->fps = fps;
+    fps_per_gfps = fps / gfps;
+    struct async_cmd cmd;
+    cmd.cmd = async_cmd::set_fps;
+    cmd.val = fps;
+    async_tobox.write(cmd);
+  }
 }
 
 void enablerst::set_gfps(int gfps) {
-  this->gfps = gfps;
-  fps_per_gfps = fps / gfps;
+  if (SDL_ThreadID() != renderer_threadid) {
+    async_msg m(async_msg::set_gfps);
+    m.fps = gfps;
+    async_frombox.write(m);
+    async_fromcomplete.read();
+  } else {
+    if (gfps == 0)
+      gfps = 50;
+    this->gfps = gfps;
+    fps_per_gfps = fps / gfps;
+  }
 }
 
 int call_loop(void *dummy) {
@@ -533,13 +584,30 @@ int main (int argc, char* argv[]) {
   }
 #endif
 
+  // Initialise minimal SDL subsystems.
+  int retval = SDL_Init(SDL_INIT_TIMER);
+  // Report failure?
+  if (retval != 0) {
+    report_error("SDL initialization failure", SDL_GetError());
+    return false;
+  }
+  enabler.renderer_threadid = SDL_ThreadID();
+
   init.begin(); // Load init.txt settings
+  
 #if !defined(__APPLE__) && defined(unix)
   if (!ok && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
     puts("Display not found and PRINT_MODE not set to TEXT, aborting.");
     exit(EXIT_FAILURE);
   }
 #endif
+
+  // Initialize video, if we /use/ video
+  retval = SDL_InitSubSystem(init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT) ? 0 : SDL_INIT_VIDEO);
+  if (retval != 0) {
+    report_error("SDL initialization failure", SDL_GetError());
+    return false;
+  }
   
 #ifdef linux
   if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF)) {
@@ -556,14 +624,6 @@ int main (int argc, char* argv[]) {
   int ms = 1;
   while (timeBeginPeriod(ms) != TIMERROR_NOERROR) ms++;
 #endif
-
-  // Initialise relevant SDL subsystems.
-  int retval = SDL_Init(SDL_INIT_TIMER | (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT) ? 0 : SDL_INIT_VIDEO));
-  // Report failure?
-  if (retval != 0) {
-    report_error("SDL initialization failure", SDL_GetError());
-    return false;
-  }
 
   // Load keyboard map
   keybinding_init();

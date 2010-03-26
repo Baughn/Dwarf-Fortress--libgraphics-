@@ -108,5 +108,27 @@ public:
   }
 };
 
+template<>
+class Chan<void> {
+  SDL_sem *fill;
+public:
+  bool try_read() {
+    if (SDL_SemTryWait(fill) == 0)
+      return true;
+    return false;
+  }
+  void read() {
+    SDL_SemWait(fill);
+  }
+  void write() {
+    SDL_SemPost(fill);
+  }
+  Chan() {
+    fill = SDL_CreateSemaphore(0);
+  }
+  ~Chan() {
+    SDL_DestroySemaphore(fill);
+  }
+};
 
 #endif

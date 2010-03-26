@@ -802,6 +802,7 @@ class renderer {
   virtual void set_fullscreen() {} // Should read from enabler.is_fullscreen()
   virtual void zoom(zoom_commands cmd) {};
   virtual void resize(int w, int h) = 0;
+  virtual void grid_resize(int w, int h) = 0;
   void swap_arrays();
   renderer() {
     screen = NULL;
@@ -825,6 +826,7 @@ class enablerst : public enabler_inputst
   friend class initst;
   friend class renderer_2d;
   friend class renderer_opengl;
+  friend class renderer_curses;
 
   string command_line;
   bool fullscreen;
@@ -853,14 +855,31 @@ class enablerst : public enabler_inputst
 
   // Async rendering
   struct async_cmd {
-    enum { pause, start, render, inc, set_fps } cmd;
+    enum cmd_t { pause, start, render, inc, set_fps } cmd;
     int val; // If async_inc, number of extra frames to run. If set_fps, current value of fps.
+    async_cmd() {}
+    async_cmd(cmd_t c) { cmd = c; }
   };
-    
-  enum async_msg { async_quit, async_complete };
-  Chan<async_cmd> async_tobox;
-  Chan<async_msg> async_frombox;
-  Chan<zoom_commands> async_zoom;
+
+  struct async_msg {
+    enum msg_t { quit, complete, set_fps, set_gfps, push_resize, pop_resize } msg;
+    union {
+      int fps; // set_fps, set_gfps
+      struct { // push_resize
+        int x, y;
+      };
+    };
+    async_msg() {}
+    async_msg(msg_t m) { msg = m; }
+  };
+      
+  Chan<async_cmd> async_tobox;    // Messages to the simulation thread
+  Chan<async_msg> async_frombox;  // Messages from the simulation thread, and acknowledgements of those to
+  Chan<zoom_commands> async_zoom; // Zoom commands (from the simulation thread)
+  Chan<void> async_fromcomplete;  // Barrier for async_msg requests that require acknowledgement
+ public:
+  Uint32 renderer_threadid;
+ private:
 
   void pause_async_loop();
   void async_wait();

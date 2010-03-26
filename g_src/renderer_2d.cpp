@@ -158,27 +158,35 @@ public:
     }
   }
 
-  void resize(int w, int h) {
-    // We've gotten resized.. first step is to reinitialize video
-    cout << "New window size: " << w << "x" << h << endl;
-    init_video(w, h);
-    // (Re)calculate grid-size
-    dispx = enabler.is_fullscreen() ?
-      init.font.large_font_dispx :
-      init.font.small_font_dispx;
-    dispy = enabler.is_fullscreen() ?
-      init.font.large_font_dispy :
-      init.font.small_font_dispy;
-    cout << "Font size: " << dispx << "x" << dispy << endl;
-    dimx = MIN(MAX(w / dispx, MIN_GRID_X), MAX_GRID_X);
-    dimy = MIN(MAX(h / dispy, MIN_GRID_Y), MAX_GRID_Y);
-    cout << "Resizing grid to " << dimx << "x" << dimy << endl << endl;
+  void grid_resize(int w, int h) {
+    dimx = w; dimy = h;
     // Only reallocate the grid if it actually changes
     if (init.display.grid_x != dimx || init.display.grid_y != dimy)
       gps_allocate(dimx, dimy);
     // But always force a full display cycle
     gps.force_full_display_count = 1;
-    enabler.flag |= ENABLERFLAG_RENDER;
+    enabler.flag |= ENABLERFLAG_RENDER;    
+  }
+  
+  void resize(int w, int h) {
+    // We've gotten resized.. first step is to reinitialize video
+    cout << "New window size: " << w << "x" << h << endl;
+    init_video(w, h);
+    // If grid size is currently overridden, we don't change it
+    if (enabler.overridden_grid_sizes.size() == 0) {
+      // (Re)calculate grid-size
+      dispx = enabler.is_fullscreen() ?
+        init.font.large_font_dispx :
+        init.font.small_font_dispx;
+      dispy = enabler.is_fullscreen() ?
+        init.font.large_font_dispy :
+        init.font.small_font_dispy;
+      cout << "Font size: " << dispx << "x" << dispy << endl;
+      dimx = MIN(MAX(w / dispx, MIN_GRID_X), MAX_GRID_X);
+      dimy = MIN(MAX(h / dispy, MIN_GRID_Y), MAX_GRID_Y);
+      cout << "Resizing grid to " << dimx << "x" << dimy << endl << endl;
+      grid_resize(dimx, dimy);
+    }
   }
 
   void set_fullscreen() {

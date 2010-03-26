@@ -327,7 +327,14 @@ public:
     uninit_opengl();
     init_video(w, h);
     init_opengl();
-    reshape(compute_zoom());
+    // Only reshape if we're free to pick grid size
+    if (enabler.overridden_grid_sizes.size() == 0)
+      reshape(compute_zoom());
+  }
+
+  // Parameters: grid size
+  void grid_resize(int w, int h) {
+    reshape(make_pair<int,int>(w, h));
   }
 
 private:

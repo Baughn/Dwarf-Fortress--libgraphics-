@@ -91,9 +91,17 @@ public:
     refresh();
   }
 
-  void resize(int x, int y) {
-    gps_allocate(x, y);
+  void resize(int w, int h) {
+    if (enabler.overridden_grid_sizes.size() == 0)
+      gps_allocate(w, h);
     erase();
+    // Force a full display cycle
+    gps.force_full_display_count = 1;
+    enabler.flag |= ENABLERFLAG_RENDER;
+  }
+
+  void grid_resize(int w, int h) {
+    gps_allocate(w, h);
   }
 
   renderer_curses() {
