@@ -215,16 +215,15 @@ void enablerst::async_wait() {
 
 void enablerst::async_loop() {
   bool paused = false;
-  unsigned int frames = 0; // Number of frames we've been asked to run
+  async_frames = 0;
   int fps = 100; // Just a thread-local copy
   for (;;) {
-    SDL_NumJoysticks(); // Hook for dfhack
     // cout << "FRAMES: " << frames << endl;
     // Check for commands
     async_cmd cmd;
     bool have_cmd = true;
     do {
-      if (paused || frames == 0)
+      if (paused || async_frames == 0)
         async_tobox.read(cmd);
       else
         have_cmd = async_tobox.try_read(cmd);
@@ -250,8 +249,8 @@ void enablerst::async_loop() {
           async_frombox.write(async_msg(async_msg::complete));
           break;
         case async_cmd::inc:
-          frames += cmd.val;
-          if (frames > fps*3) frames = fps*3; // Just in case
+          async_frames += cmd.val;
+          if (async_frames > fps*3) async_frames = fps*3; // Just in case
           break;
         case async_cmd::set_fps:
           fps = cmd.val;
@@ -260,14 +259,15 @@ void enablerst::async_loop() {
       }
     } while (have_cmd);
     // Run the main-loop, maybe
-    if (!paused && frames) {
+    if (!paused && async_frames) {
       if (mainloop()) {
         async_frombox.write(async_msg(async_msg::quit));
         return; // We're done.
       }
-      frames--;
+      async_frames--;
       update_fps();
     }
+    SDL_NumJoysticks(); // Hook for dfhack
   }
 }
 
@@ -543,6 +543,7 @@ void enablerst::set_fps(int fps) {
   if (SDL_ThreadID() != renderer_threadid) {
     async_msg m(async_msg::set_fps);
     m.fps = fps;
+    async_frames = 0;
     async_frombox.write(m);
     async_fromcomplete.read();
   } else {
@@ -593,6 +594,9 @@ int main (int argc, char* argv[]) {
   }
   enabler.renderer_threadid = SDL_ThreadID();
 
+  // Spawn simulation thread
+  SDL_CreateThread(call_loop, NULL);
+
   init.begin(); // Load init.txt settings
   
 #if !defined(__APPLE__) && defined(unix)
@@ -635,8 +639,6 @@ int main (int argc, char* argv[]) {
     cmdLine += option;
     cmdLine += " ";
   }
-  // Spawn simulation thread
-  SDL_CreateThread(call_loop, NULL);
   int result = enabler.loop(cmdLine);
 
   SDL_Quit();

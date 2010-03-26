@@ -18,7 +18,7 @@ struct cursesmovie_headerst
 
 class viewscreen_movieplayerst : viewscreenst
 {
-	public:
+  	public:
 		static viewscreen_movieplayerst *create(char pushtype,viewscreenst *scr=NULL);
 		virtual void help();
 		virtual void feed(std::set<InterfaceKey> &events);
@@ -73,6 +73,7 @@ enum InterfacePushType
 
 class interfacest
 {
+  int original_fps;
 	friend class viewscreen_movieplayerst;
 
 	public:

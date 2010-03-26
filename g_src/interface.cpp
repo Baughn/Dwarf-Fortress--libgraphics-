@@ -417,6 +417,8 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 			{
 			is_playing=0;
                         enabler.release_grid_size();
+                        if (gview.original_fps)
+                          enabler.set_fps(gview.original_fps);
 			gview.supermovie_on=0;
 			gview.currentblocksize=0;
 			gview.nextfilepos=0;
@@ -436,6 +438,8 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 			{
 			is_playing=0;
                         enabler.release_grid_size();
+                        if (gview.original_fps)
+                          enabler.set_fps(gview.original_fps);
 			gview.supermovie_on=0;
 			gview.currentblocksize=0;
 			gview.nextfilepos=0;
@@ -671,6 +675,8 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 				//TURN ON THE MOVIE RECORDER
 				is_playing=0;
                                 enabler.release_grid_size();
+                                if (gview.original_fps)
+                                  enabler.set_fps(gview.original_fps);
 				gview.supermovie_on=1;
 				gview.currentblocksize=0;
 				gview.nextfilepos=0;
@@ -722,6 +728,8 @@ viewscreen_movieplayerst::viewscreen_movieplayerst()
 	gview.movie_file="data/movies/last_record.cmv";
 	is_playing=0;
         enabler.release_grid_size();
+        if (gview.original_fps)
+          enabler.set_fps(gview.original_fps);
 	is_forced_play=0;
 	quit_if_no_play=0;
 	gview.supermovie_on=0;
@@ -753,6 +761,7 @@ viewscreen_movieplayerst::viewscreen_movieplayerst()
 
 interfacest::interfacest()
 {
+        original_fps = 0;
 	shutdown_interface_for_ms=0;
 	shutdown_interface_tickcount=0;
 	flag=0;
@@ -1138,6 +1147,8 @@ void interfacest::read_movie_chunk(int &maxmoviepos,char &is_playing)
                                 cmh.delayrate=byteswap(cmh.delayrate);
 
                                 enabler.override_grid_size(cmh.dimx, cmh.dimy);
+                                gview.original_fps = enabler.get_fps();
+                                enabler.set_fps(100);
 
 				gview.supermovie_delayrate=cmh.delayrate;
 				gview.supermovie_delaystep=cmh.delayrate;
@@ -1242,12 +1253,16 @@ void interfacest::read_movie_chunk(int &maxmoviepos,char &is_playing)
 				{
 				is_playing=0;
                                 enabler.release_grid_size();
+                                if (gview.original_fps)
+                                  enabler.set_fps(gview.original_fps);
 				}
 			}
 		else
 			{
 			is_playing=0;
                         enabler.release_grid_size();
+                        if (gview.original_fps)
+                          enabler.set_fps(gview.original_fps);
 			}
 
 		f.close();
@@ -1256,6 +1271,8 @@ void interfacest::read_movie_chunk(int &maxmoviepos,char &is_playing)
 		{
 		is_playing=0;
                 enabler.release_grid_size();
+                if (gview.original_fps)
+                  enabler.set_fps(gview.original_fps);
 		}
 }
 

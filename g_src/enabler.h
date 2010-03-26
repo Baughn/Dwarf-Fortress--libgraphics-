@@ -873,6 +873,7 @@ class enablerst : public enabler_inputst
     async_msg(msg_t m) { msg = m; }
   };
       
+  unsigned int async_frames;      // Number of frames the async thread has been asked to run
   Chan<async_cmd> async_tobox;    // Messages to the simulation thread
   Chan<async_msg> async_frombox;  // Messages from the simulation thread, and acknowledgements of those to
   Chan<zoom_commands> async_zoom; // Zoom commands (from the simulation thread)

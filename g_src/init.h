@@ -53,8 +53,6 @@ class init_displayst
  public:
   flagarrayst flag;
   InitDisplayWindow windowed;
-  LARGE_INTEGER dwarf_frame_rate;
-  LARGE_INTEGER g_frame_rate;
 
   int grid_x, grid_y; // The *current* display grid size, kept up to date
 
