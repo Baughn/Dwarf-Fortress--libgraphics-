@@ -335,6 +335,8 @@ void enablerst::eventLoop_SDL()
     // Check for zoom commands
     zoom_commands zoom;
     while (async_zoom.try_read(zoom)) {
+      if (overridden_grid_sizes.size())
+        continue; // No zooming in movies
       if (!paused_loop) {
         pause_async_loop();
         paused_loop = true;
