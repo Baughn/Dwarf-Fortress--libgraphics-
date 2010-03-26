@@ -214,7 +214,7 @@ void enablerst::async_wait() {
 }
 
 void enablerst::async_loop() {
-  bool paused = false;
+  async_paused = false;
   async_frames = 0;
   int fps = 100; // Just a thread-local copy
   for (;;) {
@@ -223,7 +223,7 @@ void enablerst::async_loop() {
     async_cmd cmd;
     bool have_cmd = true;
     do {
-      if (paused || async_frames == 0)
+      if (async_paused || async_frames == 0)
         async_tobox.read(cmd);
       else
         have_cmd = async_tobox.try_read(cmd);
@@ -231,12 +231,13 @@ void enablerst::async_loop() {
       if (have_cmd) {
         switch (cmd.cmd) {
         case async_cmd::pause:
-          paused = true;
+          async_paused = true;
           // puts("Paused");
           async_frombox.write(async_msg(async_msg::complete));
           break;
         case async_cmd::start:
-          paused = false;
+          async_paused = false;
+          async_frames = 0;
           // puts("UNpaused");
           break;
         case async_cmd::render:
@@ -259,7 +260,7 @@ void enablerst::async_loop() {
       }
     } while (have_cmd);
     // Run the main-loop, maybe
-    if (!paused && async_frames) {
+    if (!async_paused && async_frames) {
       if (mainloop()) {
         async_frombox.write(async_msg(async_msg::quit));
         return; // We're done.
@@ -543,7 +544,7 @@ void enablerst::set_fps(int fps) {
   if (SDL_ThreadID() != renderer_threadid) {
     async_msg m(async_msg::set_fps);
     m.fps = fps;
-    async_frames = 0;
+    async_paused = true;
     async_frombox.write(m);
     async_fromcomplete.read();
   } else {
@@ -555,6 +556,7 @@ void enablerst::set_fps(int fps) {
     cmd.cmd = async_cmd::set_fps;
     cmd.val = fps;
     async_tobox.write(cmd);
+    async_tobox.write(async_cmd(async_cmd::start));
   }
 }
 
