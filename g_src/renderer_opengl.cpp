@@ -161,6 +161,10 @@ public:
   
   void render() {
     draw(gps.dimx*gps.dimy*6);
+    if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ARB_SYNC) && GL_ARB_sync) {
+      assert(enabler.sync == NULL);
+      enabler.sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    }
     SDL_GL_SwapBuffers();
   }
 
