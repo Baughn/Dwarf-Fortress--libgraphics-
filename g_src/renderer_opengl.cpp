@@ -285,6 +285,20 @@ public:
     reshape_gl();
   }
 
+  int off_x, off_y, size_x, size_y;
+  
+  bool get_mouse_coords(int &x, int &y) {
+    int mouse_x, mouse_y;
+    SDL_GetMouseState(&mouse_x, &mouse_y);
+    mouse_x -= off_x; mouse_y -= off_y;
+    if (mouse_x < 0 || mouse_y < 0 ||
+        mouse_x >= size_x || mouse_y >= size_y)
+      return false; // Out of bounds
+    x = double(mouse_x) / double(size_x) * double(gps.dimx);
+    y = double(mouse_y) / double(size_y) * double(gps.dimy);
+    return true;
+  }
+
   virtual void reshape_gl() {
     // Allocate array memory
     allocate(gps.dimx * gps.dimy);
@@ -298,12 +312,18 @@ public:
     /// Set up our coordinate system
     if (forced_steps + zoom_steps == 0 &&
         init.display.flag.has_flag(INIT_DISPLAY_FLAG_BLACK_SPACE)) {
-      int size_x = gps.dimx * dispx,
-        size_y = gps.dimy * dispy;
-      int off_x = (screen->w - size_x) / 2,
-        off_y = (screen->h - size_y) / 2;
-      glViewport(off_x, off_y, size_x, size_y);
+      size_x = gps.dimx * dispx;
+      size_y = gps.dimy * dispy;
+      off_x = (screen->w - size_x) / 2;
+      off_y = (screen->h - size_y) / 2;
+    } else {
+      // If we're zooming (or just not using black space), we use the
+      // entire window.
+      size_x = screen->w;
+      size_y = screen->h;
+      off_x = off_y = 0;
     }
+    glViewport(off_x, off_y, size_x, size_y);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glMatrixMode(GL_PROJECTION);
@@ -355,10 +375,6 @@ public:
     } else {
       resize(last_windowed_w, last_windowed_h);
     }
-  }
-
-  bool get_mouse_coords(int &x, int &y) {
-    return false;
   }
 };
 
