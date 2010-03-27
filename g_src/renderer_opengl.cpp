@@ -426,13 +426,43 @@ class renderer_partial : public renderer_opengl {
       renderer_opengl::allocate(buffersz * 2);
       // Move the tail to the end of the newly allocated space
       tail += buffersz;
-      memmove(vertexes + tail * 6 * 4, fg + head * 6 * 2, sizeof(GLfloat) * 6 * 2 * (buffersz - head));
+      memmove(vertexes + tail * 6 * 2, vertexes + head * 6 * 2, sizeof(GLfloat) * 6 * 2 * (buffersz - head));
       memmove(fg + tail * 6 * 4, fg + head * 6 * 4, sizeof(GLfloat) * 6 * 4 * (buffersz - head));
       memmove(bg + tail * 6 * 4, fg + head * 6 * 4, sizeof(GLfloat) * 6 * 4 * (buffersz - head));
-      memmove(tex + tail * 6 * 4, fg + head * 6 * 2, sizeof(GLfloat) * 6 * 2 * (buffersz - head));
+      memmove(tex + tail * 6 * 2, fg + head * 6 * 2, sizeof(GLfloat) * 6 * 2 * (buffersz - head));
       // And finish.
       buffersz *= 2;
     }
+  }
+
+  void allocate(int tile_count) {
+    assert(false);
+  }
+  
+  virtual void reshape_gl() {
+    // TODO: This function is duplicate code w/base class reshape_gl
+    // Setup invariant state
+    glEnableClientState(GL_COLOR_ARRAY);
+    /// Set up our coordinate system
+    if (forced_steps + zoom_steps == 0 &&
+        init.display.flag.has_flag(INIT_DISPLAY_FLAG_BLACK_SPACE)) {
+      size_x = gps.dimx * dispx;
+      size_y = gps.dimy * dispy;
+      off_x = (screen->w - size_x) / 2;
+      off_y = (screen->h - size_y) / 2;
+    } else {
+      // If we're zooming (or just not using black space), we use the
+      // entire window.
+      size_x = screen->w;
+      size_y = screen->h;
+      off_x = off_y = 0;
+    }
+    glViewport(off_x, off_y, size_x, size_y);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, gps.dimx, gps.dimy, 0);
   }
 
   void draw_arrays(GLfloat *vertexes, GLfloat *fg, GLfloat *bg, GLfloat *tex, int tile_count) {
@@ -483,13 +513,11 @@ class renderer_partial : public renderer_opengl {
       erasz.pop_front();
     }
   }
-
-  void allocate(int tile_count) { } // We manage buffers ourselves, thank you.
   
 public:
   renderer_partial() {
     redraw_count = init.display.partial_print_count;
-    buffersz = gps.dimx * gps.dimy;
+    buffersz = 2048;
     renderer_opengl::allocate(buffersz);
     current_erasz = head = tail = sum_erasz = 0;
   }
