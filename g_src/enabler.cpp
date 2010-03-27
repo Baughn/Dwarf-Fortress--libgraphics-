@@ -624,6 +624,11 @@ int main (int argc, char* argv[]) {
     puts("Display not found and PRINT_MODE not set to TEXT, aborting.");
     exit(EXIT_FAILURE);
   }
+  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT) &&
+      init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS)) {
+    puts("Graphical tiles are not compatible with text output, sorry");
+    exit(EXIT_FAILURE);
+  }
 #endif
 
   // Initialize video, if we /use/ video
