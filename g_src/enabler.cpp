@@ -420,20 +420,32 @@ void enablerst::eventLoop_SDL()
         break;
       } // switch (event.type)
     } //while have event
-    if (paused_loop)
-      unpause_async_loop();
 
     // Update mouse state
     if (!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
+      int mouse_x = -1, mouse_y = -1, mouse_state;
       // Check whether the renderer considers this valid input or not, and write it to gps
       if ((SDL_GetAppState() & SDL_APPMOUSEFOCUS) &&
-          renderer->get_mouse_coords(gps.mouse_x, gps.mouse_y)) {
-        enabler.tracking_on = 1;
+          renderer->get_mouse_coords(mouse_x, mouse_y)) {
+        mouse_state = 1;
       } else {
-        enabler.tracking_on = 0;
-        gps.mouse_x = gps.mouse_y = -1;
+        mouse_state = 0;
+      }
+      if (mouse_x != gps.mouse_x || mouse_y != gps.mouse_y ||
+          mouse_state != enabler.tracking_on) {
+        // Pause rendering loop and update values
+        if (!paused_loop) {
+          pause_async_loop();
+          paused_loop = true;
+        }
+        enabler.tracking_on = mouse_state;
+        gps.mouse_x = mouse_x;
+        gps.mouse_y = mouse_y;
       }
     }
+
+    if (paused_loop)
+      unpause_async_loop();
 
     do_frame();
 #if !defined(NO_FMOD)
