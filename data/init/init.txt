@@ -54,17 +54,15 @@ Graphics info, most of it as above.  Set GRAPHICS to YES to turn it all on.  Thi
 [GRAPHICS_FULLFONT:mayday.png]
 [GRAPHICS_BLACK_SPACE:YES]
 
-These settings can have a significant impact on frame rate, especially for people that have slow frame rates on the title screen.  Available modes are 2D, 2DSW, 2DASYNC, STANDARD, PARTIAL:<number>, ACCUM_BUFFER, FRAME_BUFFER, VBO and SHADER.  The number after PARTIAL refers to how many frames it will redo a printed tile before skipping it, so you might try increasing it a bit if you have flickering when PARTIAL is set.  Please note that any of these combinations might cause frame rates to drop significantly or cause unpleasant side effects like flickering.
+These settings can have a significant impact on frame rate, especially for people that have slow frame rates on the title screen.  Available modes are 2D, 2DSW, 2DASYNC, STANDARD, PARTIAL:<number>, ACCUM_BUFFER, FRAME_BUFFER and VBO. The number after PARTIAL refers to how many frames it will redo a printed tile before skipping it, so you might try increasing it a bit if you have flickering when PARTIAL is set.  Please note that any of these combinations might cause frame rates to drop significantly or cause unpleasant side effects like flickering.
 
 By and large, 2D should be the most reliable, while STANDARD has a good combination of speed and reliability. However, all 2D modes are normally far slower than even STANDARD, which may be the slowest OpenGL mode.
 
-SHADER is the fastest mode on modern hardware, but requires a DX10-compatible card. It does not actually require DX10, Vista or indeed Windows, just the card. Slower cards may require ARB_SYNC to be useful in this note, and note that graphics mode is a large drain on the GPU with shaders.
-
-If you have a multi-core machine, 2DASYNC should be faster than 2D, and just as reliable. On a single-core it's slower.
+2DASYNC may be slightly more responsive than 2D on a multi-core machine, but this has recently become doubtful due to improvements to the other modes.
 
 Linux/OS X users may also use PRINT_MODE:TEXT for primitive ncurses output.
 
-[PRINT_MODE:2D]
+[PRINT_MODE:STANDARD]
 [SINGLE_BUFFER:NO]
 
 Change this to YES to keep the DF window on top of your other windows.
