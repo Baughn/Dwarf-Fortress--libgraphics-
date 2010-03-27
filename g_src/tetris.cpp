@@ -72,6 +72,8 @@ public:
   }
   virtual void logic() {
     if ((frame++) % 2) return;
+    if (enabler.tracking_on)
+      cout << gps.mouse_x << " " << gps.mouse_y << endl;
     enabler.flag |= ENABLERFLAG_RENDER;
     // Advance each line one step
     for (lit i = lines.begin(); i != lines.end();) {

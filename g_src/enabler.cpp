@@ -396,14 +396,6 @@ void enablerst::eventLoop_SDL()
         } else {
           SDL_ShowCursor(SDL_ENABLE);
         }
-        // Break if mouse usage is off
-        if (init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) break;
-        // Check whether the renderer considers this valid input or not
-        int foo, bar;
-        if (renderer->get_mouse_coords(foo, bar))
-          enabler.tracking_on = 1;
-        else
-          enabler.tracking_on = 0;
         break;
       case SDL_ACTIVEEVENT:
         enabler.clear_input();
@@ -430,7 +422,19 @@ void enablerst::eventLoop_SDL()
     } //while have event
     if (paused_loop)
       unpause_async_loop();
-  
+
+    // Update mouse state
+    if (!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
+      // Check whether the renderer considers this valid input or not, and write it to gps
+      if ((SDL_GetAppState() & SDL_APPMOUSEFOCUS) &&
+          renderer->get_mouse_coords(gps.mouse_x, gps.mouse_y)) {
+        enabler.tracking_on = 1;
+      } else {
+        enabler.tracking_on = 0;
+        gps.mouse_x = gps.mouse_y = -1;
+      }
+    }
+
     do_frame();
 #if !defined(NO_FMOD)
     // Call FMOD::System.update(). Manages a bunch of sound stuff.

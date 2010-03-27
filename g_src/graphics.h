@@ -146,7 +146,8 @@ class graphicst
 			return height;
 			}
 
-		void get_mouse_text_coords(long &mx,long &my);
+                int mouse_x, mouse_y;
+		void get_mouse_text_coords(int &mx, int &my);
                 void draw_border(int x1, int x2, int y1, int y2);
 };
 

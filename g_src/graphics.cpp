@@ -373,6 +373,11 @@ void graphicst::draw_border(int x1, int x2, int y1, int y2) {
   }
 }
 
+void graphicst::get_mouse_text_coords(int &mx, int &my) {
+  mx = mouse_x; my = mouse_y;
+}
+
+
 void render_things()
 {
   //GRAB CURRENT SCREEN AT THE END OF THE LIST

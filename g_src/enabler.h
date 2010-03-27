@@ -911,9 +911,6 @@ class enablerst : public enabler_inputst
   int calculate_gfps();
 
   // Mouse interface, such as it is
-  bool get_mouse_coords(int &x, int &y) { // Returns false if the mouse is out of bounds
-    return renderer->get_mouse_coords(x, y);
-  }
   char mouse_lbut,mouse_rbut,mouse_lbut_down,mouse_rbut_down,mouse_lbut_lift,mouse_rbut_lift;
   char tracking_on;   // Whether we're tracking the mouse or not
 
