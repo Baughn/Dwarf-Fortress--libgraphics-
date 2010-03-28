@@ -64,8 +64,8 @@ texture_fullid renderer::screen_to_texid(int x, int y) {
 #ifdef CURSES
 # include "renderer_curses.cpp"
 #endif
-#include "renderer_2d.cpp"
-#include "renderer_opengl.cpp"
+#include "renderer_2d.hpp"
+#include "renderer_opengl.hpp"
 
 
 enablerst::enablerst() {
