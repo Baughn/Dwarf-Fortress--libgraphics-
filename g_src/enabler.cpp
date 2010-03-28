@@ -37,14 +37,45 @@ static void report_error(const char *error_preface, const char *error_message)
 texture_fullid renderer::screen_to_texid(int x, int y) {
   struct texture_fullid ret;
   const int tile = x * gps.dimy + y;
-  const int ch = screen[tile*4 + 0];
+
+  const int ch   = screen[tile*4 + 0];
   const int bold = (screen[tile*4 + 3] != 0) * 8;
-  const int fg = screen[tile*4 + 1] + bold;
-  const int bg = screen[tile*4 + 2] + bold;
+  const int fg   = screen[tile*4 + 1] + bold;
+  const int bg   = screen[tile*4 + 2] + bold;
 
   assert(fg >= 0 && fg < 16);
-  assert(bg >= 0 && bg < 16);
+  assert(bg >= 0 && bg < 16);  
+
+  static bool use_graphics = init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS);
+
+  if (use_graphics) {
+    const long texpos             = screentexpos[tile];
+    const char addcolor           = screentexpos_addcolor[tile];
+    const unsigned char grayscale = screentexpos_grayscale[tile];
+    const unsigned char cf        = screentexpos_cf[tile];
+    const unsigned char cbr       = screentexpos_cbr[tile];
+
+    if (texpos) {
+      ret.texpos = texpos;
+      if (grayscale) {
+        ret.r = enabler.ccolor[cf][0];
+        ret.g = enabler.ccolor[cf][1];
+        ret.b = enabler.ccolor[cf][2];
+        ret.br = enabler.ccolor[cbr][0];
+        ret.bg = enabler.ccolor[cbr][1];
+        ret.bb = enabler.ccolor[cbr][2];
+      } else if (addcolor) {
+        goto use_ch;
+      } else {
+        ret.r = ret.g = ret.b = 255;
+        ret.br = ret.bg = ret.bb = 0;
+      }
+      goto skip_ch;
+    }
+  }
   
+ use_ch:
+
   ret.texpos = enabler.is_fullscreen() ?
     init.font.large_font_texpos[ch] :
     init.font.small_font_texpos[ch];
@@ -55,7 +86,7 @@ texture_fullid renderer::screen_to_texid(int x, int y) {
   ret.bg = enabler.ccolor[bg][1];
   ret.bb = enabler.ccolor[bg][2];
 
-  // TODO: Account for graphics mode
+ skip_ch:
 
   return ret;
 }
