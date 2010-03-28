@@ -1,5 +1,5 @@
-
 class renderer_2d : public renderer {
+protected:
   SDL_Surface *screen;
   map<texture_fullid, SDL_Surface*> tile_cache;
   int dispx, dispy, dimx, dimy;
@@ -72,7 +72,7 @@ class renderer_2d : public renderer {
     }
   }
   
-  bool init_video(int w, int h) {
+  virtual bool init_video(int w, int h) {
     // Get ourselves a 2D SDL window
     Uint32 flags = init.display.flag.has_flag(INIT_DISPLAY_FLAG_2DHW) ? SDL_HWSURFACE : SDL_SWSURFACE;
     flags |= init.display.flag.has_flag(INIT_DISPLAY_FLAG_2DASYNC) ? SDL_ASYNCBLIT : 0;
@@ -112,11 +112,19 @@ public:
         update_tile(x, y);
   }
 
-  void render() {
+  virtual void render() {
     SDL_Flip(screen);
   }
 
-  renderer_2d() {
+  ~renderer_2d() {
+    for (map<texture_fullid,SDL_Surface*>::iterator it = tile_cache.begin();
+         it != tile_cache.end();
+         ++it) {
+      SDL_FreeSurface(it->second);
+    }
+  }
+
+  virtual void init_sdl() {
     // Disable key repeat
     SDL_EnableKeyRepeat(0, 0);
     // Set window title/icon.
@@ -156,6 +164,10 @@ public:
       report_error("SDL initialization failure", SDL_GetError());
       exit(EXIT_FAILURE);
     }
+  }
+
+  renderer_2d() {
+    init_sdl();
   }
 
   void grid_resize(int w, int h) {
@@ -204,5 +216,52 @@ public:
     x = mouse_x / dispx;
     y = mouse_y / dispy;
     return true;
+  }
+};
+
+class renderer_offscreen : private renderer_2d {
+  virtual bool init_video(int w, int h) {
+    // Create an offscreen buffer
+    screen = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, 32, 0, 0, 0, 0);
+    assert(screen);
+    return true;
+  }
+  virtual void init_sdl() {}
+public:
+  ~renderer_offscreen() {
+    SDL_FreeSurface(screen);
+  }
+  // Create an offscreen renderer of a given grid-size
+  renderer_offscreen(int grid_x, int grid_y) {
+    dispx = enabler.is_fullscreen() ?
+      init.font.large_font_dispx :
+      init.font.small_font_dispx;
+    dispy = enabler.is_fullscreen() ?
+      init.font.large_font_dispy :
+      init.font.small_font_dispy;
+    dimx = grid_x;
+    dimy = grid_y;
+    init_video(dispx * grid_x, dispy * grid_y);
+  }
+  // Slurp the entire gps content into the renderer at some given offset
+  void update_all(int offset_x, int offset_y) {
+    for (int x = 0; x < gps.dimx; x++) {
+      for (int y = 0; y < gps.dimy; y++) {
+        // Read tiles from gps, create cached texture
+        struct texture_fullid id = screen_to_texid(x, y);
+        SDL_Surface *tex = tile_cache_lookup(id);
+        // Figure out where to blit
+        SDL_Rect dst;
+        dst.x = tex->w * (x+offset_x);
+        dst.y = tex->h * (y+offset_y);
+        // And blit.
+        SDL_BlitSurface(tex, NULL, screen, &dst);
+      }
+    }
+  }
+  // Save the image to some file
+  void save_to_file(const string &file) {
+    // TODO: Support png, etc.
+    SDL_SaveBMP(screen, file.c_str());
   }
 };
