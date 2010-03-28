@@ -172,16 +172,16 @@ public:
     // We've gotten resized.. first step is to reinitialize video
     cout << "New window size: " << w << "x" << h << endl;
     init_video(w, h);
+    dispx = enabler.is_fullscreen() ?
+      init.font.large_font_dispx :
+      init.font.small_font_dispx;
+    dispy = enabler.is_fullscreen() ?
+      init.font.large_font_dispy :
+      init.font.small_font_dispy;
+    cout << "Font size: " << dispx << "x" << dispy << endl;
     // If grid size is currently overridden, we don't change it
     if (enabler.overridden_grid_sizes.size() == 0) {
       // (Re)calculate grid-size
-      dispx = enabler.is_fullscreen() ?
-        init.font.large_font_dispx :
-        init.font.small_font_dispx;
-      dispy = enabler.is_fullscreen() ?
-        init.font.large_font_dispy :
-        init.font.small_font_dispy;
-      cout << "Font size: " << dispx << "x" << dispy << endl;
       dimx = MIN(MAX(w / dispx, MIN_GRID_X), MAX_GRID_X);
       dimy = MIN(MAX(h / dispy, MIN_GRID_Y), MAX_GRID_Y);
       cout << "Resizing grid to " << dimx << "x" << dimy << endl << endl;
