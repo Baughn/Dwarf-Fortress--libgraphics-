@@ -37,36 +37,14 @@ void musicsoundst::startbackgroundmusic(int new_song)
 		return;
 	}
 
-	if (song != new_song &&
-		!doing_forced || 
-		(forcesongstart + forcesongtime) > enabler.get_timer() ||
-		forcesongstart > enabler.get_timer()) {
+	if (song != new_song) {
 
 		stopbackgroundmusic(); /* This is safe to call, even if song isn't valid. */
 
-		doing_forced = 0;
 		song = new_song;
 		FMOD_CHANNELINDEX cid = static_cast<FMOD_CHANNELINDEX>(0);
 		system->playSound(cid, mod[song].sound, false, &mod[song].channel);
 	}
-}
-
-void musicsoundst::forcebackgroundmusic(int new_song, unsigned long time)
-{
-	if (!on || new_song < 0 || new_song > MAXSONGNUM || mod[new_song].sound == NULL) {
-		return;
-	}
-
-	if (song != new_song) {
-		stopbackgroundmusic();
-		song = new_song;
-		FMOD_CHANNELINDEX cid = static_cast<FMOD_CHANNELINDEX>(0);
-		system->playSound(cid, mod[song].sound, false, &mod[song].channel);
-	}
-
-	doing_forced = 1;
-	forcesongtime = time;
-	forcesongstart = enabler.get_timer();
 }
 
 void musicsoundst::stopbackgroundmusic()

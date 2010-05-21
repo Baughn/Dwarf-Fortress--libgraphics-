@@ -53,6 +53,29 @@ DWORD GetTickCount()
   return (tp.tv_sec * 1000) + (tp.tv_usec / 1000);
 }
 
+char* itoa(int value, char* result, int base)
+{
+  // check that the base is valid
+  if (base < 2 || base > 16) { *result = 0; return result; }
+	
+  char* out = result;
+  int quot = value;
+	
+  do
+    {
+      *out = "0123456789abcdef"[ /*std::*/abs(quot % base) ];
+      ++out;
+      quot /= base;
+    }
+  while (quot);
+	
+  if (value < 0) *out++ = '-';
+	
+  std::reverse(result, out);
+  *out = 0;
+  return result;
+}
+
 // Fills performanceCount with microseconds passed since 1970
 // Wraps in twenty-nine thousand years or so
 BOOL QueryPerformanceCounter(LARGE_INTEGER* performanceCount)

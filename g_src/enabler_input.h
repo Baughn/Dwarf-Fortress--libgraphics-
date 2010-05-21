@@ -98,6 +98,7 @@ class enabler_inputst {
   void save_keybindings();
   std::string GetKeyDisplay(int binding);
   std::string GetBindingDisplay(int binding);
+  std::string GetBindingTextDisplay(int binding);
 
   // Macros
   void record_input(); // Records input until such a time as you say stop

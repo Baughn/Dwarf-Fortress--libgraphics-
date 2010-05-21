@@ -369,6 +369,7 @@ void enabler_inputst::load_keybindings(const string &file) {
         }
       } else {
         cout << "Unknown binding: " << match[1] << endl;
+		++line;
       }
     } else {
       // Retry with next line
@@ -778,6 +779,14 @@ string enabler_inputst::GetKeyDisplay(int binding) {
 string enabler_inputst::GetBindingDisplay(int binding) {
   map<InterfaceKey,string>::iterator it = bindingNames.left.find(binding);
   if (it != bindingNames.left.end())
+    return it->second;
+  else
+    return "NO BINDING";
+}
+
+string enabler_inputst::GetBindingTextDisplay(int binding) {
+  map<InterfaceKey,string>::iterator it = displayNames.left.find(binding);
+  if (it !=displayNames.left.end())
     return it->second;
   else
     return "NO BINDING";

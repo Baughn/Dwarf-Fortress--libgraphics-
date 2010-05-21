@@ -8,6 +8,7 @@
 
 #include "platform.h"
 #include "enabler.h"
+#include "random.h"
 #include "init.h"
 #include "music_and_sound_g.h"
 
@@ -23,7 +24,7 @@ int glerrorcount = 0;
 static int loopvar = 1;
 
 // Reports an error to the user, using a MessageBox and stderr.
-static void report_error(const char *error_preface, const char *error_message)
+void report_error(const char *error_preface, const char *error_message)
 {
   char *buf = NULL;
   // +4 = +colon +space +newline +nul
@@ -41,7 +42,7 @@ texture_fullid renderer::screen_to_texid(int x, int y) {
   const int ch   = screen[tile*4 + 0];
   const int bold = (screen[tile*4 + 3] != 0) * 8;
   const int fg   = screen[tile*4 + 1] + bold;
-  const int bg   = screen[tile*4 + 2] + bold;
+  const int bg   = screen[tile*4 + 2];
 
   assert(fg >= 0 && fg < 16);
   assert(bg >= 0 && bg < 16);  
@@ -74,11 +75,10 @@ texture_fullid renderer::screen_to_texid(int x, int y) {
     }
   }
   
- use_ch:
-
   ret.texpos = enabler.is_fullscreen() ?
     init.font.large_font_texpos[ch] :
     init.font.small_font_texpos[ch];
+ use_ch:
   ret.r = enabler.ccolor[fg][0];
   ret.g = enabler.ccolor[fg][1];
   ret.b = enabler.ccolor[fg][2];
@@ -442,10 +442,10 @@ void enablerst::eventLoop_SDL()
         enabler.flag|=ENABLERFLAG_RENDER;
         break;
       case SDL_VIDEORESIZE:
-        if (is_fullscreen())
-          errorlog << "Caught resize event in fullscreen??\n";
+        if (is_fullscreen());
+          //errorlog << "Caught resize event in fullscreen??\n";
         else {
-          gamelog << "Resizing window to " << event.resize.w << "x" << event.resize.h << endl << flush;
+          //gamelog << "Resizing window to " << event.resize.w << "x" << event.resize.h << endl << flush;
           renderer->resize(event.resize.w, event.resize.h);
         }
         break;
@@ -682,7 +682,7 @@ int main (int argc, char* argv[]) {
 #ifdef WIN32
   // Attempt to get as good a timer as possible
   int ms = 1;
-  while (timeBeginPeriod(ms) != TIMERROR_NOERROR) ms++;
+  while (timeBeginPeriod(ms) != TIMERR_NOERROR) ms++;
 #endif
 
   // Load keyboard map
@@ -723,4 +723,168 @@ char get_slot_and_addbit_uchar(unsigned char &addbit,long &slot,long checkflag,l
   addbit=1<<(checkflag%8);
 
   return 1;
+}
+
+void text_system_file_infost::initialize_info()
+{
+  std::ifstream fseed(filename.c_str());
+  if(fseed.is_open())
+    {
+      string str;
+
+      while(std::getline(fseed,str))
+	{
+	  if(str.length()>0)number++;
+	}
+    }
+  else
+    {
+      string str;
+      str="Error Initializing Text: ";
+      str+=filename;
+      errorlog_string(str);
+    }
+  fseed.close();
+}
+
+void text_system_file_infost::get_text(text_infost &text)
+{
+  text.clean();
+
+  if(number==0)return;
+
+  std::ifstream fseed(filename.c_str());
+  if(fseed.is_open())
+    {
+      string str;
+
+      int num=trandom(number);
+
+      //SKIP AHEAD TO THE RIGHT SPOT
+      while(num>0)
+	{
+	  std::getline(fseed,str);
+	  num--;
+	}
+
+      //PROCESS THE STRING INTO TEXT ELEMENTS
+      if(std::getline(fseed,str))
+	{
+	  int curpos;
+	  string nextstr;
+	  char doing_long=0;
+
+	  text_info_elementst *newel;
+	  long end=str.length();
+			
+	  while(end>0)
+	    {
+	      if(isspace(str[end-1]))end--;
+	      else break;
+	    }
+			
+	  str.resize(end);
+
+	  for(curpos=0;curpos<end;curpos++)
+	    {
+	      //HANDLE TOKEN OR ENDING
+	      //TWO FILE TOKENS IN A ROW MEANS LONG
+	      //ONE MEANS STRING
+	      if(str[curpos]==file_token || curpos==end-1)
+		{
+		  if(str[curpos]!=file_token)nextstr+=str[curpos];
+
+		  //HAVE SOMETHING == SAVE IT
+		  if(!nextstr.empty())
+		    {
+		      if(doing_long)
+			{
+			  newel=new text_info_element_longst(atoi(nextstr.c_str()));
+			  text.element.push_back(newel);
+			  doing_long=0;
+			}
+		      else
+			{
+			  newel=new text_info_element_stringst(nextstr);
+			  text.element.push_back(newel);
+			}
+
+		      nextstr.erase();
+		    }
+		  //STARTING A LONG
+		  else
+		    {
+		      doing_long=1;
+		    }
+		}
+	      //JUST ADD IN ANYTHING ELSE
+	      else
+		{
+		  nextstr+=str[curpos];
+		}
+	    }
+	}
+    }
+  fseed.close();
+}
+
+void curses_text_boxst::add_paragraph(const string &src,int32_t para_width)
+{
+	stringvectst sp;
+	sp.add_string(src);
+	add_paragraph(sp,para_width);
+}
+
+void curses_text_boxst::add_paragraph(stringvectst &src,int32_t para_width)
+{
+	bool skip_leading_spaces=false;
+
+	//ADD EACH OF THE STRINGS ON IN TURN
+	string curstr;
+	long strlength=0;
+	long s,pos;
+	for(s=0;s<src.str.size();s++)
+		{
+		//GRAB EACH WORD, AND SEE IF IT FITS, IF NOT START A NEW LINE
+		for(pos=0;pos<src.str[s]->dat.size();pos++)
+			{
+			if(skip_leading_spaces)
+				{
+				if(src.str[s]->dat[pos]==' ')continue;
+				else skip_leading_spaces=false;
+				}
+
+			//ADD TO WORD
+			curstr+=src.str[s]->dat[pos];
+
+			//IF TOO LONG, CUT BACK TO FIRST SPACE
+			if(curstr.length()>para_width)
+				{
+				long opos=pos;
+
+				long minus=0;
+				do
+					{
+					pos--;
+					minus++;
+					}while(src.str[s]->dat[pos]!=' '&&pos>0);
+
+				//IF WENT ALL THE WAY BACK, INTRODUCE A SPACE
+				if(minus==curstr.size())
+					{
+					src.str[s]->dat.insert(opos-1," ");
+					}
+				else
+					{
+					curstr.resize(curstr.size()-minus);
+					text.add_string(curstr);
+					skip_leading_spaces=true;
+					}
+				curstr.erase();
+				}
+			}
+		}
+
+	//FLUSH FINAL BIT
+	if(!curstr.empty())text.add_string(curstr);
 }

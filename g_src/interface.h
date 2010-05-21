@@ -50,7 +50,7 @@ class viewscreen_movieplayerst : viewscreenst
 		int maxmoviepos;
 		int end_frame_pos;
 
-		int selfile;
+		int32_t selfile;
 		svector<char *> filelist;
 
 		viewscreen_movieplayerst();
@@ -128,18 +128,18 @@ class interfacest
 #define SCROLLING_NOSELECT BIT1
 #define SCROLLING_NO_WRAP BIT2
 #define SCROLLING_REVERSE BIT3
-void finishscrolling(int &selection,int min,int max,int jump,unsigned int flag,char littlekey);
-char standardscrolling(std::set<InterfaceKey> &events,short &selection,int min,int max,int jump,unsigned int flag=0);
-char standardscrolling(std::set<InterfaceKey> &events,int &selection,int min,int max,int jump,unsigned int flag=0);
-char secondaryscrolling(std::set<InterfaceKey> &events,short &scroll,int min,int max,int jump,unsigned int flag=0);
-char secondaryscrolling(std::set<InterfaceKey> &events,int &scroll,int min,int max,int jump,unsigned int flag=0);
+void finishscrolling(int32_t &selection,int32_t min,int32_t max,int32_t jump,uint32_t flag,char littlekey);
+char standardscrolling(std::set<InterfaceKey> &events,short &selection,int32_t min,int32_t max,int32_t jump,uint32_t flag=0);
+char standardscrolling(std::set<InterfaceKey> &events,int32_t &selection,int32_t min,int32_t max,int32_t jump,uint32_t flag=0);
+char secondaryscrolling(std::set<InterfaceKey> &events,short &scroll,int32_t min,int32_t max,int32_t jump,uint32_t flag=0);
+char secondaryscrolling(std::set<InterfaceKey> &events,int32_t &scroll,int32_t min,int32_t max,int32_t jump,uint32_t flag=0);
 #define STRINGENTRY_LETTERS BIT1
 #define STRINGENTRY_SPACE BIT2
 #define STRINGENTRY_NUMBERS BIT3
 #define STRINGENTRY_CAPS BIT4
 #define STRINGENTRY_SYMBOLS BIT5
-char standardstringentry(std::set<InterfaceKey> &events,char *str,int maxlen,unsigned int flag);
-char standardstringentry(std::set<InterfaceKey> &events,string &str,int maxlen,unsigned int flag);
+char standardstringentry(char *str,int maxlen,unsigned int flag,std::set<InterfaceKey> &events);
+char standardstringentry(string &str,int maxlen,unsigned int flag,std::set<InterfaceKey> &events);
 
 void drawborder(const char *str,char style=0,const char *colorstr=NULL);
 

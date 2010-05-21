@@ -20,9 +20,9 @@ using std::string;
 
 #include "files.h"
 
-#include "textlines.h"
-
 #include "enabler.h"
+
+#include "textlines.h"
 
 #include "basics.h"
 

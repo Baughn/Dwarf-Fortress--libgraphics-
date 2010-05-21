@@ -22,94 +22,207 @@ using std::ofstream;
 
 #include "basics.h"
 
-ofstream errorlog("errorlog.txt", std::ios::out | std::ios::app);
-ofstream gamelog("gamelog.txt", std::ios::out | std::ios::app);
-
-void errorlog_string(const char *ptr)
-{
-  if(ptr==NULL)return;
-  errorlog << ptr << endl;
-  errorlog.flush();
-}
+extern string errorlog_prefix;
 
 void errorlog_string(const string &str)
 {
-  if(str.empty())return;
-  errorlog << str << endl;
-  errorlog.flush();
+	if(str.empty())return;
+
+	//SAVE AN ERROR TO THE LOG FILE
+	std::ofstream fseed("errorlog.txt", std::ios::out | std::ios::app);
+	if(fseed.is_open())
+		{
+		if(!errorlog_prefix.empty())
+			{
+			fseed<<errorlog_prefix.c_str()<<std::endl;
+			errorlog_prefix.clear();
+			}
+		fseed<<str.c_str()<<std::endl;
+		}
+	fseed.close();
 }
 
-void gamelog_string(string &str)
+void gamelog_string(const string &str)
 {
-  if(str.empty())return;
-  gamelog << str << endl;
-  gamelog.flush();
+	if(str.empty())return;
+
+	//SAVE AN ERROR TO THE LOG FILE
+	std::ofstream fseed("gamelog.txt",std::ios::out | std::ios::app);
+	if(fseed.is_open())
+		{
+		fseed<<str.c_str()<<std::endl;
+		}
+	fseed.close();
 }
 
-void grab_token(char *dest,const char *source,char compc)
+void errorlog_string(const char *ptr)
 {
-	strcpy(dest,"");
+	if(ptr==NULL)return;
 
-	//GO UNTIL YOU HIT A :, ], or the end
-	int s;
-	for(s=0;s<strlen(source);s++)
+	//SAVE AN ERROR TO THE LOG FILE
+	std::ofstream fseed("errorlog.txt", std::ios::out | std::ios::app);
+	if(fseed.is_open())
+		{
+		if(!errorlog_prefix.empty())
+			{
+			fseed<<errorlog_prefix.c_str()<<std::endl;
+			errorlog_prefix.clear();
+			}
+		fseed<<ptr<<std::endl;
+		}
+	fseed.close();
+}
+
+int32_t convert_string_to_long(string &str)
+{
+	return atoi(str.c_str());
+}
+
+uint32_t convert_string_to_ulong(string &str)
+{
+	return strtoul(str.c_str(),NULL,0);
+}
+
+void add_long_to_string(int32_t n,string &str)
+{
+	string str2;
+	convert_long_to_string(n,str2);
+	str+=str2;
+}
+
+void convert_long_to_string(int32_t n,string &str)
+{
+	std::ostringstream o;
+	o << n;
+	str = o.str();
+}
+
+void convert_ulong_to_string(uint32_t n,string &str)
+{
+	std::ostringstream o;
+	o << n;
+	str = o.str();
+}
+
+char grab_variable_token(string &str,string &token,char sec_comp,int32_t &pos,int32_t i_pos)
+{
+	token.erase();
+
+	for(pos=i_pos;pos<str.length();pos++)
+		{
+		if((str[pos]=='['&&pos+1<str.length())||sec_comp)
+			{
+			if(str[pos]=='['&&!sec_comp)pos++;
+			grab_token_string_pos(token,str,pos,':');
+			pos--;
+
+			if(token.length()>0)return 1;
+			}
+		}
+
+	return 0;
+}
+
+bool grab_token_expression(string &dest,string &source,int32_t &pos,char compc)
+{
+	dest.erase();
+	dest+="[";
+
+	string token1;
+	while(grab_token_string(token1,source,pos))
+		{
+		if(dest.length()>1)dest+=":";
+		dest+=token1;
+
+		if(pos<source.length())
+			{
+			if(source[pos]==']')break;//grab_token_string CAN'T HANDLE THESE
+			}
+		}
+	dest+="]";
+
+	return (dest.length()>2);
+}
+
+bool grab_token_list_as_string(string &dest,string &source,int32_t &pos,char compc)
+{
+	dest.erase();
+
+	string token1;
+	while(grab_token_string(token1,source,pos))
+		{
+		if(dest.length()>0)dest+=":";
+		dest+=token1;
+
+		if(pos<source.length())
+			{
+			if(source[pos]==']')break;//grab_token_string CAN'T HANDLE THESE
+			}
+		}
+
+	return (dest.length()>0);
+}
+
+bool grab_token_string(string &dest,string &source,int32_t &pos,char compc)
+{
+	dest.erase();
+
+	pos++;//GET RID OF FIRST [ OR compc THAT IS ASSUMED TO BE THERE
+
+	//GO UNTIL YOU HIT A compc, ], or the end
+	int32_t s;
+	for(s=pos;s<source.length();s++)
 		{
 		if(source[s]==compc||source[s]==']')break;
-		dest[s]=source[s];
+		dest+=source[s];
+		pos++;
 		}
-	dest[s]='\x0';
+	return (dest.length()>0);
 }
 
-char grab_token_string(string &dest,const char *source,long &pos,char compc)
-{
-	dest.erase();
-
-	pos++;if(pos>=strlen(source))return 0;
-	grab_token_string(dest,source+pos,compc);
-	pos+=dest.length();
-	return 1;
-}
-
-void grab_token_string(string &dest,string &source,char compc)
+bool grab_token_string(string &dest,string &source,char compc)
 {
 	dest.erase();
 
 	//GO UNTIL YOU HIT A :, ], or the end
-	int s;
+	int32_t s;
 	for(s=0;s<source.length();s++)
 		{
 		if(source[s]==compc||source[s]==']')break;
 		dest+=source[s];
 		}
+	return (dest.length()>0);
 }
 
-void grab_token_string_pos(string &dest,string &source,long pos,char compc)
+bool grab_token_string_pos(string &dest,string &source,int32_t pos,char compc)
 {
 	dest.erase();
 
 	//GO UNTIL YOU HIT A :, ], or the end
-	int s;
+	int32_t s;
 	for(s=pos;s<source.length();s++)
 		{
 		if(source[s]==compc||source[s]==']')break;
 		dest+=source[s];
 		}
+	return (dest.length()>0);
 }
 
-void grab_token_string(string &dest,const char *source,char compc)
+bool grab_token_string(string &dest,const char *source,char compc)
 {
 	dest.erase();
 
 	//GO UNTIL YOU HIT A :, ], or the end
-	int s;
+	int32_t s;
 	for(s=0;s<strlen(source);s++)
 		{
 		if(source[s]==compc||source[s]==']')break;
 		dest+=source[s];
 		}
+	return (dest.length()>0);
 }
 
-void replace_token_string(string &token,string &str,long pos,char compc,string &nw,char repc)
+void replace_token_string(string &token,string &str,int32_t pos,char compc,string &nw,char repc)
 {
 	string rep;
 	if(repc!=0)rep=repc;
@@ -124,40 +237,9 @@ void replace_token_string(string &token,string &str,long pos,char compc,string &
 		}
 }
 
-long convert_string_to_long(string &str)
-{
-	return atoi(str.c_str());
-}
-
-unsigned long convert_string_to_ulong(string &str)
-{
-	return strtoul(str.c_str(),NULL,0);
-}
-
-void add_long_to_string(long n,string &str)
-{
-	string str2;
-	convert_long_to_string(n,str2);
-	str+=str2;
-}
-
-void convert_long_to_string(long n,string &str)
-{
-	std::ostringstream o;
-	o << n;
-	str = o.str();
-}
-
-void convert_ulong_to_string(unsigned long n,string &str)
-{
-	std::ostringstream o;
-	o << n;
-	str = o.str();
-}
-
 void simplify_string(string &str)
 {
-	long s;
+	int32_t s;
 	for(s=0;s<str.length();s++)
 		{
 		//CAPITALIZE
@@ -223,7 +305,7 @@ void simplify_string(string &str)
 
 void lower_case_string(string &str)
 {
-	long s;
+	int32_t s;
 	for(s=0;s<str.length();s++)
 		{
 		//CAPITALIZE
@@ -248,7 +330,7 @@ void lower_case_string(string &str)
 
 void upper_case_string(string &str)
 {
-	long s;
+	int32_t s;
 	for(s=0;s<str.length();s++)
 		{
 		//CAPITALIZE
@@ -274,7 +356,7 @@ void upper_case_string(string &str)
 void capitalize_string_words(string &str)
 {
 	char conf;
-	long s;
+	int32_t s;
 	for(s=0;s<str.length();s++)
 		{
 		conf=0;
@@ -319,7 +401,7 @@ void capitalize_string_words(string &str)
 void capitalize_string_first_word(string &str)
 {
 	char conf;
-	long s;
+	int32_t s;
 	for(s=0;s<str.length();s++)
 		{
 		conf=0;
@@ -363,12 +445,55 @@ void capitalize_string_first_word(string &str)
 		}
 }
 
-void abbreviate_string(string &str,long len)
+void abbreviate_string(string &str,int32_t len)
 {
-	long l;
-	for(l=(long)str.length()-1;l>=1;l--)
+	if(str.length()<=len)return;
+
+	if(str.length()>=2)
 		{
-		if(str.length()<=len)return;
+		if((str[0]=='A'||str[0]=='a')&&
+			str[1]==' ')
+			{
+			str.erase(str.begin()+1);
+			str.erase(str.begin());
+
+			if(str.length()<=len)return;
+			}
+
+		if(str.length()>=3)
+			{
+			if((str[0]=='A'||str[0]=='a')&&
+				(str[1]=='N'||str[1]=='n')&&
+				str[2]==' ')
+				{
+				str.erase(str.begin()+2);
+				str.erase(str.begin()+1);
+				str.erase(str.begin());
+
+				if(str.length()<=len)return;
+				}
+
+			if(str.length()>=4)
+				{
+				if((str[0]=='T'||str[0]=='t')&&
+					(str[1]=='H'||str[1]=='h')&&
+					(str[2]=='E'||str[2]=='e')&&
+					str[3]==' ')
+					{
+					str.erase(str.begin()+3);
+					str.erase(str.begin()+2);
+					str.erase(str.begin()+1);
+					str.erase(str.begin());
+
+					if(str.length()<=len)return;
+					}
+				}
+			}
+		}
+
+	int32_t l;
+	for(l=(int32_t)str.length()-1;l>=1;l--)
+		{
 		if(str[l-1]==' ')continue;
 
 		if(str[l]=='a'||
@@ -380,32 +505,17 @@ void abbreviate_string(string &str,long len)
 			str[l]=='E'||
 			str[l]=='I'||
 			str[l]=='O'||
-			str[l]=='U')str.erase(str.begin()+l);
+			str[l]=='U')
+			{
+			str.erase(str.begin()+l);
+			if(str.length()<=len)return;
+			}
 		}
 
 	if(str.length()>len)str.resize(len);
 }
 
-char grab_variable_token(string &str,string &token,char sec_comp,long &pos,long i_pos)
-{
-	token.erase();
-
-	for(pos=i_pos;pos<str.length();pos++)
-		{
-		if((str[pos]=='['&&pos+1<str.length())||sec_comp)
-			{
-			if(str[pos]=='['&&!sec_comp)pos++;
-			grab_token_string_pos(token,str,pos,':');
-			pos--;
-
-			if(token.length()>0)return 1;
-			}
-		}
-
-	return 0;
-}
-
-void get_number(long number,string &str)
+void get_number(int32_t number,string &str)
 {
 	str.erase();
 
@@ -522,9 +632,39 @@ void get_number(long number,string &str)
 		}
 }
 
-void get_ordinal(long number,string &str)
+void get_ordinal(int32_t number,string &str,bool shorten)
 {
 	str.erase();
+
+	if(shorten)
+		{
+		if(number<0)
+			{
+			number*=-1;
+			str="-";
+			}
+		add_long_to_string(number,str);
+		switch(number%10)
+			{
+			case 1:
+				if(number%100==11)str+="th";
+				else str+="st";
+				break;
+			case 2:
+				if(number%100==12)str+="th";
+				else str+="nd";
+				break;
+			case 3:
+				if(number%100==13)str+="th";
+				else str+="rd";
+				break;
+			default:
+				str+="th";
+				break;
+			}
+		return;
+		}
+
 
 	if(number<0)
 		{

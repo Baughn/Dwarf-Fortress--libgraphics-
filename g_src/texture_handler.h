@@ -13,10 +13,10 @@ struct tile_pagest
 	short page_dim_x;
 	short page_dim_y;
 
-	svector<long> texpos;
-	svector<long> datapos;
-	svector<long> texpos_gs;
-	svector<long> datapos_gs;
+	svector<int32_t> texpos;
+	svector<int32_t> datapos;
+	svector<int32_t> texpos_gs;
+	svector<int32_t> datapos_gs;
 
 	char loaded;
 
@@ -27,7 +27,7 @@ struct tile_pagest
 		loaded=0;
 		}
 
-	void load_graphics();
+	void load_graphics(string &graphics_dir);
 };
 
 class texture_handlerst
@@ -35,11 +35,11 @@ class texture_handlerst
 	public:
 		svector<tile_pagest *> page;
 
-		svector<long> texpos;
-		svector<long> datapos;
+		svector<int32_t> texpos;
+		svector<int32_t> datapos;
 
 		void clean();
-		void adopt_new_lines(textlinesst &lines);
+		void adopt_new_lines(textlinesst &lines,string &graphics_dir);
 
 		~texture_handlerst()
 			{
@@ -48,7 +48,7 @@ class texture_handlerst
 
 		tile_pagest *get_tile_page_by_token(string &tk)
 			{
-			long t;
+			int32_t t;
 			for(t=0;t<page.size();t++)
 				{
 				if(page[t]->token==tk)return page[t];

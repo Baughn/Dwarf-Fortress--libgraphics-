@@ -93,216 +93,255 @@ class pstringst
 
 class stringvectst
 {
- public:
-  svector<pstringst *> str;
+	public:
+		svector<pstringst *> str;
 
-  void add_string(const string &st)
-  {
-    pstringst *newp=new pstringst;
-    newp->dat=st;
-    str.push_back(newp);
-  }
+		void add_string(const string &st)
+			{
+			pstringst *newp=new pstringst;
+				newp->dat=st;
+			str.push_back(newp);
+			}
 
-  long add_unique_string(const string &st)
-  {
-    long i;
-    for(i=(long)str.size()-1;i>=0;i--)
-      {
-	if(str[i]->dat==st)return i;
-      }
-    add_string(st);
-    return (long)str.size()-1;
-  }
+		long add_unique_string(const string &st)
+			{
+			long i;
+			for(i=(long)str.size()-1;i>=0;i--)
+				{
+				if(str[i]->dat==st)return i;
+				}
+			add_string(st);
+			return (long)str.size()-1;
+			}
 
-  void add_string(const char *st)
-  {
-    if(st!=NULL)
-      {
-	pstringst *newp=new pstringst;
-	newp->dat=st;
-	str.push_back(newp);
-      }
-  }
+		void add_string(const char *st)
+			{
+			if(st!=NULL)
+				{
+				pstringst *newp=new pstringst;
+					newp->dat=st;
+				str.push_back(newp);
+				}
+			}
 
-  void insert_string(long k,const string &st)
-  {
-    pstringst *newp=new pstringst;
-    newp->dat=st;
-    if(str.size()>k)str.insert(k,newp);
-    else str.push_back(newp);
-  }
+		void insert_string(long k,const string &st)
+			{
+			pstringst *newp=new pstringst;
+				newp->dat=st;
+			if(str.size()>k)str.insert(k,newp);
+			else str.push_back(newp);
+			}
 
-  ~stringvectst()
-    {
-      clean();
-    }
+		~stringvectst()
+			{
+			clean();
+			}
 
-  void clean()
-  {
-    while(str.size()>0)
-      {
-	delete str[0];
-	str.erase(0);
-      }
-  }
+		void clean()
+			{
+			while(str.size()>0)
+				{
+				delete str[0];
+				str.erase(0);
+				}
+			}
 
-  void read_file(file_compressorst &filecomp,long loadversion)
-  {
-    long dummy;
-    filecomp.read_file(dummy);
-    str.resize(dummy);
+		void read_file(file_compressorst &filecomp,long loadversion)
+			{
+			long dummy;
+			filecomp.read_file(dummy);
+			str.resize(dummy);
 
-    long s;
-    for(s=0;s<dummy;s++)
-      {
-	str[s]=new pstringst;
-	filecomp.read_file(str[s]->dat);
-      }
-  }
-  void write_file(file_compressorst &filecomp)
-  {
-    long dummy=str.size();
-    filecomp.write_file(dummy);
+			long s;
+			for(s=0;s<dummy;s++)
+				{
+				str[s]=new pstringst;
+				filecomp.read_file(str[s]->dat);
+				}
+			}
+		void write_file(file_compressorst &filecomp)
+			{
+			long dummy=str.size();
+			filecomp.write_file(dummy);
 
-    long s;
-    for(s=0;s<dummy;s++)
-      {
-	filecomp.write_file(str[s]->dat);
-      }
-  }
+			long s;
+			for(s=0;s<dummy;s++)
+				{
+				filecomp.write_file(str[s]->dat);
+				}
+			}
+
+		void copy_from(stringvectst &src)
+			{
+			clean();
+
+			str.resize(src.str.size());
+
+			long s;
+			for(s=(long)src.str.size()-1;s>=0;s--)
+				{
+				str[s]=new pstringst;
+					str[s]->dat=src.str[s]->dat;
+				}
+			}
+
+		bool has_string(const string &st)
+			{
+			long i;
+			for(i=(long)str.size()-1;i>=0;i--)
+				{
+				if(str[i]->dat==st)return true;
+				}
+			return false;
+			}
+
+		void remove_string(const string &st)
+			{
+			long i;
+			for(i=(long)str.size()-1;i>=0;i--)
+				{
+				if(str[i]->dat==st)
+					{
+					delete str[i];
+					str.erase(i);
+					}
+				}
+			}
+
+		void operator=(stringvectst &two);
 };
 
 class flagarrayst
 {
- public:
-  flagarrayst()
-    {
-      slotnum=0;
-      array=NULL;
-    }
-  ~flagarrayst()
-    {
-      if(array!=NULL)delete[] array;
-      array=NULL;
-      slotnum=0;
-    }
+	public:
+		flagarrayst()
+			{
+			slotnum=0;
+			array=NULL;
+			}
+		~flagarrayst()
+			{
+			if(array!=NULL)delete[] array;
+			array=NULL;
+			slotnum=0;
+			}
 
-  void set_size_on_flag_num(long flagnum)
-  {
-    if(flagnum<=0)return;
+		void set_size_on_flag_num(long flagnum)
+			{
+			if(flagnum<=0)return;
 
-    set_size(((flagnum-1)>>3)+1);
-  }
+			set_size(((flagnum-1)>>3)+1);
+			}
 
-  void set_size(long newsize)
-  {
-    if(newsize<=0)return;
+		void set_size(long newsize)
+			{
+			if(newsize<=0)return;
 
-    if(array!=NULL)delete[] array;
-    array=new unsigned char[newsize];
-    memset(array,0,sizeof(unsigned char)*newsize);
+			if(array!=NULL)delete[] array;
+			array=new unsigned char[newsize];
+			memset(array,0,sizeof(unsigned char)*newsize);
 
-    slotnum=newsize;
-  }
+			slotnum=newsize;
+			}
 
-  void clear_all()
-  {
-    if(slotnum<=0)return;
+		void clear_all()
+			{
+			if(slotnum<=0)return;
 
-    if(array!=NULL)memset(array,0,sizeof(unsigned char)*slotnum);
-  }
+			if(array!=NULL)memset(array,0,sizeof(unsigned char)*slotnum);
+			}
 
-  void copy_from(flagarrayst &src)
-  {
-    clear_all();
+		void copy_from(flagarrayst &src)
+			{
+			clear_all();
 
-    if(src.slotnum>0)
-      {
-	set_size(src.slotnum);
-	memmove(array,src.array,sizeof(unsigned char)*slotnum);
-      }
-  }
+			if(src.slotnum>0)
+				{
+				set_size(src.slotnum);
+				memmove(array,src.array,sizeof(unsigned char)*slotnum);
+				}
+			}
 
-  bool has_flag(long checkflag)
-  {
-    long slot;
-    unsigned char addbit;
-    if(get_slot_and_addbit_uchar(addbit,slot,checkflag,slotnum))
-      {
-	return (array[slot]&addbit)!=0;
-      }
-    else return false;
-  }
+		bool has_flag(long checkflag)
+			{
+			long slot;
+			unsigned char addbit;
+			if(get_slot_and_addbit_uchar(addbit,slot,checkflag,slotnum))
+				{
+				return (array[slot]&addbit)!=0;
+				}
+			else return false;
+			}
 
-  void add_flag(long checkflag)
-  {
-    long slot;
-    unsigned char addbit;
-    if(get_slot_and_addbit_uchar(addbit,slot,checkflag,slotnum))
-      {
-	array[slot]|=addbit;
-      }
-  }
+		void add_flag(long checkflag)
+			{
+			long slot;
+			unsigned char addbit;
+			if(get_slot_and_addbit_uchar(addbit,slot,checkflag,slotnum))
+				{
+				array[slot]|=addbit;
+				}
+			}
 
-  void toggle_flag(long checkflag)
-  {
-    long slot;
-    unsigned char addbit;
-    if(get_slot_and_addbit_uchar(addbit,slot,checkflag,slotnum))
-      {
-	array[slot]^=addbit;
-      }
-  }
+		void toggle_flag(long checkflag)
+			{
+			long slot;
+			unsigned char addbit;
+			if(get_slot_and_addbit_uchar(addbit,slot,checkflag,slotnum))
+				{
+				array[slot]^=addbit;
+				}
+			}
 
-  void remove_flag(long checkflag)
-  {
-    long slot;
-    unsigned char addbit;
-    if(get_slot_and_addbit_uchar(addbit,slot,checkflag,slotnum))
-      {
-	array[slot]&=~addbit;
-      }
-  }
+		void remove_flag(long checkflag)
+			{
+			long slot;
+			unsigned char addbit;
+			if(get_slot_and_addbit_uchar(addbit,slot,checkflag,slotnum))
+				{
+				array[slot]&=~addbit;
+				}
+			}
 
-  void write_file(file_compressorst &filecomp)
-  {
-    filecomp.write_file(slotnum);
-    if(slotnum>0)
-      {
-	long ind;
-	for(ind=0;ind<slotnum;ind++)filecomp.write_file(array[ind]);
-      }
-  }
+		void write_file(file_compressorst &filecomp)
+			{
+			filecomp.write_file(slotnum);
+			if(slotnum>0)
+				{
+				long ind;
+				for(ind=0;ind<slotnum;ind++)filecomp.write_file(array[ind]);
+				}
+			}
 
-  void read_file(file_compressorst &filecomp,long loadversion)
-  {
-    long newsl;
-    filecomp.read_file(newsl);
-    if(newsl>0)
-      {
-	//AVOID UNNECESSARY DELETE/NEW
-	if(array!=NULL&&slotnum!=newsl)
-	  {
-	    delete[] array;
-	    array=new unsigned char[newsl];
-	  }
-	if(array==NULL)array=new unsigned char[newsl];
+		void read_file(file_compressorst &filecomp,long loadversion)
+			{
+			long newsl;
+			filecomp.read_file(newsl);
+			if(newsl>0)
+				{
+				//AVOID UNNECESSARY DELETE/NEW
+				if(array!=NULL&&slotnum!=newsl)
+					{
+					delete[] array;
+					array=new unsigned char[newsl];
+					}
+				if(array==NULL)array=new unsigned char[newsl];
 
-	long ind;
-	for(ind=0;ind<newsl;ind++)filecomp.read_file(array[ind]);
+				long ind;
+				for(ind=0;ind<newsl;ind++)filecomp.read_file(array[ind]);
 
-	slotnum=newsl;
-      }
-    else if(array!=NULL)
-      {
-	delete[] array;
-	array=NULL;
-      }
-  }
+				slotnum=newsl;
+				}
+			else if(array!=NULL)
+				{
+				delete[] array;
+				array=NULL;
+				}
+			}
 
- private:
-  unsigned char *array;
-  long slotnum;
+	private:
+		unsigned char *array;
+		long slotnum;
 };
 
 #ifdef ENABLER
@@ -426,17 +465,17 @@ class shader {
     if (status == GL_FALSE) { // ..no. Check the compilation log.
       GLint log_size;
       glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_size);
-      errorlog << filename << " preprocessed source:" << std::endl;
+      //errorlog << filename << " preprocessed source:" << std::endl;
       std::cerr << filename << " preprocessed source:" << std::endl;
-      errorlog << header_done << "#line 1 0\n" << lines_done;
+      //errorlog << header_done << "#line 1 0\n" << lines_done;
       std::cerr << header_done << "#line 1 0\n" << lines_done;
-      errorlog << filename << " shader compilation log (" << log_size << "):" << std::endl;
+      //errorlog << filename << " shader compilation log (" << log_size << "):" << std::endl;
       std::cerr << filename << " shader compilation log (" << log_size << "):" << std::endl;
       char *buf = new char[log_size];
       glGetShaderInfoLog(shader, log_size, NULL, buf);
-      errorlog << buf << std::endl;
+      //errorlog << buf << std::endl;
       std::cerr << buf << std::endl;
-      errorlog.flush();
+      //errorlog.flush();
       delete[] buf;
       MessageBox(NULL, "Shader compilation failed; details in errorlog.txt", "Critical error", MB_OK);
       abort();
@@ -574,16 +613,16 @@ class text_system_file_infost
 class text_systemst
 {
  public:
-  void register_file_fixed(const string &file_name,long index,char token,char initialize)
+  void register_file_fixed(const string &file_name,int32_t index,char token,char initialize)
   {
     text_system_file_infost *tsfi=text_system_file_infost::add_file_info(file_name,index,token);
     if(initialize)tsfi->initialize_info();
     file_info.push_back(tsfi);
   }
-  void register_file(const string &file_name,long &index,char token,char initialize)
+  void register_file(const string &file_name,int32_t &index,char token,char initialize)
   {
-    long t;
-    for(t=(long)file_info.size()-1;t>=0;t--)
+    int32_t t;
+    for(t=(int32_t)file_info.size()-1;t>=0;t--)
       {
 	if(file_info[t]->filename==file_name)
 	  {
@@ -599,13 +638,13 @@ class text_systemst
   }
   void initialize_system()
   {
-    long t;
-    for(t=(long)file_info.size()-1;t>=0;t--)file_info[t]->initialize_info();
+    int32_t t;
+    for(t=(int32_t)file_info.size()-1;t>=0;t--)file_info[t]->initialize_info();
   }
-  void get_text(long index,text_infost &text)
+  void get_text(int32_t index,text_infost &text)
   {
-    long t;
-    for(t=(long)file_info.size()-1;t>=0;t--)
+    int32_t t;
+    for(t=(int32_t)file_info.size()-1;t>=0;t--)
       {
 	if(file_info[t]->index==index)
 	  {
@@ -616,8 +655,8 @@ class text_systemst
   }
   void get_text(const string &file_name,text_infost &text)
   {
-    long t;
-    for(t=(long)file_info.size()-1;t>=0;t--)
+    int32_t t;
+    for(t=(int32_t)file_info.size()-1;t>=0;t--)
       {
 	if(file_info[t]->filename==file_name)
 	  {
@@ -626,10 +665,10 @@ class text_systemst
 	  }
       }
   }
-  void get_specific_text(long index,text_infost &text,long num)
+  void get_specific_text(int32_t index,text_infost &text,int32_t num)
   {
-    long t;
-    for(t=(long)file_info.size()-1;t>=0;t--)
+    int32_t t;
+    for(t=(int32_t)file_info.size()-1;t>=0;t--)
       {
 	if(file_info[t]->index==index)
 	  {
@@ -657,10 +696,10 @@ class curses_text_boxst
 	public:
 		stringvectst text;
 
-		void add_paragraph(stringvectst &src,long para_width);
-		void add_paragraph(const string &src,long para_width);
+		void add_paragraph(stringvectst &src,int32_t para_width);
+		void add_paragraph(const string &src,int32_t para_width);
 
-		void read_file(file_compressorst &filecomp,long loadversion)
+		void read_file(file_compressorst &filecomp,int32_t loadversion)
 			{
 			text.read_file(filecomp,loadversion);
 			}
@@ -777,6 +816,7 @@ struct texture_fullid {
 };
 
 class renderer {
+ protected:
   unsigned char *screen;
   long *screentexpos;
   char *screentexpos_addcolor;
@@ -791,7 +831,6 @@ class renderer {
   unsigned char *screentexpos_cf_old;
   unsigned char *screentexpos_cbr_old;
 
- protected:
   void gps_allocate(int x, int y);
   texture_fullid screen_to_texid(int x, int y);
  public:
@@ -824,11 +863,11 @@ class renderer {
 class enablerst : public enabler_inputst
 {
   friend class initst;
+  friend class renderer_2d_base;
   friend class renderer_2d;
   friend class renderer_opengl;
   friend class renderer_curses;
 
-  string command_line;
   bool fullscreen;
   stack<pair<int,int> > overridden_grid_sizes;
 
@@ -893,6 +932,8 @@ class enablerst : public enabler_inputst
   
  public:
 
+  string command_line;
+
   float ccolor[16][3]; // The curses-RGB mapping used for non-curses display modes
   
   enablerst();
@@ -905,8 +946,8 @@ class enablerst : public enabler_inputst
   // Framerate interface
   void set_fps(int fps);
   void set_gfps(int gfps);
-  int get_fps() { return fps; }
-  int get_gfps() { return gfps; }
+  int get_fps() { return (int)fps; }
+  int get_gfps() { return (int)gfps; }
   int calculate_fps();  // Calculate the actual provided (G)FPS
   int calculate_gfps();
 

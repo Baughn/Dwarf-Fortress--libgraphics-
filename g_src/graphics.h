@@ -86,7 +86,7 @@ class graphicst
                       screen[screenx*dimy*4 + screeny*4 + 1]=screenf;
                       screen[screenx*dimy*4 + screeny*4 + 2]=screenb;
                       screen[screenx*dimy*4 + screeny*4 + 3]=screenbright;
-                      
+
                       screentexpos[screenx*dimy + screeny]=0;
                     }
                   if(advance)screenx++;
@@ -111,7 +111,7 @@ class graphicst
 		void add_tile(long texp,char addcolor);
 		void add_tile_grayscale(long texp,char cf,char cbr);
 
-		void prepare_graphics();
+		void prepare_graphics(string &src_dir);
 
 		void gray_out_rect(long sx,long ex,long sy,long ey)
                 {
@@ -147,7 +147,7 @@ class graphicst
 			}
 
                 int mouse_x, mouse_y;
-		void get_mouse_text_coords(int &mx, int &my);
+		void get_mouse_text_coords(int32_t &mx, int32_t &my);
                 void draw_border(int x1, int x2, int y1, int y2);
 };
 

@@ -20,9 +20,9 @@ using std::string;
 
 #include "files.h"
 
-#include "textlines.h"
-
 #include "enabler.h"
+
+#include "textlines.h"
 
 #include "find_files.h"
 
@@ -43,7 +43,6 @@ using std::string;
 #include <list>
 #include <set>
 
-void dwarf_help_routine();
 void dwarf_end_announcements();
 void dwarf_remove_screen();
 void dwarf_option_screen();
@@ -75,15 +74,10 @@ extern musicsoundst musicsound;
 extern GameMode gamemode;
 extern GameType gametype;
 
-extern int movie_version;
+extern long movie_version;
 
 
 
-
-void viewscreenst::help()
-{
-	dwarf_help_routine();
-}
 
 void viewscreen_movieplayerst::help()
 {
@@ -413,6 +407,8 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 {
 	if(events.count(INTERFACEKEY_LEAVESCREEN))
 		{
+		events.clear();
+
 		if(is_playing)
 			{
 			is_playing=0;
@@ -452,7 +448,7 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 		}
 	else if(saving)
 		{
-		standardstringentry(events,savename,39,STRINGENTRY_LETTERS|STRINGENTRY_SPACE|STRINGENTRY_NUMBERS|STRINGENTRY_SYMBOLS);
+		standardstringentry(savename,39,STRINGENTRY_LETTERS|STRINGENTRY_SPACE|STRINGENTRY_NUMBERS|STRINGENTRY_SYMBOLS,events);
 
 		if(events.count(INTERFACEKEY_SELECT))
 			{
@@ -781,6 +777,8 @@ interfacest::~interfacest()
 
 void interfacest::addscreen(viewscreenst *scr,char pushtype,viewscreenst *relate)
 {
+	gps.force_full_display_count+=2;
+
 	switch(pushtype)
 		{
 		case INTERFACE_PUSH_AS_PARENT:insertscreen_as_parent(scr,relate);break;
@@ -875,17 +873,13 @@ char interfacest::loop() {
         flag&=~INTERFACEFLAG_RETAIN_NONZERO_INPUT;
         break;
       } else {
-        // Feed input
         set<InterfaceKey> era = enabler.get_input(now);
         if (era.size() == 0) {
           if(enabler.mouse_lbut || enabler.mouse_rbut) currentscreen->feed(era);
           break;
         }
-        currentscreen->feed(era);
-        if (era.count(INTERFACEKEY_TOGGLE_FULLSCREEN)) {
-          enabler.toggle_fullscreen();
-        }
-        if (era.count(INTERFACEKEY_OPTIONS)) {
+
+        if (era.count(INTERFACEKEY_OPTIONS)&&!currentscreen->key_conflict(INTERFACEKEY_OPTIONS)) {
           //PEEL BACK ALL SCREENS TO THE CURRENT OPTION SCREEN IF THERE IS ONE
           //UNLESS THERE IS A BLOCKING SCREEN LIKE THE REGION MAKER
           viewscreenst *opscreen=&view;
@@ -906,11 +900,14 @@ char interfacest::loop() {
           }
           //NEED A NEW OPTIONS SCREEN?
           if(opscreen==NULL) dwarf_option_screen();
+
+		  era.clear();
+		  continue;
         }
         //DO MOVIE COMMANDS
-        if (era.count(INTERFACEKEY_MOVIES))
+        if (era.count(INTERFACEKEY_MOVIES)&&!currentscreen->key_conflict(INTERFACEKEY_MOVIES))
           if(currentscreen->movies_okay()) use_movie_input();
-        if (era.count(INTERFACEKEY_HELP))
+        if (era.count(INTERFACEKEY_HELP)&&!currentscreen->key_conflict(INTERFACEKEY_HELP))
           currentscreen->help();
         // Zoom commands
         if (era.count(INTERFACEKEY_ZOOM_IN))
@@ -932,6 +929,11 @@ char interfacest::loop() {
           gview.addscreen(new MacroScreenSave(), INTERFACE_PUSH_AT_BACK, NULL);
         if (era.count(INTERFACEKEY_LOAD_MACRO))
           gview.addscreen(new MacroScreenLoad(), INTERFACE_PUSH_AT_BACK, NULL);
+        // Feed input
+        currentscreen->feed(era);
+        if (era.count(INTERFACEKEY_TOGGLE_FULLSCREEN)) {
+          enabler.toggle_fullscreen();
+        }
       }
     }
     break;
@@ -1340,16 +1342,16 @@ void interfacest::print_interface_token(InterfaceKey key)
 	gps.changecolor(o_screenf,o_screenb,o_screenbright);
 }
 
-char standardstringentry(std::set<InterfaceKey> &events,char *str,int maxlen,unsigned int flag)
+char standardstringentry(char *str,int maxlen,unsigned int flag,std::set<InterfaceKey> &events)
 {
 	string str2;
 	str2=str;
-	char ret=standardstringentry(events,str2,maxlen,flag);
+	char ret=standardstringentry(str2,maxlen,flag,events);
 	strcpy(str,str2.c_str());
 	return ret;
 }
 
-char standardstringentry(std::set<InterfaceKey> &events,string &str,int maxlen,unsigned int flag)
+char standardstringentry(string &str,int maxlen,unsigned int flag,std::set<InterfaceKey> &events)
 {
 	unsigned char entry=255;
 	if(flag & STRINGENTRY_LETTERS)
@@ -1714,7 +1716,7 @@ char standardscrolling(std::set<InterfaceKey> &events,short &selection,int min,i
 {
 	short osel=selection;
 
-	int seltemp=selection;
+	int32_t seltemp=selection;
 	standardscrolling(events,seltemp,min,max,jump,flag);
 	selection=seltemp;
 
@@ -1722,7 +1724,7 @@ char standardscrolling(std::set<InterfaceKey> &events,short &selection,int min,i
 	else return 0;
 }
 
-void finishscrolling(int &selection,int min,int max,int jump,unsigned int flag,char littlekey)
+void finishscrolling(int32_t &selection,int min,int max,int jump,unsigned int flag,char littlekey)
 {
 	if(flag & SCROLLING_NOSELECT)
 		{
@@ -1746,7 +1748,7 @@ void finishscrolling(int &selection,int min,int max,int jump,unsigned int flag,c
 		}
 }
 
-char standardscrolling(std::set<InterfaceKey> &events,int &selection,int min,int max,int jump,unsigned int flag)
+char standardscrolling(std::set<InterfaceKey> &events,int32_t &selection,int min,int max,int jump,unsigned int flag)
 {
 	short osel=selection;
 
@@ -1775,13 +1777,13 @@ char standardscrolling(std::set<InterfaceKey> &events,int &selection,int min,int
 
 char secondaryscrolling(std::set<InterfaceKey> &events,short &selection,int min,int max,int jump,unsigned int flag)
 {
-	int temp=selection;
+	int32_t temp=selection;
 	char ret=secondaryscrolling(events,temp,min,max,jump,flag);
 	selection=temp;
 	return ret;
 }
 
-char secondaryscrolling(std::set<InterfaceKey> &events,int &selection,int min,int max,int jump,unsigned int flag)
+char secondaryscrolling(std::set<InterfaceKey> &events,int32_t &selection,int min,int max,int jump,unsigned int flag)
 {
 	short osel=selection;
 

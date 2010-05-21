@@ -1,7 +1,14 @@
+#ifdef __APPLE__
+# include "osx_messagebox.h"
+#elif defined(unix)
+# include <gtk/gtk.h>
+#endif
+
+#include "GL/glew.h"
 #include "graphics.h"
-#include "KeybindingScreen.h"
 #include "init.h"
 #include "keybindings.h"
+#include "KeybindingScreen.h"
 
 #include <list>
 #include <map>
@@ -26,7 +33,7 @@ const BindingGroup groups[] = {
   {"Workshop"   , WORKSHOPKEY_START,        PILEZONEKEY_START-1},
   {"Pilezone"   , PILEZONEKEY_START,        STOCKORDERKEY_START-1},
   {"Stockorder" , STOCKORDERKEY_START,      DWARFMAINKEY_START-1},
-  {"Militia"    , MILITIAKEY_START,         INTERFACEKEY_SQUADINFO_ZOOM},
+  {"Militia"    , MILITIAKEY_START,         INTERFACEKEY_STRING_A000-1},
   {"Text entry" , INTERFACEKEY_STRING_A000, INTERFACEKEY_STRING_A255}
 };
 
@@ -158,7 +165,7 @@ void KeybindingScreen::enter_key(int group) {
   keyL.clear();
   for (InterfaceKey i = groups[group].start; i <= groups[group].end; i++) {
     if (i != INTERFACEKEY_NONE)
-      keyL.add(enabler.GetBindingDisplay(i), i);
+      keyL.add(enabler.GetBindingTextDisplay(i), i);
   }
   reset_keyR();
 }

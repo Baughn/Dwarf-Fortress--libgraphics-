@@ -1,6 +1,7 @@
 #ifndef BASICS_H
 #define BASICS_H
 
+#include <stdint.h>
 #include <string>
 using std::string;
 
@@ -43,33 +44,33 @@ using std::string;
 
 #endif
 
-void gamelog_string(string &str);
+void gamelog_string(const string &str);
 void errorlog_string(const string &str);
 void errorlog_string(const char *ptr);
 
-void grab_token(char *dest,const char *source,char compc=':');
-char grab_token_string(string &dest,const char *source,long &pos,char compc=':');
-void grab_token_string(string &dest,string &source,char compc=':');
-void grab_token_string_pos(string &dest,string &source,long pos,char compc=':');
-void grab_token_string(string &dest,const char *source,char compc=':');
-char grab_variable_token(string &str,string &token,char sec_comp,long &pos,long i_pos);
-void replace_token_string(string &token,string &str,long pos,char compc,string &nw,char repc);
+bool grab_token_string(string &dest,string &source,char compc=':');
+bool grab_token_string(string &dest,string &source,int32_t &pos,char compc=':');
+bool grab_token_string_pos(string &dest,string &source,int32_t pos,char compc=':');
+void replace_token_string(string &token,string &str,int32_t pos,char compc,string &nw,char repc);
+bool grab_token_list_as_string(string &dest,string &source,int32_t &pos,char compc=':');
+bool grab_token_expression(string &dest,string &source,int32_t &pos,char compc=':');
+char grab_variable_token(string &str,string &token,char sec_comp,int32_t &pos,int32_t i_pos);
 
-long convert_string_to_long(string &str);
-unsigned long convert_string_to_ulong(string &str);
-void add_long_to_string(long n,string &str);
-void convert_long_to_string(long n,string &str);
-void convert_ulong_to_string(unsigned long n,string &str);
+int32_t convert_string_to_long(string &str);
+uint32_t convert_string_to_ulong(string &str);
+void add_long_to_string(int32_t n,string &str);
+void convert_long_to_string(int32_t n,string &str);
+void convert_ulong_to_string(uint32_t n,string &str);
 
 void lower_case_string(string &str);
 void upper_case_string(string &str);
 void simplify_string(string &str);
 void capitalize_string_words(string &str);
 void capitalize_string_first_word(string &str);
-void abbreviate_string(string &str,long len);
+void abbreviate_string(string &str,int32_t len);
 
-void get_number(long number,string &str);
-void get_ordinal(long number,string &str);
+void get_number(int32_t number,string &str);
+void get_ordinal(int32_t number,string &str,bool shorten);
 
 enum GameMode
 {
@@ -85,6 +86,8 @@ enum GameType
 	GAMETYPE_ADVENTURE_MAIN,
 	GAMETYPE_VIEW_LEGENDS,
 	GAMETYPE_DWARF_RECLAIM,
+	GAMETYPE_DWARF_ARENA,
+	GAMETYPE_ADVENTURE_ARENA,
 	GAMETYPENUM,
 	GAMETYPE_NONE
 };
@@ -95,6 +98,4 @@ enum Song
 	SONG_GAME,
 	SONGNUM
 };
-
-extern std::ofstream errorlog, gamelog;
 #endif

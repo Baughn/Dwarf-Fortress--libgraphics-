@@ -116,6 +116,12 @@ char file_compressorst::write_file(void *write_var,long write_size)
 {
 	if (!f.is_open())return 0;
 
+	if(!compressed)
+		{
+		f.write((char *)write_var,write_size);
+		return 1;
+		}
+
 	//WRITE OUT THE VARIABLE CHUNK BY CHUNK
 	while(write_size>0)
 		{
@@ -143,6 +149,7 @@ char file_compressorst::write_file(void *write_var,long write_size)
 char file_compressorst::flush_in_buffer()
 {
 	if (!f.is_open())return 0;
+	if(!compressed)return 1;
 	if(in_buffer_amount_loaded==0)return 1;//EXTRA CALLS TO FLUSH SHOULDN'T KILL YOU
 
 	//TARN: adapted from zlib example files
@@ -202,6 +209,12 @@ char file_compressorst::read_file(void *read_var,long read_size)
 {
 	if (!f.is_open())return 0;
 
+	if(!compressed)
+		{
+		f.read((char *)read_var,read_size);
+		return 1;
+		}
+
 	//NOW LOAD INTO read_var UNTIL DONE
 	while(read_size>0)
 		{
@@ -233,6 +246,7 @@ char file_compressorst::read_file(void *read_var,long read_size)
 char file_compressorst::load_new_in_buffer()
 {
 	if (!f.is_open())return 0;
+	if(!compressed)return 1;
 
 	in_buffer_position=0;
 	in_buffer_amount_loaded=0;
@@ -330,6 +344,8 @@ char file_compressorst::open_file(const string &filename,char existing_only)
 file_compressorst::file_compressorst(char *new_in_buffer,long new_in_buffersize,
 									 char *new_out_buffer,long new_out_buffersize)
 {
+	compressed=true;
+
 	in_buffer=new_in_buffer;
 	in_buffersize=new_in_buffersize;
 	in_buffer_amount_loaded=0;
@@ -344,6 +360,8 @@ file_compressorst::file_compressorst(char *new_in_buffer,long new_in_buffersize,
 
 file_compressorst::file_compressorst()
 {
+	compressed=true;
+
 	in_buffer=def_ibuff;
 	in_buffersize=FILE_IN_BUFF;
 	in_buffer_amount_loaded=0;
@@ -354,30 +372,6 @@ file_compressorst::file_compressorst()
 	out_buffer_amount_written=0;
 	
 	f.clear();
-}
-
-void clean_directory(const string &directory)
-{
-	stringvectst filelist;
-
-	string str;
-
-	string sch=directory;
-#ifndef WIN32
-	sch+="/*";
-#else
-	sch+="/*.*";
-#endif
-
-	find_files_by_pattern(sch.c_str(),filelist);
-
-	string delr;
-	long f;
-	for(f=0;f<filelist.str.size();f++)
-		{
-		delr=directory+"/"+filelist.str[f]->dat;
-		unlink(delr.c_str());
-		}
 }
 
 void copy_file(const string &src,const string &dst)

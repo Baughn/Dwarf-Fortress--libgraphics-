@@ -19,7 +19,7 @@ clang = False
 libgraphics = False
 tetris = True
 
-M64 = True
+M64 = False
 
 # Propagate PATH. We'll just take our chances with non-repeatable builds.
 env = Environment(ENV = {'PATH' : os.environ['PATH']})

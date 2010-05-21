@@ -69,6 +69,7 @@ enum InitMediaFlag
 {
 	INIT_MEDIA_FLAG_SOUND_OFF,
 	INIT_MEDIA_FLAG_INTRO_OFF,
+	INIT_MEDIA_FLAG_COMPRESS_SAVES,
 	INIT_MEDIA_FLAGNUM
 };
 
@@ -76,7 +77,7 @@ class init_mediast
 {
 	public:
 		flagarrayst flag;
-		long volume;
+		int32_t volume;
 
 		init_mediast()
 			{

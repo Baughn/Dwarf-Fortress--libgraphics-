@@ -22,9 +22,9 @@
 
 #include "files.h"
 
-#include "textlines.h"
-
 #include "enabler.h"
+
+#include "textlines.h"
 
 #include "find_files.h"
 
@@ -55,7 +55,9 @@ extern texture_handlerst texture;
 extern graphicst gps;
 extern interfacest gview;
 
-void process_object_lines(textlinesst &lines,string &chktype);
+extern string errorlog_prefix;
+
+void process_object_lines(textlinesst &lines,string &chktype,string &graphics_dir);
 
 // Add, then increment to the (possible) PBO alignment requirement
 static void align(size_t &sz, off_t inc) {
@@ -147,7 +149,9 @@ void graphicst::erasescreen_rect(int x1, int x2, int y1, int y2)
 
 void graphicst::erasescreen()
 {
-        memset(screen, 0, dimx*dimy*4);
+	memset(screen, 0, dimx*dimy*4);
+
+	memset(screentexpos, 0, dimx*dimy*sizeof(long));
 }
 
 void graphicst::setclipping(long x1,long x2,long y1,long y2)
@@ -295,11 +299,9 @@ void graphicst::color_square(long x,long y,unsigned char f,unsigned char b,unsig
 		}
 }
 
-void graphicst::prepare_graphics()
+void graphicst::prepare_graphics(string &src_dir)
 {
 	if(!init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS))return;
-
-	enabler.textures.remove_uploaded_textures();
 
 	texture.clean();
 
@@ -307,23 +309,31 @@ void graphicst::prepare_graphics()
 	svector<char *> processfilename;
 	long f;
 	textlinesst setuplines;
-	char str[200];
+	char str[400];
 
 	//LOAD THE OBJECT FILES UP INTO MEMORY
 		//MUST INSURE THAT THEY ARE LOADED IN THE PROPER ORDER, IN CASE THEY REFER TO EACH OTHER
-#ifndef WIN32
-	find_files_by_pattern_with_exception("raw/graphics/graphics_*",processfilename,"text");
-#else
-	find_files_by_pattern_with_exception("raw/graphics/graphics_*.*",processfilename,"text");
+	string chk=src_dir;
+	chk+="graphics/graphics_*";
+#ifdef WIN32
+	chk+=".*";
 #endif
+	find_files_by_pattern_with_exception(chk.c_str(),processfilename,"text");
 
 	string chktype="GRAPHICS";
 	for(f=0;f<processfilename.size();f++)
 		{
-		strcpy(str,"raw/graphics/");
+		strcpy(str,src_dir.c_str());
+		strcat(str,"graphics/");
 		strcat(str,processfilename[f]);
 		setuplines.load_raw_to_lines(str);
-		process_object_lines(setuplines,chktype);
+
+		errorlog_prefix="*** Error(s) found in the file \"";
+		errorlog_prefix+=str;
+		errorlog_prefix+='\"';
+		process_object_lines(setuplines,chktype,src_dir);
+		errorlog_prefix.clear();
+
 
 		delete[] processfilename[f];
 		}
@@ -373,7 +383,7 @@ void graphicst::draw_border(int x1, int x2, int y1, int y2) {
   }
 }
 
-void graphicst::get_mouse_text_coords(int &mx, int &my) {
+void graphicst::get_mouse_text_coords(int32_t &mx, int32_t &my) {
   mx = mouse_x; my = mouse_y;
 }
 
@@ -387,7 +397,15 @@ void render_things()
   //NO INTERFACE LEFT, LEAVE
   if(currentscreen==&gview.view)return;
   
-  currentscreen->render();
+  if(currentscreen->breakdownlevel==INTERFACE_BREAKDOWN_NONE)
+	{
+	//*********************** FORCE DISPLAY
+	gps.force_full_display_count++;
+
+	currentscreen->render();
+	}
+  else gps.erasescreen();
+
   // HACK: Render REC when recording macros. Definitely want this screen-specific. Or do we?
   if (enabler.is_recording()) {
     gps.locate(0, 20);

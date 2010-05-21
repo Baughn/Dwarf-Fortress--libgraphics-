@@ -35,8 +35,7 @@ class musicsoundst
 		
 		int SoftChannelNumber;
 
-		musicsoundst() : doing_forced(0), song(-1), system(NULL), masterchannelgroup(NULL), 
-			sound_system(ALSA)
+		musicsoundst() : song(-1), system(NULL), masterchannelgroup(NULL), sound_system(ALSA)
 		{
 			int s;
 			for (s = 0; s < MAXSONGNUM; s++) {
@@ -60,7 +59,6 @@ class musicsoundst
 		void playsound(int s,int min_channel,int max_channel,int force_channel);
 		void initsound();
 		void deinitsound();
-		void forcebackgroundmusic(int new_song,unsigned long time);
 		void set_song(string &filename,int slot);
 		void set_sound(string &filename,int slot,int pan=-1,int priority=0);
 		void set_sound_params(int slot,int p1,int vol,int pan,int priority);
@@ -90,10 +88,6 @@ class musicsoundst
 		char musicactive;
 		char soundpriority;
 		int soundplaying;
-
-		char doing_forced;
-		unsigned long forcesongtime;
-		unsigned long forcesongstart;
 
 		char on;
 

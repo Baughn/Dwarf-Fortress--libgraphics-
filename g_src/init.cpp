@@ -20,9 +20,9 @@ using std::string;
 
 #include "files.h"
 
-#include "textlines.h"
-
 #include "enabler.h"
+
+#include "textlines.h"
 
 #include "basics.h"
 
@@ -393,6 +393,13 @@ void initst::begin()
 					input.pause_zoom_no_interface_ms=convert_string_to_long(token2);
 
 					if(input.pause_zoom_no_interface_ms<0)input.pause_zoom_no_interface_ms=0;
+					}
+				if(token=="COMPRESSED_SAVES")
+					{
+					if(token2=="YES")
+						{
+						media.flag.add_flag(INIT_MEDIA_FLAG_COMPRESS_SAVES);
+						}
 					}
 				}
 			}

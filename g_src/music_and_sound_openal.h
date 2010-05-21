@@ -49,7 +49,7 @@ class musicsoundst
 
   musicsoundst() {
     functional = false;
-    background_slot = slot::pair(false,-1);
+    background_slot = slot(false,-1);
   }
 
   ~musicsoundst() {

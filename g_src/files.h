@@ -16,6 +16,10 @@ using std::string;
 class file_compressorst
 {
 	public:
+		bool compressed;
+		std::fstream f;
+
+
 		char open_file(const string &filename,char existing_only);
 		void close_file();
 		char write_file(string &str);
@@ -339,8 +343,6 @@ class file_compressorst
 			}
 
 	private:
-		std::fstream f;
-
 		char write_file(void *write_var,long write_size);
 		char read_file(void *read_var,long read_size);
 
@@ -357,7 +359,6 @@ class file_compressorst
 		static char def_obuff[FILE_OUT_BUFF];
 };
 
-void clean_directory(const string &directory);
 void copy_file(const string &src,const string &dst);
 // Replaces dst with src, removing src in the process. Atomic if possible.
 void replace_file(const string &src, const string &dst);

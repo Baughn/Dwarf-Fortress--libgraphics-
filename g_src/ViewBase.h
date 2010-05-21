@@ -42,6 +42,8 @@ class viewscreenst
 			option_key_pressed=0;
 			}
 		virtual ~viewscreenst(){}
+
+		virtual bool key_conflict(InterfaceKey test_key);
 };
 
 namespace widgets {

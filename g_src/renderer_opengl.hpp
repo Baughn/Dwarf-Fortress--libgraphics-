@@ -31,8 +31,8 @@ protected:
     int test;
     SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER, &test);
     if (test != ((init.display.flag.has_flag(INIT_DISPLAY_FLAG_SINGLE_BUFFER)) ? 0 : 1)) {
-      if (enabler.is_fullscreen())
-        errorlog << "Requested single-buffering not available\n" << flush;
+      if (enabler.is_fullscreen());
+        //errorlog << "Requested single-buffering not available\n" << flush;
       else
         report_error("OpenGL", "Requested single-buffering not available");
     }
@@ -421,7 +421,7 @@ class renderer_partial : public renderer_opengl {
     head = (head + 1) % buffersz;
     current_erasz++; sum_erasz++;
     if (head == tail) {
-      gamelog << "Expanding partial-printing buffer" << endl;
+      //gamelog << "Expanding partial-printing buffer" << endl;
       // Buffer is full, expand it.
       renderer_opengl::allocate(buffersz * 2);
       // Move the tail to the end of the newly allocated space

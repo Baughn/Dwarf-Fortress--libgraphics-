@@ -1,4 +1,4 @@
-class renderer_2d : public renderer {
+class renderer_2d_base : public renderer {
 protected:
   SDL_Surface *screen;
   map<texture_fullid, SDL_Surface*> tile_cache;
@@ -12,7 +12,7 @@ protected:
       // Create the colorized texture
       SDL_Surface *tex   = enabler.textures.get_texture_data(id.texpos);
       SDL_Surface *color;
-      bool use_hw        = init.display.flag.has_flag(INIT_DISPLAY_FLAG_2DHW);
+      static bool use_hw        = init.display.flag.has_flag(INIT_DISPLAY_FLAG_2DHW);
       if (use_hw) {
         color = SDL_CreateRGBSurface(SDL_HWSURFACE,
                                      tex->w, tex->h,
@@ -116,58 +116,12 @@ public:
     SDL_Flip(screen);
   }
 
-  ~renderer_2d() {
+  ~renderer_2d_base() {
     for (map<texture_fullid,SDL_Surface*>::iterator it = tile_cache.begin();
          it != tile_cache.end();
          ++it) {
       SDL_FreeSurface(it->second);
     }
-  }
-
-  virtual void init_sdl() {
-    // Disable key repeat
-    SDL_EnableKeyRepeat(0, 0);
-    // Set window title/icon.
-    SDL_WM_SetCaption(GAME_TITLE_STRING, NULL);
-    SDL_Surface *icon = IMG_Load("data/art/icon.png");
-    if (icon != NULL) {
-      SDL_WM_SetIcon(icon, NULL);
-      // The icon's surface doesn't get used past this point.
-      SDL_FreeSurface(icon); 
-    }
-    
-    // Find the current desktop resolution if fullscreen resolution is auto
-    if (init.display.desired_fullscreen_width  == 0 ||
-        init.display.desired_fullscreen_height == 0) {
-      const struct SDL_VideoInfo *info = SDL_GetVideoInfo();
-      init.display.desired_fullscreen_width = info->current_w;
-      init.display.desired_fullscreen_height = info->current_h;
-    }
-
-    // Initialize our window
-    bool worked = init_video(enabler.is_fullscreen() ?
-                             init.display.desired_fullscreen_width :
-                             init.display.desired_windowed_width,
-                             enabler.is_fullscreen() ?
-                             init.display.desired_fullscreen_height :
-                             init.display.desired_windowed_height);
-
-    // Fallback to windowed mode if fullscreen fails
-    if (!worked && enabler.is_fullscreen()) {
-      enabler.fullscreen = false;
-      report_error("SDL initialization failure, trying windowed mode", SDL_GetError());
-      worked = init_video(init.display.desired_windowed_width,
-                          init.display.desired_windowed_height);
-    }
-    // Quit if windowed fails
-    if (!worked) {
-      report_error("SDL initialization failure", SDL_GetError());
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  renderer_2d() {
-    init_sdl();
   }
 
   void grid_resize(int w, int h) {
@@ -219,20 +173,66 @@ public:
   }
 };
 
-class renderer_offscreen : private renderer_2d {
+class renderer_2d : public renderer_2d_base {
+public:
+  renderer_2d() {
+    // Disable key repeat
+    SDL_EnableKeyRepeat(0, 0);
+    // Set window title/icon.
+    SDL_WM_SetCaption(GAME_TITLE_STRING, NULL);
+    SDL_Surface *icon = IMG_Load("data/art/icon.png");
+    if (icon != NULL) {
+      SDL_WM_SetIcon(icon, NULL);
+      // The icon's surface doesn't get used past this point.
+      SDL_FreeSurface(icon); 
+    }
+    
+    // Find the current desktop resolution if fullscreen resolution is auto
+    if (init.display.desired_fullscreen_width  == 0 ||
+        init.display.desired_fullscreen_height == 0) {
+      const struct SDL_VideoInfo *info = SDL_GetVideoInfo();
+      init.display.desired_fullscreen_width = info->current_w;
+      init.display.desired_fullscreen_height = info->current_h;
+    }
+
+    // Initialize our window
+    bool worked = init_video(enabler.is_fullscreen() ?
+                             init.display.desired_fullscreen_width :
+                             init.display.desired_windowed_width,
+                             enabler.is_fullscreen() ?
+                             init.display.desired_fullscreen_height :
+                             init.display.desired_windowed_height);
+
+    // Fallback to windowed mode if fullscreen fails
+    if (!worked && enabler.is_fullscreen()) {
+      enabler.fullscreen = false;
+      report_error("SDL initialization failure, trying windowed mode", SDL_GetError());
+      worked = init_video(init.display.desired_windowed_width,
+                          init.display.desired_windowed_height);
+    }
+    // Quit if windowed fails
+    if (!worked) {
+      report_error("SDL initialization failure", SDL_GetError());
+      exit(EXIT_FAILURE);
+    }
+  }
+};
+
+class renderer_offscreen : private renderer_2d_base {
   virtual bool init_video(int w, int h) {
+    if (screen) SDL_FreeSurface(screen);
     // Create an offscreen buffer
     screen = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, 32, 0, 0, 0, 0);
     assert(screen);
     return true;
   }
-  virtual void init_sdl() {}
 public:
   ~renderer_offscreen() {
     SDL_FreeSurface(screen);
   }
   // Create an offscreen renderer of a given grid-size
   renderer_offscreen(int grid_x, int grid_y) {
+    screen = NULL;
     dispx = enabler.is_fullscreen() ?
       init.font.large_font_dispx :
       init.font.small_font_dispx;
@@ -242,6 +242,13 @@ public:
     dimx = grid_x;
     dimy = grid_y;
     init_video(dispx * grid_x, dispy * grid_y);
+    // Copy the GPS pointers here
+    renderer::screen = gps.screen;
+    renderer::screentexpos = gps.screentexpos;
+    renderer::screentexpos_addcolor = gps.screentexpos_addcolor;
+    renderer::screentexpos_grayscale = gps.screentexpos_grayscale;
+    renderer::screentexpos_cf = gps.screentexpos_cf;
+    renderer::screentexpos_cbr = gps.screentexpos_cbr;
   }
   // Slurp the entire gps content into the renderer at some given offset
   void update_all(int offset_x, int offset_y) {

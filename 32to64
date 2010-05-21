@@ -1,0 +1,1 @@
+sed -rie 's/(^|[^a-z_A-Z])long($|[^a-z_A-Z])/\1int\2/g' *.cpp *.h
