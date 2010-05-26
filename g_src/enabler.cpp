@@ -557,8 +557,13 @@ void enablerst::release_grid_size() {
     async_fromcomplete.read();
   } else {
     if (!overridden_grid_sizes.size()) return;
-    pair<int,int> sz = overridden_grid_sizes.top();
-    overridden_grid_sizes.pop();
+    // FIXME: Find out whatever is causing release to be called too rarely; right now
+    // we're overriding once per movie but apparently only releasing for the last one.
+    pair<int,int> sz;
+    while (overridden_grid_sizes.size()) {
+      sz = overridden_grid_sizes.top();
+      overridden_grid_sizes.pop();
+    }
     renderer->grid_resize(sz.first, sz.second);
   }
 }
