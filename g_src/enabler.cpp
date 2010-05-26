@@ -240,6 +240,9 @@ void enablerst::async_wait() {
       release_grid_size();
       async_fromcomplete.write();
       break;
+    default:
+      puts("EMERGENCY: Unknown case in async_wait");
+      abort();
     }
   }
 }
@@ -254,7 +257,7 @@ void enablerst::async_loop() {
     async_cmd cmd;
     bool have_cmd = true;
     do {
-      if (async_paused || async_frames == 0)
+      if (async_paused || (async_frames == 0 && !(enabler.flag & ENABLERFLAG_MAXFPS)))
         async_tobox.read(cmd);
       else
         have_cmd = async_tobox.try_read(cmd);
@@ -291,7 +294,7 @@ void enablerst::async_loop() {
       }
     } while (have_cmd);
     // Run the main-loop, maybe
-    if (!async_paused && async_frames) {
+    if (!async_paused && (async_frames || (enabler.flag & ENABLERFLAG_MAXFPS))) {
       if (mainloop()) {
         async_frombox.write(async_msg(async_msg::quit));
         return; // We're done.
