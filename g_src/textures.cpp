@@ -37,6 +37,7 @@ bool testTextureSize(GLuint texnum, int w, int h) {
 // Texture catalog implementation
 void textures::upload_textures() {
   if (uploaded) return; // Don't bother
+  if (!enabler.uses_opengl()) return; // No uploading
   glEnable(GL_TEXTURE_2D);
   printGLError();
   glGenTextures(1, &gl_catalog);
@@ -248,10 +249,7 @@ long textures::clone_texture(long src) {
   tx=add_texture(NULL);
   }
 
-  if (uploaded) {
-    remove_uploaded_textures();
-    upload_textures();
-  }
+  enabler.reset_textures();
 
   return tx;
 }
@@ -283,10 +281,7 @@ if(luminosity>255)luminosity=255;
  cleanup:
  SDL_UnlockSurface(s);
 
-  if (uploaded) {
-    remove_uploaded_textures();
-    upload_textures();
-  }
+ enabler.reset_textures();
 }
 
 // Converts an arbitrary Surface to something like the display format
@@ -374,10 +369,7 @@ void textures::load_multi_pdim(const string &filename, long *tex_pos, long dimx,
       idx++;
     }
   // Re-upload textures if necessary
-  if (uploaded) {
-    remove_uploaded_textures();
-    upload_textures();
-  }
+  enabler.reset_textures();
 }
 
 long textures::load(const string &filename, bool convert_magenta) {
@@ -389,10 +381,7 @@ long textures::load(const string &filename, bool convert_magenta) {
   SDL_Surface *tex = canonicalize_format(raw, convert_magenta);
   long pos = add_texture(tex);
   // Re-upload if necessary
-  if (uploaded) {
-    remove_uploaded_textures();
-    upload_textures();
-  }
+  enabler.reset_textures();
   return pos;
 }
 

@@ -339,7 +339,7 @@ void graphicst::prepare_graphics(string &src_dir)
 		}
 	processfilename.clear();
 
-	enabler.textures.upload_textures();
+        enabler.reset_textures();
 }
 
 void graphicst::add_tile(long texp,char addcolor)

@@ -216,6 +216,7 @@ void enablerst::pause_async_loop()  {
 void enablerst::async_wait() {
   if (loopvar == 0) return;
   async_msg r;
+  bool reset_textures = false;
   for (;;) {
     async_frombox.read(r);
     switch (r.msg) {
@@ -223,6 +224,11 @@ void enablerst::async_wait() {
       loopvar = 0;
       return;
     case async_msg::complete:
+      if (reset_textures) {
+        puts("Resetting textures");
+        textures.remove_uploaded_textures();
+        textures.upload_textures();
+      }
       return;
     case async_msg::set_fps:
       set_fps(r.fps);
@@ -239,6 +245,9 @@ void enablerst::async_wait() {
     case async_msg::pop_resize:
       release_grid_size();
       async_fromcomplete.write();
+      break;
+    case async_msg::reset_textures:
+      reset_textures = true;
       break;
     default:
       puts("EMERGENCY: Unknown case in async_wait");

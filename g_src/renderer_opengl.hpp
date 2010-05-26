@@ -1,5 +1,8 @@
 // STANDARD
 class renderer_opengl : public renderer {
+public:
+  virtual bool uses_opengl() { return true; }
+  
 protected:
   SDL_Surface *screen;
 

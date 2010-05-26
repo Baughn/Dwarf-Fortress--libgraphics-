@@ -858,6 +858,7 @@ class renderer {
     screentexpos_cbr_old = NULL;
   }
   virtual bool get_mouse_coords(int &x, int &y) = 0;
+  virtual bool uses_opengl() { return false; };
 };
 
 class enablerst : public enabler_inputst
@@ -901,7 +902,7 @@ class enablerst : public enabler_inputst
   };
 
   struct async_msg {
-    enum msg_t { quit, complete, set_fps, set_gfps, push_resize, pop_resize } msg;
+    enum msg_t { quit, complete, set_fps, set_gfps, push_resize, pop_resize, reset_textures } msg;
     union {
       int fps; // set_fps, set_gfps
       struct { // push_resize
@@ -958,12 +959,19 @@ class enablerst : public enabler_inputst
   // OpenGL state (wrappers)
   class textures textures; // Font/graphics texture catalog
   GLsync sync; // Rendering barrier
+  void reset_textures() {
+    async_frombox.write(async_msg(async_msg::reset_textures));
+  }
+  bool uses_opengl() {
+    if (!renderer) return false;
+    return renderer->uses_opengl();
+  }
   
   // Grid-size interface
   void override_grid_size(int w, int h); // Pick a /particular/ grid-size
   void release_grid_size(); // Undoes override_grid_size
   void zoom_display(zoom_commands command);
-
+  
   
   // Window management
   bool is_fullscreen() { return fullscreen; }
