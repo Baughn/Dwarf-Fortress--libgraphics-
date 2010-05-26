@@ -16,8 +16,8 @@ profile = False
 
 clang = False
 
-libgraphics = False
-tetris = True
+libgraphics = True
+tetris = False
 
 M64 = False
 

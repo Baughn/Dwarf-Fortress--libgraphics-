@@ -26,6 +26,8 @@ unsigned long mt_buffer[MT_BUFFER_NUM][MT_LEN];
 char filecomp_buffer2_aux[80000];
 char filecomp_buffer_aux[20000];
 
+string errorlog_prefix;
+
 
 bool tetriminoes[7][2][4] =
   {{{0,0,0,0},{1,1,1,1}},
@@ -140,7 +142,7 @@ void dwarf_remove_screen() {
 void texture_handlerst::clean() {
 }
 
-void process_object_lines(textlinesst &lines, string &chktype) {
+void process_object_lines(textlinesst &lines, string &chktype, string &graphics_dir) {
 }
 
 void drawborder(const char *str, char style, const char *color) {

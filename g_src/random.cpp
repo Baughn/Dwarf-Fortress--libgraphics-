@@ -1,7 +1,38 @@
-//copyright (c) 2006 by tarn adams
+#include "platform.h"
+#include <string.h>
+#include <math.h>
+#include <iosfwd>
+#include <iostream>
+#include <ios>
+#include <streambuf>
+#include <istream>
+#include <ostream>
+#include <iomanip>
+#include <sstream>
+#include <cstdlib>
+#include <fstream>
+#include <zlib.h>
 
-#include "game_g.h"
-#include "game_extv.h"
+#include "svector.h"
+using std::string;
+
+#include "endian.h"
+
+#include "files.h"
+
+#include "enabler.h"
+
+#include "textlines.h"
+
+#include "basics.h"
+
+#include "random.h"
+
+extern int32_t basic_seed;
+extern int mt_index[MT_BUFFER_NUM];
+extern short mt_cur_buffer;
+extern short mt_virtual_buffer;
+extern uint32_t mt_buffer[MT_BUFFER_NUM][MT_LEN];
 
 //public domain RNG stuff by Michael Brundage
 	//with some modifications by me to handle more buffers
@@ -15,6 +46,7 @@ void mt_init()
     int i;
     for(i=1;i<MT_LEN;i++)
 		{
+		//2010: better init line from wikipedia, ultimate source unknown
 		mt_buffer[0][i]=1812433253UL * (mt_buffer[0][i-1] ^ (mt_buffer[0][i-1]>>30)) + i;
 		}
     mt_index[0]=MT_LEN*sizeof(uint32_t);

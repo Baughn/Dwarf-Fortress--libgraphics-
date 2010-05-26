@@ -30,7 +30,7 @@ class viewscreenst
 		virtual void render(){}
                 virtual void resize(int w, int h){}
 
-		virtual void help();
+		virtual void help(){};
 		virtual char movies_okay(){return 1;}
 		virtual char is_option_screen(){return 0;}
 		virtual char is_save_screen(){return 0;}
@@ -43,7 +43,7 @@ class viewscreenst
 			}
 		virtual ~viewscreenst(){}
 
-		virtual bool key_conflict(InterfaceKey test_key);
+		virtual bool key_conflict(InterfaceKey test_key){return false;};
 };
 
 namespace widgets {
