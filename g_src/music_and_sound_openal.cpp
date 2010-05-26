@@ -62,6 +62,7 @@ bool musicsoundst::initsound() {
     puts("Using OpenAL in compatibility mode");
     goto done;
   }
+  alcCloseDevice(device);
   return false;
 
  done:
