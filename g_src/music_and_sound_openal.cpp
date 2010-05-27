@@ -148,7 +148,7 @@ void musicsoundst::set_song(string &filename, slot slot) {
 }
 
 void musicsoundst::set_song(string &filename, int slot) {
-  set_song(filename, slot::pair(true, slot));
+  set_song(filename, make_pair(true, slot));
 }
 
 void musicsoundst::set_master_volume(long newvol) {
@@ -165,7 +165,7 @@ void musicsoundst::playsound(slot slot) {
   }
   if (background_slot == slot) {
     puts("playsound called on background song, background song cancelled!?");
-    background_slot = slot::pair(false,-1);
+    background_slot = make_pair(false,-1);
   }
   alSourcei(slot_source[slot], AL_LOOPING, AL_FALSE);
   alSourcePlay(slot_source[slot]);
@@ -173,7 +173,7 @@ void musicsoundst::playsound(slot slot) {
 }
 
 void musicsoundst::playsound(int slot) {
-  playsound(slot::pair(false,slot));
+  playsound(make_pair(false,slot));
 }
 
 void musicsoundst::startbackgroundmusic(slot slot) {
@@ -196,12 +196,12 @@ void musicsoundst::startbackgroundmusic(slot slot) {
 }
 
 void musicsoundst::startbackgroundmusic(int slot) {
-  startbackgroundmusic(slot::pair(true,slot));
+  startbackgroundmusic(make_pair(true,slot));
 }
 
 void musicsoundst::stopbackgroundmusic() {
   if (!functional) return;
-  if (background_slot == slot::pair(false,-1)) return;
+  if (background_slot == make_pair(false,-1)) return;
 
   alSourceStop(slot_source[background_slot]);
 }
@@ -243,7 +243,7 @@ void musicsoundst::deinitsound() {
 
 void musicsoundst::set_sound(string &filename, int slot, int pan, int priority) {
   if (!functional) return;
-  set_song(filename, slot::pair(false,slot));
+  set_song(filename, make_pair(false,slot));
 }
 
 // Deprecated stuff below
