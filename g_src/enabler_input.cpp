@@ -394,6 +394,8 @@ void enabler_inputst::save_keybindings(const string &file) {
   // Invert keyboard map
   for (multimap<EventMatch,InterfaceKey>::iterator it = keymap.begin(); it != keymap.end(); ++it)
     map.insert(pair<InterfaceKey,EventMatch>(it->second,it->first));
+  // Insert an empty line for the benefit of note/wordpad
+  s << endl;
   // And write.
   for (multimap<InterfaceKey,EventMatch>::iterator it = map.begin(); it != map.end(); ++it) {
     if (!s.good()) {
