@@ -78,6 +78,8 @@ if profile:
 
 if optimize:
    if not clang:
+      if not debug:
+         env["CCFLAGS"]+=["-fomit-frame-pointer"]
       if not M64:
          env["CCFLAGS"]+=["-O3","-march=pentium3","-mfpmath=sse"]
       else:
