@@ -134,13 +134,11 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
       break;
     }
   }
-  if (input.count(INTERFACEKEY_LEAVESCREEN)) {
+  if (input.count(INTERFACEKEY_LEAVESCREEN) || input.count(INTERFACEKEY_OPTIONS)) {
     if (mode == mode_register)
       mode = mode_keyR;
     else
       mode = mode_main;
-  } else if (input.count(INTERFACEKEY_OPTIONS)) {
-    breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
   }
 }
 
@@ -181,14 +179,14 @@ void KeybindingScreen::reset_keyR() {
     ostringstream desc;
     switch (it->type) {
     case type_unicode:
-      desc << "Logical: ";
+      desc << "By letter: ";
       if (it->unicode < 256 && isgraph(it->unicode)) // Is it printable?
         desc << (char)it->unicode;
       else
         desc << "U+" << hex << uppercase << it->unicode;
       break;
     case type_key:
-      desc << "Physical: " << translate_mod(it->mod) << sdlNames.left[it->key];
+      desc << "By position: " << translate_mod(it->mod) << sdlNames.left[it->key];
       break;
     case type_button:
       desc << "Mouse: " << (int)it->button;
