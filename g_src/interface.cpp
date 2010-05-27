@@ -1149,7 +1149,8 @@ void interfacest::read_movie_chunk(int &maxmoviepos,char &is_playing)
                                 cmh.delayrate=byteswap(cmh.delayrate);
 
                                 enabler.override_grid_size(cmh.dimx, cmh.dimy);
-                                gview.original_fps = enabler.get_fps();
+                                if (!gview.original_fps)
+                                  gview.original_fps = enabler.get_fps();
                                 enabler.set_fps(100);
 
 				gview.supermovie_delayrate=cmh.delayrate;
