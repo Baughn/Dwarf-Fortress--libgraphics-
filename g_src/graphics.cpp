@@ -399,9 +399,6 @@ void render_things()
   
   if(currentscreen->breakdownlevel==INTERFACE_BREAKDOWN_NONE)
 	{
-	//*********************** FORCE DISPLAY
-	gps.force_full_display_count++;
-
 	currentscreen->render();
 	}
   else gps.erasescreen();

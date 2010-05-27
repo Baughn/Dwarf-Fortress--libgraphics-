@@ -118,13 +118,16 @@ void renderer::display()
     // Update the entire screen
     update_all();
   } else {
+    Uint32 *screenp = (Uint32*)screen, *oldp = (Uint32*)screen_old;
     if (use_graphics) {
       int off = 0;
       for (int x2=0; x2 < dimx; x2++) {
-        for (int y2=0; y2 < dimy; y2++, ++off) {
-          // TODO: Use pointers instead of offsets in this code too, if it's a win. Check in DF later.
+        for (int y2=0; y2 < dimy; y2++, ++off, ++screenp, ++oldp) {
+          // We don't use pointers for the non-screen arrays because we mostly fail at the
+          // *first* comparison, and having pointers for the others would exceed register
+          // count.
           // Partial printing (and color-conversion): Big-ass if.
-          if (*(int*)(screen + off) == *(int*)(screen_old + off) &&
+          if (*screenp != *oldp &&
               screentexpos[off] == screentexpos_old[off] &&
               screentexpos_addcolor[off] == screentexpos_addcolor_old[off] &&
               screentexpos_grayscale[off] == screentexpos_grayscale_old[off] &&
@@ -138,7 +141,6 @@ void renderer::display()
         }
       }
     } else {
-      Uint32 *screenp = (Uint32*)screen, *oldp = (Uint32*)screen_old;
       for (int x2=0; x2 < dimx; ++x2) {
         for (int y2=0; y2 < dimy; ++y2, ++screenp, ++oldp) {
           if (*screenp != *oldp) {
@@ -190,7 +192,7 @@ void renderer::gps_allocate(int x, int y) {
   memset(screentexpos_cf_old, 0, x*y);
   screentexpos_cbr_old = new unsigned char[x*y];
   memset(screentexpos_cbr_old, 0, x*y);
-  
+
   gps.resize(x,y);
 }
 
@@ -309,6 +311,7 @@ void enablerst::async_loop() {
         return; // We're done.
       }
       async_frames--;
+      if (async_frames < 0) async_frames = 0;
       update_fps();
     }
     SDL_NumJoysticks(); // Hook for dfhack
