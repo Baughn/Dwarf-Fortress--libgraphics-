@@ -155,4 +155,64 @@ extern graphicst gps;
 // From graphics.cpp
 void render_things();
 
+// Locates some area of the screen with free space for writing
+class gps_locator {
+  int y, last_x;
+public:
+  gps_locator(int y, int x) {
+    this->y = y;
+    last_x = x;
+  }
+  bool is_free(int x) {
+    unsigned char c = gps.screen[x*gps.dimy*4 + y*4];
+    switch (c) {
+    case 0:
+    case 20:
+    case 176:
+    case 177:
+    case 178:
+    case 219:
+    case 254:
+    case 255:
+      return true;
+    default:
+      return false;
+    }
+  }
+  void operator()(int sz) {
+    // First, check if our cached slot will still do
+    bool ok = true;
+    for (int x = last_x; x < last_x + sz; x++)
+      if (!is_free(x)) {
+        ok = false;
+        break;
+      }
+    if (ok) {
+      // Yeah, okay
+      gps.locate(y, last_x);
+    } else {
+      // Not so okay. Find a new spot.
+      int run = 0, x = 0;
+      for (; x < gps.dimx; x++) {
+        if (is_free(x))
+          run++;
+        else run = 0;
+        if (run > sz + 2) { // We pad things a bit for cleanliness.
+          ok = true;
+          x -= sz + 1;
+          break;
+        }
+      }
+      if (ok) {
+        // Found a new spot.
+        last_x = x;
+        gps.locate(y, x);
+      } else {
+        // Damn it.
+        gps.locate(y, last_x);
+      }
+    }
+  }
+};
+
 #endif

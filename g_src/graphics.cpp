@@ -387,7 +387,6 @@ void graphicst::get_mouse_text_coords(int32_t &mx, int32_t &my) {
   mx = mouse_x; my = mouse_y;
 }
 
-
 void render_things()
 {
   //GRAB CURRENT SCREEN AT THE END OF THE LIST
@@ -410,10 +409,12 @@ void render_things()
     gps.addst("REC");
   }
   if (gps.display_frames) {
-    ostringstream fps;
-    fps << "FPS: " << setw(3) << enabler.calculate_fps() << " (" << enabler.calculate_gfps() << ")";
+    ostringstream fps_stream;
+    fps_stream << "FPS: " << setw(3) << enabler.calculate_fps() << " (" << enabler.calculate_gfps() << ")";
+    string fps = fps_stream.str();
     gps.changecolor(7,3,1);
-    gps.locate(0,init.display.grid_x / 2 + 11);
-    gps.addst(fps.str());
+    static gps_locator fps_locator(0, 25);
+    fps_locator(fps.size());
+    gps.addst(fps);
   }
 }
