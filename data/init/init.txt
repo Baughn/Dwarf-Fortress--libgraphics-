@@ -45,13 +45,13 @@ If this is set to YES, the tiles will not be stretched, but rather the game view
 
 Graphics info, most of it as above.  Set GRAPHICS to YES to turn it all on.  This will use the "raw/graphics" folder for tile information.  Currently this is limited to whatever creature graphics you have downloaded.  The game comes with a few pictures to demonstrate.  As of September 2008, the Dwarf Fortress Wiki has graphical tilesets available at http://www.dwarffortresswiki.net/index.php/List_of_user_graphics_sets.
 
-[GRAPHICS:NO]
+[GRAPHICS:YES]
 [GRAPHICS_WINDOWEDX:0]
 [GRAPHICS_WINDOWEDY:0]
-[GRAPHICS_FONT:curses_square_16x16.png]
+[GRAPHICS_FONT:curses_640x300.png]
 [GRAPHICS_FULLSCREENX:0]
 [GRAPHICS_FULLSCREENY:0]
-[GRAPHICS_FULLFONT:curses_square_16x16.png]
+[GRAPHICS_FULLFONT:curses_640x300.png]
 [GRAPHICS_BLACK_SPACE:YES]
 
 These settings can have a significant impact on frame rate, especially for people that have slow frame rates on the title screen.  Available modes are 2D, 2DSW, 2DASYNC, STANDARD, PARTIAL:<number>, ACCUM_BUFFER, FRAME_BUFFER and VBO. The number after PARTIAL refers to how many frames it will redo a printed tile before skipping it, so you might try increasing it a bit if you have flickering when PARTIAL is set.  Please note that any of these combinations might cause frame rates to drop significantly or cause unpleasant side effects like flickering.
@@ -62,7 +62,7 @@ By and large, 2D should be the most reliable, while STANDARD has a good combinat
 
 Linux/OS X users may also use PRINT_MODE:TEXT for primitive ncurses output.
 
-[PRINT_MODE:2D]
+[PRINT_MODE:STANDARD]
 [SINGLE_BUFFER:NO]
 
 Change this to YES to keep the DF window on top of your other windows.
@@ -71,7 +71,7 @@ Change this to YES to keep the DF window on top of your other windows.
 
 Change this to YES if you want to see an FPS counter at the top left.
 
-[FPS:NO]
+[FPS:YES]
 
 Use this to set the maximum frame rate during play.  The movies are always capped at 100.  A frame in this case is not graphical but related to the movement speed of a creature.  A healthy, unencumbered dwarven peasant takes one step every 10 frames.
 
