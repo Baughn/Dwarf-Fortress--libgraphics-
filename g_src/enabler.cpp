@@ -576,7 +576,7 @@ void enablerst::release_grid_size() {
       sz = overridden_grid_sizes.top();
       overridden_grid_sizes.pop();
     }
-    renderer->grid_resize(sz.first, sz.second);
+    zoom_display(zoom_resetgrid);
   }
 }
 

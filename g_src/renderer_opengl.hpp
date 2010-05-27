@@ -233,10 +233,14 @@ public:
     switch (cmd) {
     case zoom_in:    zoom_steps -= init.input.zoom_speed; break;
     case zoom_out:   zoom_steps += init.input.zoom_speed; break;
-    case zoom_reset: zoom_steps = 0; compute_forced_zoom(); break;
+    case zoom_reset:
+      zoom_steps = 0;
+    case zoom_resetgrid:
+      compute_forced_zoom();
+      break;
     }
     pair<int,int> after = compute_zoom(true);
-    if (after == before && cmd != zoom_reset)
+    if (after == before && (cmd == zoom_in || cmd == zoom_out))
       zoom_steps = before_steps;
     else
       reshape(after);

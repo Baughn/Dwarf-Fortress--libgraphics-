@@ -796,7 +796,7 @@ typedef struct {									// Contains Information Vital To A Window
   BOOL				isVisible;				// Window Visible?
 } GL_Window;								// GL_Window
 
-enum zoom_commands { zoom_in, zoom_out, zoom_reset, zoom_fullscreen };
+enum zoom_commands { zoom_in, zoom_out, zoom_reset, zoom_fullscreen, zoom_resetgrid };
 
 
 struct texture_fullid {
