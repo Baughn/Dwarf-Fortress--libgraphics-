@@ -63,8 +63,8 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
         string display;
         switch (it->type) {
         case type_button: display = "Mouse button: "; break;
-        case type_key: display = "Physical: "; break;
-        case type_unicode: display = "Logical: "; break;
+        case type_key: display = "By position: "; break;
+        case type_unicode: display = "By letter: "; break;
         }
         keyRegister.add(display + it->display, it->type);
       }
@@ -134,14 +134,13 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
       break;
     }
   }
-  if (input.count(INTERFACEKEY_OPTIONS)) {
-    breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
-  }
   if (input.count(INTERFACEKEY_LEAVESCREEN)) {
     if (mode == mode_register)
       mode = mode_keyR;
     else
       mode = mode_main;
+  } else if (input.count(INTERFACEKEY_OPTIONS)) {
+    breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
   }
 }
 

@@ -854,11 +854,6 @@ char interfacest::loop() {
   //MOVE SCREENS BACK
   switch(currentscreen->breakdownlevel) {
   case INTERFACE_BREAKDOWN_NONE: {
-    //FRAME COUNT FIXME ASKTOADY
-    // if(gps.display_frames && !enabler.doing_buffer_draw()) {
-    //   QueryPerformanceCounter(&gps.print_time[gps.print_index]);
-    //   gps.print_index=(gps.print_index+1)%100;
-    // }
     
     if (currentscreen->child==NULL) currentscreen->logic();
 
@@ -878,7 +873,7 @@ char interfacest::loop() {
           if(enabler.mouse_lbut || enabler.mouse_rbut) currentscreen->feed(era);
           break;
         }
-
+        
         if (era.count(INTERFACEKEY_OPTIONS)&&!currentscreen->key_conflict(INTERFACEKEY_OPTIONS)) {
           //PEEL BACK ALL SCREENS TO THE CURRENT OPTION SCREEN IF THERE IS ONE
           //UNLESS THERE IS A BLOCKING SCREEN LIKE THE REGION MAKER
@@ -901,8 +896,8 @@ char interfacest::loop() {
           //NEED A NEW OPTIONS SCREEN?
           if(opscreen==NULL) dwarf_option_screen();
 
-		  era.clear();
-		  continue;
+          era.clear();
+          continue;
         }
         //DO MOVIE COMMANDS
         if (era.count(INTERFACEKEY_MOVIES)&&!currentscreen->key_conflict(INTERFACEKEY_MOVIES))

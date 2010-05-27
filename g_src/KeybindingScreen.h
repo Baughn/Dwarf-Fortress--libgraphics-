@@ -40,7 +40,7 @@ public:
   virtual void render();
   virtual void help();
   virtual void logic();
-  virtual char is_option_screen() { return 1; }
+  virtual char is_option_screen() { return 2; }
 };
 
 class MacroScreenLoad : public viewscreenst {
