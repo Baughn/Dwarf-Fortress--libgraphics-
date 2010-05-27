@@ -404,9 +404,14 @@ void render_things()
 
   // HACK: Render REC when recording macros. Definitely want this screen-specific. Or do we?
   if (enabler.is_recording()) {
-    gps.locate(0, 20);
-    gps.changecolor(4,1,1);
-    gps.addst("REC");
+    static int frame = 0;
+    frame++;
+    int rate = enabler.get_fps();
+    if (frame % rate < rate/2) {
+      gps.locate(0, 20);
+      gps.changecolor(4,1,1);
+      gps.addst("REC");
+    }
   }
   if (gps.display_frames) {
     ostringstream fps_stream;
