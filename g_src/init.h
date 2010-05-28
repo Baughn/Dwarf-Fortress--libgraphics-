@@ -95,23 +95,27 @@ enum InitInputFlag
 
 class init_inputst
 {
-	public:
-		long hold_time;
-        long repeat_time;
-        long macro_time;
-		long pause_zoom_no_interface_ms;
-		flagarrayst flag;
-		long zoom_speed;
-
-		init_inputst()
-			{
-			hold_time=150;
-                        repeat_time=150;
-                        macro_time=75;
-			pause_zoom_no_interface_ms=0;
-			flag.set_size_on_flag_num(INIT_INPUT_FLAGNUM);
-			zoom_speed = 10;
-			}
+ public:
+  long hold_time;
+  long repeat_time;
+  long macro_time;
+  long pause_zoom_no_interface_ms;
+  flagarrayst flag;
+  long zoom_speed;
+  int repeat_accel_start;
+  int repeat_accel_limit;
+  
+  init_inputst()
+    {
+      hold_time=150;
+      repeat_time=150;
+      macro_time=75;
+      pause_zoom_no_interface_ms=0;
+      flag.set_size_on_flag_num(INIT_INPUT_FLAGNUM);
+      zoom_speed = 10;
+      repeat_accel_start = 10;
+      repeat_accel_limit = 1;
+    }
 };
 
 enum InitWindowFlag

@@ -382,6 +382,13 @@ void initst::begin()
 
 					if(input.repeat_time<100)input.repeat_time=100;
 					}
+                                if(token=="KEY_REPEAT_ACCEL_LIMIT") {
+                                  input.repeat_accel_limit = convert_string_to_long(token2);
+                                  if (input.repeat_accel_limit < 1) input.repeat_accel_limit = 1;
+                                }
+                                if(token=="KEY_REPEAT_ACCEL_START") {
+                                  input.repeat_accel_start = convert_string_to_long(token2);
+                                }
 				if(token=="MACRO_MS")
 					{
 					input.macro_time=convert_string_to_long(token2);

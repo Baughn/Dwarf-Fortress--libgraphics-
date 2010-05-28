@@ -121,6 +121,10 @@ This controls the number of milliseconds that must pass before a held key sends 
 
 [KEY_REPEAT_MS:150]
 
+By setting KEY_REPEAT_ACCEL_LIMIT above one, after KEY_REPEAT_ACCEL_START repetitions the repetition delay will smoothly decrease until repetition is this number of times faster than at the start.
+[KEY_REPEAT_ACCEL_LIMIT:8]
+[KEY_REPEAT_ACCEL_START:10]
+
 This controls the number of milliseconds between macro instructions.
 
 [MACRO_MS:150]

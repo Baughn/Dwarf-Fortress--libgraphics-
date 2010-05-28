@@ -5,6 +5,7 @@
 #include <sstream>
 #include <algorithm>
 #include <stdlib.h>
+#include <math.h>
 using namespace std;
 
 #include "enabler_input.h"
@@ -718,16 +719,18 @@ set<InterfaceKey> enabler_inputst::get_input(Time now) {
     case REPEAT_NOT:
       break;
     case REPEAT_SLOW:
-      if (next.repeats > 1) {
-        next.time = now + init.input.repeat_time;
-        timeline.insert(next);
-      } else {
+      if (ev->repeats == 0) {
         next.time = now + init.input.hold_time;
-        timeline.insert(next);
+        break;
       }
-      break;
     case REPEAT_FAST:
-      next.time = now + init.input.repeat_time;
+      double accel = 1;
+      if (ev->repeats >= init.input.repeat_accel_start) {
+        // Compute acceleration
+        accel = MIN(init.input.repeat_accel_limit,
+                    log(double(next.repeats - init.input.repeat_accel_start) + M_E));
+      } 
+      next.time = now + double(init.input.repeat_time) / accel;
       timeline.insert(next);
       break;
     }
