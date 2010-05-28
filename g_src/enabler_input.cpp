@@ -17,6 +17,7 @@ extern initst init;
 #include "svector.h"
 #include "curses.h"
 
+extern int simtick;
 
 // The timeline events we actually pass back from get_input. Well, no,
 // that's just k, but..
@@ -26,6 +27,7 @@ struct Event {
   int repeats; // Starts at 0, increments once per repeat
   int serial;
   int time;
+  int tick; // The sim-tick at which we last returned this event
 
   bool operator== (const Event &other) const {
     if (r != other.r) return false;
@@ -511,7 +513,7 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
     }
     if (e.type == SDL_QUIT) {
       // This one, we insert directly into the timeline.
-      Event e = {REPEAT_NOT, (InterfaceKey)INTERFACEKEY_OPTIONS, 0, next_serial(), now};
+      Event e = {REPEAT_NOT, (InterfaceKey)INTERFACEKEY_OPTIONS, 0, next_serial(), now, 0};
       timeline.insert(e);
     }
   }
@@ -607,7 +609,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     if (sdl.key) {
       stored_keys.push_back(sdl);
     }
-    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE;
+    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = simtick;
     timeline.insert(e);
     key_registering = false;
     return;
@@ -641,7 +643,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
   // rest of this function.
   if (key_registering && !e.release) {
     stored_keys.push_back(e.match);
-    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE;
+    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = simtick;
     timeline.insert(e);
     return;
   }
@@ -678,7 +680,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
     // okay to cancel repeats unless /all/ the bindings are
     // non-repeating.
     for (set<InterfaceKey>::iterator k = keys.begin(); k != keys.end(); ++k) {
-      Event e = {key_repeat(*k), *k, 0, serial, now};
+      Event e = {key_repeat(*k), *k, 0, serial, now, simtick};
       timeline.insert(e);
     }
     // if (cancel_ok) {
@@ -698,20 +700,28 @@ void enabler_inputst::clear_input() {
   last_serial = 0;
 }
 
+extern int simtick;
+
 set<InterfaceKey> enabler_inputst::get_input(Time now) {
   // We walk the timeline, returning all events corresponding to a
   // single physical keypress, and inserting repeats relative to the
   // current time, not when the events we're now returning were
   // *supposed* to happen.
+
   set<InterfaceKey> input;
   set<Event>::iterator ev = timeline.begin();
-  if (ev == timeline.end() || ev->time > now)
+  if (ev == timeline.end() || ev->time > now) {
     return input; // No input (yet).
+  }
 
   const Time first_time = ev->time;
   const int first_serial = ev->serial;
   while (ev != timeline.end() && ev->time == first_time && ev->serial == first_serial) {
-    input.insert(ev->k);
+    // FIXME: THIS IS A HACK
+    // Make sure the user had a chance to cancel
+    if (ev->repeats == 1 && ev->tick > simtick - 3) {
+    } else
+      input.insert(ev->k);
     // Schedule a repeat
     Event next = *ev;
     next.repeats++;

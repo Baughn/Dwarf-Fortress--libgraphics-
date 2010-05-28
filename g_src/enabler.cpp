@@ -258,6 +258,8 @@ void enablerst::async_wait() {
   }
 }
 
+int simtick = 0;
+
 void enablerst::async_loop() {
   async_paused = false;
   async_frames = 0;
@@ -310,6 +312,7 @@ void enablerst::async_loop() {
         async_frombox.write(async_msg(async_msg::quit));
         return; // We're done.
       }
+      simtick++;
       async_frames--;
       if (async_frames < 0) async_frames = 0;
       update_fps();
