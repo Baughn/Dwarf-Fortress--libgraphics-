@@ -735,7 +735,7 @@ set<InterfaceKey> enabler_inputst::get_input(Time now) {
       if (ev->repeats >= init.input.repeat_accel_start) {
         // Compute acceleration
         accel = MIN(init.input.repeat_accel_limit,
-                    log(double(next.repeats - init.input.repeat_accel_start) + M_E));
+                    sqrt(double(next.repeats - init.input.repeat_accel_start) + 16) - 3);
       } 
       next.time = now + double(init.input.repeat_time) / accel;
       timeline.insert(next);
