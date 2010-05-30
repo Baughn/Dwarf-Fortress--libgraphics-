@@ -214,7 +214,8 @@ bool grab_token_string(string &dest,const char *source,char compc)
 
 	//GO UNTIL YOU HIT A :, ], or the end
 	int32_t s;
-	for(s=0;s<strlen(source);s++)
+        const int slen = strlen(source);
+	for(s=0;s<slen;s++)
 		{
 		if(source[s]==compc||source[s]==']')break;
 		dest+=source[s];

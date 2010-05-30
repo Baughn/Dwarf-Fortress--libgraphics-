@@ -75,19 +75,20 @@ void graphicst::resize(int x, int y)  {
 
 void graphicst::addcoloredst(const char *str,const char *colorstr)
 {
-	int s;
-	for(s=0;s<strlen(str)&&screenx<init.display.grid_x;s++)
-          {
-            if(screenx<0)
-              {
-                s-=screenx;
-                screenx=0;
-                if(s>=strlen(str))break;
-              }
-            
-            changecolor((colorstr[s] & 7),((colorstr[s] & 56))>>3,((colorstr[s] & 64))>>6);
-            addchar(str[s]);
-          }
+  const int slen = strlen(str);
+  int s;
+  for(s=0; s < slen && screenx < init.display.grid_x; s++)
+    {
+      if(screenx<0)
+        {
+          s-=screenx;
+          screenx=0;
+          if (s >= slen) break;
+        }
+      
+      changecolor((colorstr[s] & 7),((colorstr[s] & 56))>>3,((colorstr[s] & 64))>>6);
+      addchar(str[s]);
+    }
 }
 
 void graphicst::addst(const string &str)
@@ -108,18 +109,19 @@ void graphicst::addst(const string &str)
 
 void graphicst::addst(const char *str)
 {
-	int s;
-	for(s=0;s<strlen(str)&&screenx<init.display.grid_x;s++)
-		{
-		if(screenx<0)
-			{
-			s-=screenx;
-			screenx=0;
-			if(s>=strlen(str))break;
-			}
-
-		addchar(str[s]);
-		}
+  int s;
+  const int slen = strlen(str);
+  for(s=0; s < slen && screenx < init.display.grid_x; s++)
+    {
+      if(screenx<0)
+        {
+          s-=screenx;
+          screenx=0;
+          if(s >= slen) break;
+        }
+      
+      addchar(str[s]);
+    }
 }
 
 void graphicst::erasescreen_clip()
