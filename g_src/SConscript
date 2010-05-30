@@ -50,7 +50,7 @@ if clang:
 # below.
 env['CPPPATH']=["#g_src/fmodexinclude"]
 env['CCFLAGS']=["-Dunix"]
-env['LIBS']=["ncursesw","SDL_image"]
+env['LIBS']=["ncursesw","SDL_image","z"]
 # If there's a library in the libs folder it will get linked over a system one.
 env['LIBPATH']=["#libs"]
 env['LINKFLAGS']=["-Wl,--as-needed",'-Wl,-rpath=\$$ORIGIN/libs']
@@ -68,7 +68,6 @@ env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
 env.ParseConfig('pkg-config openal --cflags --libs')
 env.ParseConfig('pkg-config sndfile --libs --cflags')
 env.ParseConfig('pkg-config sdl --libs --cflags')
-env.ParseConfig('pkg-config zlib --cflags --libs')
 env.ParseConfig('pkg-config glu --cflags --libs')
 
 
