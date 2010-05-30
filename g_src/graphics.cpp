@@ -71,6 +71,7 @@ void graphicst::resize(int x, int y)  {
   init.display.grid_y = y;
   setclipping(0, x-1, 0, y-1);
   force_full_display_count++;
+  screen_limit = screen + dimx * dimy * 4;
 }
 
 void graphicst::addcoloredst(const char *str,const char *colorstr)

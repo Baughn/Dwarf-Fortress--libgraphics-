@@ -207,6 +207,8 @@ void renderer::swap_arrays() {
   screentexpos_grayscale = screentexpos_grayscale_old; screentexpos_grayscale_old = gps.screentexpos_grayscale; gps.screentexpos_grayscale = screentexpos_grayscale;
   screentexpos_cf = screentexpos_cf_old; screentexpos_cf_old = gps.screentexpos_cf; gps.screentexpos_cf = screentexpos_cf;
   screentexpos_cbr = screentexpos_cbr_old; screentexpos_cbr_old = gps.screentexpos_cbr; gps.screentexpos_cbr = screentexpos_cbr;
+
+  gps.screen_limit = gps.screen + gps.dimx * gps.dimy * 4;
 }
 
 void enablerst::pause_async_loop()  {

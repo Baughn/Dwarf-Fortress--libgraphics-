@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <cassert>
 using std::string;
 
 #include "GL/glew.h"
@@ -79,25 +80,26 @@ class graphicst
                 }
                 void addchar(unsigned char c,char advance=1)
                 {
-                  if(screenx>=clipx[0]&&screenx<=clipx[1]&&
-                     screeny>=clipy[0]&&screeny<=clipy[1])
+                  /* assert (screen_limit == screen + dimy * dimx * 4); */
+                  unsigned char *s = screen + screenx*dimy*4 + screeny*4;
+                  if(s < screen_limit)
                     {
-                      screen[screenx*dimy*4 + screeny*4 + 0]=c;
-                      screen[screenx*dimy*4 + screeny*4 + 1]=screenf;
-                      screen[screenx*dimy*4 + screeny*4 + 2]=screenb;
-                      screen[screenx*dimy*4 + screeny*4 + 3]=screenbright;
-
+                      *s++ = c;
+                      *s++ = screenf;
+                      *s++ = screenb;
+                      *s++ = screenbright;
                       screentexpos[screenx*dimy + screeny]=0;
                     }
                   if(advance)screenx++;
                 }
                 void addchar(int x, int y, unsigned char c, int f, int b, int bright) {
-                  if (x >= clipx[0] && x <= clipx[1] &&
-                      y >= clipy[0] && y <= clipy[1]) {
-                    screen[x*dimy*4 + y*4 + 0] = c;
-                    screen[x*dimy*4 + y*4 + 1] = f;
-                    screen[x*dimy*4 + y*4 + 2] = b;
-                    screen[x*dimy*4 + y*4 + 3] = bright;
+                  /* assert (screen_limit == screen + dimy * dimx * 4); */
+                  unsigned char *s = screen + x*dimy*4 + y*4;
+                  if (s < screen_limit) {
+                    *s++ = c;
+                    *s++ = f;
+                    *s++ = b;
+                    *s++ = bright;
                   }
                 }
 		void addcoloredst(const char *str,const char *colorstr);
@@ -149,6 +151,10 @@ class graphicst
                 int mouse_x, mouse_y;
 		void get_mouse_text_coords(int32_t &mx, int32_t &my);
                 void draw_border(int x1, int x2, int y1, int y2);
+
+                // Instead of doing costly bounds-checking calculations, we cache the end
+                // of the arrays..
+                unsigned char *screen_limit;
 };
 
 extern graphicst gps;
