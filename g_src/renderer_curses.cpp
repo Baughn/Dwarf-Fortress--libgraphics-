@@ -73,11 +73,11 @@ public:
     const int bg   = gps.screen[x*gps.dimy*4 + y*4 + 2];
     const int bold = gps.screen[x*gps.dimy*4 + y*4 + 3];
 
-    const string utf8 = encode_utf8(charmap[ch] ? charmap[ch] : ch);
     const int pair    = lookup_pair(make_pair<int,int>(fg,bg));
     attron(COLOR_PAIR(pair));
     if (bold) attron(A_BOLD);
-    mvprintw(y, x, "%s", utf8.c_str());
+    wchar_t chs[2] = {charmap[ch] ? charmap[ch] : ch,0};
+    mvaddwstr(y, x, chs);
     if (bold) attroff(A_BOLD);
   }
 

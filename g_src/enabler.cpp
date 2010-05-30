@@ -12,6 +12,10 @@
 #include "init.h"
 #include "music_and_sound_g.h"
 
+#ifdef unix
+# include <locale.h>
+#endif
+
 using namespace std;
 
 enablerst enabler;
@@ -652,6 +656,9 @@ int call_loop(void *dummy) {
 }
 
 int main (int argc, char* argv[]) {
+#ifdef unix
+  setlocale(LC_ALL, "");
+#endif
 #if !defined(__APPLE__) && defined(unix)
   bool ok = gtk_init_check(&argc, &argv);
   if (!ok) {
