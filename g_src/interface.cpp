@@ -837,33 +837,32 @@ void interfacest::insertscreen_at_front(viewscreenst *scr)
 	insertscreen_as_child(scr,&view);
 }
 
+viewscreenst *interfacest::grab_lastscreen() {
+  viewscreenst *currentscreen = &view;
+  while (currentscreen->child) currentscreen = currentscreen->child;
+  return currentscreen;
+}
+
 char interfacest::loop() {
   //NO INTERFACE LEFT, QUIT
   if(view.child==0)return 1;
 
-  // if(shutdown_interface_for_ms>0) {
-  //   // FIXME ASKTOADY
-  //   enabler.clear_input();     //CLEAR ALL THE KEYS
-  //   if(enabler.now-shutdown_interface_tickcount>=shutdown_interface_for_ms||
-  //      shutdown_interface_tickcount>enabler.now) shutdown_interface_for_ms=0;
-  // }
-
   //GRAB CURRENT SCREEN AT THE END OF THE LIST
-  viewscreenst *currentscreen=&view;
-  while(currentscreen->child!=NULL) currentscreen = currentscreen->child;
+  viewscreenst *currentscreen = grab_lastscreen();
   //MOVE SCREENS BACK
   switch(currentscreen->breakdownlevel) {
   case INTERFACE_BREAKDOWN_NONE: {
     
-    if (currentscreen->child==NULL) currentscreen->logic();
-
-    // Handle movie
-    // if(currentscreen->movies_okay()) {
-    //   handlemovie(0);
-    // }
+    currentscreen->logic();
 
     const Time now = SDL_GetTicks();
+    // Process as much input as possible. Some screens can't handle multiple input events
+    // per logic call (retain_nonzero_input, and any alteration to the window setup
+    // requires us to stop until the next logic call.
     for (;;) {
+      if (currentscreen->child || currentscreen->breakdownlevel != INTERFACE_BREAKDOWN_NONE)
+        break; // Some previous input or logic had the effect of switching screens
+
       if (flag & INTERFACEFLAG_RETAIN_NONZERO_INPUT) {
         flag&=~INTERFACEFLAG_RETAIN_NONZERO_INPUT;
         break;
