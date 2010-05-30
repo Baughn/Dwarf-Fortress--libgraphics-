@@ -262,8 +262,6 @@ void enablerst::async_wait() {
   }
 }
 
-int simtick = 0;
-
 void enablerst::async_loop() {
   async_paused = false;
   async_frames = 0;
@@ -316,7 +314,9 @@ void enablerst::async_loop() {
         async_frombox.write(async_msg(async_msg::quit));
         return; // We're done.
       }
-      simtick++;
+      simticks.lock();
+      simticks.val++;
+      simticks.unlock();
       async_frames--;
       if (async_frames < 0) async_frames = 0;
       update_fps();
@@ -358,6 +358,9 @@ void enablerst::do_frame() {
     // Then finish here
     renderer->display();
     renderer->render();
+    gputicks.lock();
+    gputicks.val++;
+    gputicks.unlock();
     outstanding_gframes--;
   }
 
@@ -511,6 +514,10 @@ void enablerst::eventLoop_SDL()
 int enablerst::loop(string cmdline) {
   command_line = cmdline;
 
+  // Initialize the tick counters
+  simticks.write(0);
+  gputicks.write(0);
+  
   // Call DF's initialization routine
   if (!beginroutine())
     exit(EXIT_FAILURE);

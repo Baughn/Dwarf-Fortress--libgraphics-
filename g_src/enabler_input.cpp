@@ -17,8 +17,6 @@ extern initst init;
 #include "svector.h"
 #include "curses.h"
 
-extern int simtick;
-
 // The timeline events we actually pass back from get_input. Well, no,
 // that's just k, but..
 struct Event {
@@ -609,7 +607,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     if (sdl.key) {
       stored_keys.push_back(sdl);
     }
-    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = simtick;
+    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = enabler.simticks.read();
     timeline.insert(e);
     key_registering = false;
     return;
@@ -643,7 +641,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
   // rest of this function.
   if (key_registering && !e.release) {
     stored_keys.push_back(e.match);
-    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = simtick;
+    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = enabler.simticks.read();
     timeline.insert(e);
     return;
   }
@@ -680,7 +678,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
     // okay to cancel repeats unless /all/ the bindings are
     // non-repeating.
     for (set<InterfaceKey>::iterator k = keys.begin(); k != keys.end(); ++k) {
-      Event e = {key_repeat(*k), *k, 0, serial, now, simtick};
+      Event e = {key_repeat(*k), *k, 0, serial, now, enabler.simticks.read()};
       timeline.insert(e);
     }
     // if (cancel_ok) {
@@ -700,8 +698,6 @@ void enabler_inputst::clear_input() {
   last_serial = 0;
 }
 
-extern int simtick;
-
 set<InterfaceKey> enabler_inputst::get_input(Time now) {
   // We walk the timeline, returning all events corresponding to a
   // single physical keypress, and inserting repeats relative to the
@@ -716,9 +712,10 @@ set<InterfaceKey> enabler_inputst::get_input(Time now) {
 
   const Time first_time = ev->time;
   const int first_serial = ev->serial;
+  int simtick = enabler.simticks.read();
   while (ev != timeline.end() && ev->time == first_time && ev->serial == first_serial) {
-    // FIXME: THIS IS A HACK
-    // Make sure the user had a chance to cancel
+    // To make sure the user had a chance to cancel (by lifting the key), we require there
+    // to be at least three simulation ticks before the first repeat.
     if (ev->repeats == 1 && ev->tick > simtick - 3) {
     } else
       input.insert(ev->k);

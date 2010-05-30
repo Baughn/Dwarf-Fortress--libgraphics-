@@ -982,6 +982,9 @@ class enablerst : public enabler_inputst
 
   // Conversations
   text_systemst text_system;
+
+  // TOADY: MOVE THESE TO "FRAMERATE INTERFACE"
+  MVar<int> simticks, gputicks;
 };
 #endif
 

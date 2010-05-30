@@ -54,12 +54,16 @@ template <typename T>
 class MVar {
   SDL_sem *s;
 public:
-  T val; // For pity's sake, lock before access.
+  T val;
   void lock() { SDL_SemWait(s); }
   void unlock() { SDL_SemPost(s); }
   MVar() { s = SDL_CreateSemaphore(1); }
   ~MVar() { SDL_DestroySemaphore(s); }
+  void write(const T &w) { lock(); val = w; unlock(); }
+  void read(T &r) { lock(); r = val; unlock(); }
+  T read() { T r; read(r); return r; }
 };
+  
 
 template<bool start_locked = false>
 class Lock {
