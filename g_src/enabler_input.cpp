@@ -728,6 +728,7 @@ set<InterfaceKey> enabler_inputst::get_input(Time now) {
     case REPEAT_SLOW:
       if (ev->repeats == 0) {
         next.time = now + init.input.hold_time;
+        timeline.insert(next);
         break;
       }
     case REPEAT_FAST:
