@@ -72,7 +72,7 @@ texture_fullid renderer::screen_to_texid(int x, int y) {
       } else if (addcolor) {
         goto use_ch;
       } else {
-        ret.r = ret.g = ret.b = 255;
+        ret.r = ret.g = ret.b = 1;
         ret.br = ret.bg = ret.bb = 0;
       }
       goto skip_ch;

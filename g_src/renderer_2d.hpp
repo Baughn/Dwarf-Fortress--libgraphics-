@@ -18,8 +18,8 @@ protected:
                                      tex->w, tex->h,
                                      tex->format->BitsPerPixel,
                                      tex->format->Rmask,
-                                     tex->format->Bmask,
                                      tex->format->Gmask,
+                                     tex->format->Bmask,
                                      0);
         if (!color) {
           use_hw = false;
@@ -31,8 +31,8 @@ protected:
                                      tex->w, tex->h,
                                      tex->format->BitsPerPixel,
                                      tex->format->Rmask,
-                                     tex->format->Bmask,
                                      tex->format->Gmask,
+                                     tex->format->Bmask,
                                      0);
         if (!color) {
           MessageBox (NULL, "Unable to create texture!", "Fatal error", MB_OK | MB_ICONEXCLAMATION);
