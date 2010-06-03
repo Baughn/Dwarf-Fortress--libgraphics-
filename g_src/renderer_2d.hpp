@@ -1,8 +1,15 @@
+#include "resize++.h"
+
 class renderer_2d_base : public renderer {
 protected:
   SDL_Surface *screen;
   map<texture_fullid, SDL_Surface*> tile_cache;
   int dispx, dispy, dimx, dimy;
+  // We may shrink or enlarge dispx/dispy in response to zoom requests. dispx/y_z are the
+  // size we actually display tiles at.
+  int dispx_z, dispy_z;
+  // Viewport origin
+  int origin_x, origin_y;
 
   SDL_Surface *tile_cache_lookup(texture_fullid &id) {
     map<texture_fullid, SDL_Surface*>::iterator it = tile_cache.find(id);
@@ -64,11 +71,11 @@ protected:
       SDL_UnlockSurface(color);
       SDL_UnlockSurface(tex);
       
-      // Convert to display format
-      SDL_DisplayFormat(color);
+      // Convert to display format; deletes color
+      SDL_Surface *disp = SDL_Resize(color, dispx_z, dispy_z);
       // Insert and return
-      tile_cache[id] = color;
-      return color;
+      tile_cache[id] = disp;
+      return disp;
     }
   }
   
@@ -99,8 +106,8 @@ public:
     SDL_Surface *tex = tile_cache_lookup(id);
     // Figure out where to blit
     SDL_Rect dst;
-    dst.x = tex->w * x;
-    dst.y = tex->h * y;
+    dst.x = tex->w * x + origin_x;
+    dst.y = tex->h * y + origin_y;
     // And blit.
     SDL_BlitSurface(tex, NULL, screen, &dst);
   }
@@ -133,6 +140,48 @@ public:
     gps.force_full_display_count = 1;
     enabler.flag |= ENABLERFLAG_RENDER;    
   }
+
+  renderer_2d_base() {
+    zoom_steps = forced_steps = 0;
+  }
+  int zoom_steps, forced_steps;
+  int natural_w, natural_h;
+
+  void compute_forced_zoom() {
+    forced_steps = 0;
+    pair<int,int> zoomed = compute_zoom();
+    while (zoomed.first < MIN_GRID_X || zoomed.second < MIN_GRID_Y) {
+      forced_steps++;
+      zoomed = compute_zoom();
+    }
+    while (zoomed.first > MAX_GRID_X || zoomed.second > MAX_GRID_Y) {
+      forced_steps--;
+      zoomed = compute_zoom();
+    }
+  }
+
+  pair<int,int> compute_zoom(bool clamp = false) {
+    const int dispx = enabler.is_fullscreen() ?
+      init.font.large_font_dispx :
+      init.font.small_font_dispx;
+    const int dispy = enabler.is_fullscreen() ?
+      init.font.large_font_dispy :
+      init.font.small_font_dispy;
+    int w, h;
+    if (dispx < dispy) {
+      w = natural_w + zoom_steps + forced_steps;
+      h = double(natural_h) * (double(w) / double(natural_w));
+    } else {
+      h = natural_h + zoom_steps + forced_steps;
+      w = double(natural_w) * (double(h) / double(natural_h));
+    }
+    if (clamp) {
+      w = MIN(MAX(w, MIN_GRID_X), MAX_GRID_X);
+      h = MIN(MAX(h, MIN_GRID_Y), MAX_GRID_Y);
+    }
+    return make_pair<int,int>(w,h);
+  }
+
   
   void resize(int w, int h) {
     // We've gotten resized.. first step is to reinitialize video
@@ -150,27 +199,81 @@ public:
       // (Re)calculate grid-size
       dimx = MIN(MAX(w / dispx, MIN_GRID_X), MAX_GRID_X);
       dimy = MIN(MAX(h / dispy, MIN_GRID_Y), MAX_GRID_Y);
-      cout << "Resizing grid to " << dimx << "x" << dimy << endl << endl;
+      cout << "Resizing grid to " << dimx << "x" << dimy << endl;
       grid_resize(dimx, dimy);
     }
+    // Calculate zoomed tile size
+    natural_w = MAX(w / dispx,1);
+    natural_h = MAX(h / dispy,1);
+    compute_forced_zoom();
+    reshape(compute_zoom(true));
+    cout << endl;
   }
 
+  void reshape(pair<int,int> max_grid) {
+    const int w = max_grid.first,
+      h = max_grid.second;
+    // Compute the largest tile size that will fit this grid into the window, roughly maintaining aspect ratio
+    double try_x = dispx, try_y = dispy;
+    try_x = screen->w / w;
+    try_y = MIN(try_x / dispx * dispy, screen->h / h);
+    try_x = MIN(try_x, try_y / dispy * dispx);
+    dispx_z = try_x; dispy_z = try_y;
+    cout << "Resizing font to " << dispx_z << "x" << dispy_z << endl;
+    // Remove now-obsolete tile catalog
+    for (map<texture_fullid, SDL_Surface*>::iterator it = tile_cache.begin();
+         it != tile_cache.end();
+         ++it)
+      SDL_FreeSurface(it->second);
+    tile_cache.clear();
+    // Reset grid size
+#ifdef DEBUG
+    cout << "Resizing grid to " << w << "x" << h << endl;
+#endif
+    gps_allocate(w,h);
+    // Force redisplay
+    gps.force_full_display_count = 1;
+    // Calculate viewport origin, for centering
+    origin_x = (screen->w - dispx_z * w) / 2;
+    origin_y = (screen->h - dispy_z * h) / 2;
+  }
+  
   void set_fullscreen() {
     resize(init.display.desired_fullscreen_width,
            init.display.desired_fullscreen_height);
   }
 
   bool get_mouse_coords(int &x, int &y) {
-    // Origin is always 0,0. Simple.
     int mouse_x, mouse_y;
     SDL_GetMouseState(&mouse_x, &mouse_y);
-    if (mouse_x < 0 || mouse_x >= dispx*dimx ||
-        mouse_y < 0 || mouse_y >= dispy*dimy)
+    mouse_x -= origin_x; mouse_y -= origin_y;
+    if (mouse_x < 0 || mouse_x >= dispx_z*dimx ||
+        mouse_y < 0 || mouse_y >= dispy_z*dimy)
       return false;
-    x = mouse_x / dispx;
-    y = mouse_y / dispy;
+    x = mouse_x / dispx_z;
+    y = mouse_y / dispy_z;
     return true;
   }
+
+  void zoom(zoom_commands cmd) {
+    pair<int,int> before = compute_zoom(true);
+    int before_steps = zoom_steps;
+    switch (cmd) {
+    case zoom_in:    zoom_steps -= init.input.zoom_speed; break;
+    case zoom_out:   zoom_steps += init.input.zoom_speed; break;
+    case zoom_reset:
+      zoom_steps = 0;
+    case zoom_resetgrid:
+      compute_forced_zoom();
+      break;
+    }
+    pair<int,int> after = compute_zoom(true);
+    if (after == before && (cmd == zoom_in || cmd == zoom_out))
+      zoom_steps = before_steps;
+    else
+      reshape(after);
+  }
+  
 };
 
 class renderer_2d : public renderer_2d_base {
