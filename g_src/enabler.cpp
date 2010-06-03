@@ -131,7 +131,7 @@ void renderer::display()
           // *first* comparison, and having pointers for the others would exceed register
           // count.
           // Partial printing (and color-conversion): Big-ass if.
-          if (*screenp != *oldp &&
+          if (*screenp == *oldp &&
               screentexpos[off] == screentexpos_old[off] &&
               screentexpos_addcolor[off] == screentexpos_addcolor_old[off] &&
               screentexpos_grayscale[off] == screentexpos_grayscale_old[off] &&
