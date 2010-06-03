@@ -57,6 +57,7 @@ namespace widgets {
     int selection;
     int last_displayheight;
     bool bleached;
+    map<int, pair<int,int> > colors;
     
     // Given 'total' lines, with 'sel' selected, and 'space' to draw in,
     // returns the first line that should be drawn.
@@ -113,6 +114,10 @@ namespace widgets {
     void set(int line, string text, T token) {
       lines[line] = mp(text,token);
     }
+    // Set the color of a line
+    void set_color(int line, int fg, int bg) {
+      colors[line] = make_pair<int,int>(fg,bg);
+    }
     // Handles (page) up/down
     void feed(std::set<InterfaceKey> &input) {
       if (!lines.size()) return;
@@ -133,7 +138,13 @@ namespace widgets {
       typename dict::iterator it = lines.lower_bound(first);
       for (; it != lines.end() && it->first - first < h; ++it) {
         gps.locate(it->first - first + y, x);
-        gps.changecolor(7, 0, it->first == selection && !bleached);
+        map<int,pair<int,int> >::iterator color = colors.find(it->first - first);
+        int fg = 7, bg = 0;
+        if (color != colors.end()) {
+          fg = color->second.first;
+          bg = color->second.second;
+        }
+        gps.changecolor(fg, bg, it->first == selection && !bleached);
         gps.addst(it->second.first.substr(0, w));
       }
     }
@@ -165,6 +176,7 @@ namespace widgets {
       lines.clear();
       last_displayheight = 10;
       bleached = false;
+      colors.clear();
     }
   };
 

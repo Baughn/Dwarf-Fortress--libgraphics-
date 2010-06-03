@@ -87,8 +87,7 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
         keyRegister.add(display + it->display, it->type);
       }
     }
-  }
-  if (input.count(INTERFACEKEY_STANDARDSCROLL_PAGEUP) ||
+  } else if (input.count(INTERFACEKEY_STANDARDSCROLL_PAGEUP) ||
       input.count(INTERFACEKEY_STANDARDSCROLL_PAGEDOWN) ||
       input.count(INTERFACEKEY_STANDARDSCROLL_UP) ||
       input.count(INTERFACEKEY_STANDARDSCROLL_DOWN)) {
@@ -99,12 +98,17 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
     case mode_macro: macro.feed(input); break;
     case mode_register: keyRegister.feed(input); break;
     }
-  }
-  if (mode == mode_keyL && input.count(INTERFACEKEY_STANDARDSCROLL_RIGHT))
+  } else if (mode == mode_keyL && input.count(INTERFACEKEY_STANDARDSCROLL_RIGHT))
     mode = mode_keyR;
-  if (mode == mode_keyR && input.count(INTERFACEKEY_STANDARDSCROLL_LEFT))
+  else if (mode == mode_main && input.count(INTERFACEKEY_STANDARDSCROLL_RIGHT)) {
+    if (main.get_selection() == sel_macros) enter_macros();
+    if (main.get_selection() >= sel_first_group)
+      enter_key(main.get_selection() - sel_first_group);
+  } else if (mode == mode_keyR && input.count(INTERFACEKEY_STANDARDSCROLL_LEFT))
     mode = mode_keyL;
-  if (input.count(INTERFACEKEY_STRING_A000)) { // Backspace: Delete something.
+  else if ((mode == mode_keyL || mode == mode_macro) && input.count(INTERFACEKEY_STANDARDSCROLL_LEFT))
+    mode = mode_main;
+  else if (input.count(INTERFACEKEY_STRING_A000)) { // Backspace: Delete something.
     switch (mode) {
     case mode_macro:
       if (macro.get_selection() != "") {
@@ -122,8 +126,7 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
       }
       break;
     }
-  }
-  if (input.count(INTERFACEKEY_SELECT)) {
+  } else if (input.count(INTERFACEKEY_SELECT)) {
     switch (mode) {
     case mode_main:
       if (main.get_selection() == sel_macros) { // Macros
@@ -166,8 +169,7 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
       reset_keyR();
       break;
     }
-  }
-  if (input.count(INTERFACEKEY_LEAVESCREEN) || input.count(INTERFACEKEY_OPTIONS)) {
+  } else if (input.count(INTERFACEKEY_LEAVESCREEN) || input.count(INTERFACEKEY_OPTIONS)) {
     if (mode == mode_register)
       mode = mode_keyR;
     else
@@ -210,11 +212,14 @@ void KeybindingScreen::reset_keyR() {
   list<EventMatch> matchers = enabler.list_keys(key);
   Repeat rep = enabler.key_repeat(key);
   sel.sel = sel_rep_none;
-  keyR.set(2, rep == REPEAT_NOT ? "Don't repeat (selected)" : "Don't repeat", sel);
+  keyR.set(2, "Don't repeat", sel);
+  if (rep == REPEAT_NOT) keyR.set_color(2, 4, 0);
   sel.sel = sel_rep_slow;
-  keyR.set(3, rep == REPEAT_SLOW ? "Delayed repeat (selected)" : "Delayed repeat", sel);
+  keyR.set(3, "Delayed repeat", sel);
+  if (rep == REPEAT_SLOW) keyR.set_color(3, 4, 0);
   sel.sel = sel_rep_fast;
-  keyR.set(4, rep == REPEAT_FAST ? "Immediate repeat (selected)" : "Immediate repeat", sel);
+  keyR.set(4, "Immediate repeat", sel);
+  if (rep == REPEAT_FAST) keyR.set_color(4, 4, 0);
   int i = 6;
   for (list<EventMatch>::iterator it = matchers.begin(); it != matchers.end(); ++it, ++i) {
     ostringstream desc;
