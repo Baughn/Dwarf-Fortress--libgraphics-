@@ -10,7 +10,7 @@
 
 class KeybindingScreen : public viewscreenst {
   enum { mode_main, mode_keyL, mode_keyR, mode_macro, mode_register } mode;
-  enum keyR_type { sel_add, sel_event };
+  enum keyR_type { sel_add, sel_rep_none, sel_rep_slow, sel_rep_fast, sel_event };
   enum main_selector { sel_macros, sel_just_exit, sel_save_exit, sel_first_group };
 
   struct keyR_selector {

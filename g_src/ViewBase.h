@@ -139,6 +139,12 @@ namespace widgets {
     }
     // Read out the current selection
     T get_selection() { return lines[selection].second; }
+    int get_pos() { return selection; }
+    // Set the position by line
+    void set_pos(int pos) {
+      if (pos < size())
+        selection = pos;
+    }
     // Delete the currently selected line
     void del_selection() {
       typename dict::iterator it = lines.find(selection);

@@ -77,11 +77,12 @@ struct RegisteredKey {
 
 class enabler_inputst {
   std::set<InterfaceKey> key_translation(EventMatch &match);
+ public:
   Repeat key_repeat(InterfaceKey);
+  void key_repeat(InterfaceKey, Repeat);
   void load_macro_from_file(const std::string &file);
   void save_macro_to_file(const std::string &file, const std::string &name, const macro &);
   
- public:
   // In practice.. do not use this one.
   void add_input(SDL_Event &e, Time now);
   // Use this one. It's much nicer.

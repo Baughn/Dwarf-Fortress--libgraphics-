@@ -813,6 +813,10 @@ Repeat enabler_inputst::key_repeat(InterfaceKey binding) {
     return REPEAT_NOT;
 }
 
+void enabler_inputst::key_repeat(InterfaceKey binding, Repeat repeat) {
+  repeatmap[binding] = repeat;
+}
+
 void enabler_inputst::record_input() {
   active_macro.clear();
   macro_recording = true;

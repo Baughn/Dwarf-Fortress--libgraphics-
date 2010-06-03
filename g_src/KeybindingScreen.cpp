@@ -139,11 +139,26 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
         enter_key(main.get_selection() - sel_first_group);
       }
       break;
-    case mode_keyR:
-      if (keyR.get_selection().sel == sel_add) {
+    case mode_keyR: {
+      InterfaceKey key = keyL.get_selection();
+      switch (keyR.get_selection().sel) {
+      case sel_add:
         enabler.register_key();
         mode = mode_register;
-      }
+        break;
+      case sel_rep_none:
+        enabler.key_repeat(key, REPEAT_NOT);
+        reset_keyR();
+        break;
+      case sel_rep_slow:
+        enabler.key_repeat(key, REPEAT_SLOW);
+        reset_keyR();
+        break;
+      case sel_rep_fast:
+        enabler.key_repeat(key, REPEAT_FAST);
+        reset_keyR();
+        break;
+      }}
       break;
     case mode_register:
       enabler.bindRegisteredKey(keyRegister.get_selection(), keyL.get_selection());
@@ -186,13 +201,21 @@ void KeybindingScreen::enter_key(int group) {
 }
 
 void KeybindingScreen::reset_keyR() {
+  int lastpos = keyR.get_pos();
   keyR.clear();
   struct keyR_selector sel;
   sel.sel = sel_add;
   keyR.add("Add binding", sel);
   InterfaceKey key = keyL.get_selection();
   list<EventMatch> matchers = enabler.list_keys(key);
-  int i = 2;
+  Repeat rep = enabler.key_repeat(key);
+  sel.sel = sel_rep_none;
+  keyR.set(2, rep == REPEAT_NOT ? "Don't repeat (selected)" : "Don't repeat", sel);
+  sel.sel = sel_rep_slow;
+  keyR.set(3, rep == REPEAT_SLOW ? "Delayed repeat (selected)" : "Delayed repeat", sel);
+  sel.sel = sel_rep_fast;
+  keyR.set(4, rep == REPEAT_FAST ? "Immediate repeat (selected)" : "Immediate repeat", sel);
+  int i = 6;
   for (list<EventMatch>::iterator it = matchers.begin(); it != matchers.end(); ++it, ++i) {
     ostringstream desc;
     switch (it->type) {
@@ -214,6 +237,7 @@ void KeybindingScreen::reset_keyR() {
     sel.event = *it;
     keyR.set(i, desc.str(), sel);
   }
+  keyR.set_pos(lastpos);
 }
 
 void KeybindingScreen::render_macro() {
