@@ -10,8 +10,8 @@ src_dll = ["basics.cpp","command_line.cpp","enabler.cpp","files.cpp",
 
 dll  = '#libs/libgraphics.so'
 
-optimize = False
-debug = True
+optimize = True
+debug = False
 profile = False
 
 clang = False

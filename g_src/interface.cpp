@@ -74,7 +74,7 @@ extern musicsoundst musicsound;
 extern GameMode gamemode;
 extern GameType gametype;
 
-extern long movie_version;
+extern int32_t movie_version;
 
 
 
@@ -1705,104 +1705,6 @@ char standardstringentry(string &str,int maxlen,unsigned int flag,std::set<Inter
 		}
 
 	return 0;
-}
-
-char standardscrolling(std::set<InterfaceKey> &events,short &selection,int min,int max,int jump,unsigned int flag)
-{
-	short osel=selection;
-
-	int32_t seltemp=selection;
-	standardscrolling(events,seltemp,min,max,jump,flag);
-	selection=seltemp;
-
-	if(osel!=selection)return 1;
-	else return 0;
-}
-
-void finishscrolling(int32_t &selection,int min,int max,int jump,unsigned int flag,char littlekey)
-{
-	if(flag & SCROLLING_NOSELECT)
-		{
-		if(selection>max-jump+1)selection=max-jump+1;
-		if(selection<min)selection=min;
-		}
-	else
-		{
-		//WRAP ONLY IF YOU USED LITTLE KEYS OR IF YOU WERE AT THE END
-		if((littlekey||selection==min-jump||selection==max+jump)&&!(flag & SCROLLING_NO_WRAP))
-			{
-			if(selection>max)selection=min;
-			if(selection<min)selection=max;
-			}
-		//OTHERWISE JUST CLUNK AT THE BOTTOM
-		else
-			{
-			if(selection>max)selection=max;
-			if(selection<min)selection=min;
-			}
-		}
-}
-
-char standardscrolling(std::set<InterfaceKey> &events,int32_t &selection,int min,int max,int jump,unsigned int flag)
-{
-	short osel=selection;
-
-	//NOTE: THIS CAN HANDLE max = -1, min = 0
-	char littlekey=0;
-	if(flag & SCROLLING_REVERSE)
-		{
-		if(events.count(INTERFACEKEY_STANDARDSCROLL_DOWN)){selection--;littlekey=1;}
-		if(events.count(INTERFACEKEY_STANDARDSCROLL_UP)){selection++;littlekey=1;}
-		if(events.count(INTERFACEKEY_STANDARDSCROLL_PAGEDOWN))selection-=jump;
-		if(events.count(INTERFACEKEY_STANDARDSCROLL_PAGEUP))selection+=jump;
-		}
-	else
-		{
-		if(events.count(INTERFACEKEY_STANDARDSCROLL_UP)){selection--;littlekey=1;}
-		if(events.count(INTERFACEKEY_STANDARDSCROLL_DOWN)){selection++;littlekey=1;}
-		if(events.count(INTERFACEKEY_STANDARDSCROLL_PAGEUP))selection-=jump;
-		if(events.count(INTERFACEKEY_STANDARDSCROLL_PAGEDOWN))selection+=jump;
-		}
-
-	finishscrolling(selection,min,max,jump,flag,littlekey);
-
-	if(osel!=selection)return 1;
-	else return 0;
-}
-
-char secondaryscrolling(std::set<InterfaceKey> &events,short &selection,int min,int max,int jump,unsigned int flag)
-{
-	int32_t temp=selection;
-	char ret=secondaryscrolling(events,temp,min,max,jump,flag);
-	selection=temp;
-	return ret;
-}
-
-char secondaryscrolling(std::set<InterfaceKey> &events,int32_t &selection,int min,int max,int jump,unsigned int flag)
-{
-	short osel=selection;
-
-	//NOTE: THIS CAN HANDLE max = -1, min = 0
-	char littlekey=0;
-	if(flag & SCROLLING_REVERSE)
-		{
-		if(events.count(INTERFACEKEY_SECONDSCROLL_DOWN)){selection--;littlekey=1;}
-		if(events.count(INTERFACEKEY_SECONDSCROLL_UP)){selection++;littlekey=1;}
-		if(events.count(INTERFACEKEY_SECONDSCROLL_PAGEDOWN))selection-=jump;
-		if(events.count(INTERFACEKEY_SECONDSCROLL_PAGEUP))selection+=jump;
-		}
-	else
-		{
-		if(events.count(INTERFACEKEY_SECONDSCROLL_UP)){selection--;littlekey=1;}
-		if(events.count(INTERFACEKEY_SECONDSCROLL_DOWN)){selection++;littlekey=1;}
-		if(events.count(INTERFACEKEY_SECONDSCROLL_PAGEUP))selection-=jump;
-		if(events.count(INTERFACEKEY_SECONDSCROLL_PAGEDOWN))selection+=jump;
-		}
-
-	finishscrolling(selection,min,max,jump,flag,littlekey);
-
-	if(osel!=selection)return 1;
-	else return 0;
 }
 
 //To Do

@@ -7,7 +7,9 @@
 
 template <class T, class A = std::allocator<T> >
 class svector : public std::vector<T, A> {
+#ifndef WIN32
 		using std::vector<T, A>::begin;
+#endif
         public:
                 void erase(typename std::vector<T, A>::size_type i) {
                         std::vector<T, A> &vec = *this;

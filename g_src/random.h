@@ -1,7 +1,9 @@
 #ifndef RANDOM_H
 #define RANDOM_H
 
+#ifndef WIN32
 #include <stdint.h>
+#endif //WIN32
 
 #define MT_BUFFER_NUM 10
 #define MT_LEN 624
