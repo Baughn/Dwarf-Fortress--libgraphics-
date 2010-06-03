@@ -138,9 +138,14 @@ void dwarf_option_screen() {
 void dwarf_remove_screen() {
 }
 
-
 void texture_handlerst::clean() {
 }
+
+void finishscrolling(int32_t &selection,int32_t min,int32_t max,int32_t jump,uint32_t flag,char littlekey) {}
+char standardscrolling(std::set<InterfaceKey> &events,short &selection,int32_t min,int32_t max,int32_t jump,uint32_t flag) {}
+char standardscrolling(std::set<InterfaceKey> &events,int32_t &selection,int32_t min,int32_t max,int32_t jump,uint32_t flag) {}
+char secondaryscrolling(std::set<InterfaceKey> &events,short &scroll,int32_t min,int32_t max,int32_t jump,uint32_t flag) {}
+char secondaryscrolling(std::set<InterfaceKey> &events,int32_t &scroll,int32_t min,int32_t max,int32_t jump,uint32_t flag) {}
 
 void process_object_lines(textlinesst &lines, string &chktype, string &graphics_dir) {
 }
