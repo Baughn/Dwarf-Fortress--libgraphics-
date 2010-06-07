@@ -1,7 +1,7 @@
 #include <cmath>
 #include <vector>
 
-#include <SDL.h>
+#include <SDL/SDL.h>
 
 #include "resize++.h"
 

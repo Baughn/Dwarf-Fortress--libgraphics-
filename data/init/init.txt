@@ -8,7 +8,7 @@ circumstances, unpack a new DF on top of an older one.
 
 Change this to turn sound off.
 
-[SOUND:NO]
+[SOUND:YES]
 
 The sound volume runs from 0 (off) to 255 (full).  You can set the volume from the ESC options menu as well.
 
@@ -16,7 +16,7 @@ The sound volume runs from 0 (off) to 255 (full).  You can set the volume from t
 
 Change this to skip the wonderful intro movies.
 
-[INTRO:YES]
+[INTRO:NO]
 
 This lets you set the starting windowed/fullscreen setting.  Can be YES, NO or PROMPT.
 
@@ -45,13 +45,13 @@ If this is set to YES, the tiles will not be stretched, but rather the game view
 
 Graphics info, most of it as above.  Set GRAPHICS to YES to turn it all on.  This will use the "raw/graphics" folder for tile information.  Currently this is limited to whatever creature graphics you have downloaded.  The game comes with a few pictures to demonstrate.  As of September 2008, the Dwarf Fortress Wiki has graphical tilesets available at http://www.dwarffortresswiki.net/index.php/List_of_user_graphics_sets.
 
-[GRAPHICS:YES]
+[GRAPHICS:NO]
 [GRAPHICS_WINDOWEDX:0]
 [GRAPHICS_WINDOWEDY:0]
-[GRAPHICS_FONT:curses_640x300.png]
+[GRAPHICS_FONT:curses_square_16x16.png]
 [GRAPHICS_FULLSCREENX:0]
 [GRAPHICS_FULLSCREENY:0]
-[GRAPHICS_FULLFONT:curses_640x300.png]
+[GRAPHICS_FULLFONT:curses_square_16x16.png]
 [GRAPHICS_BLACK_SPACE:YES]
 
 These settings can have a significant impact on frame rate, especially for people that have slow frame rates on the title screen.  Available modes are 2D, 2DSW, 2DASYNC, STANDARD, PARTIAL:<number>, ACCUM_BUFFER, FRAME_BUFFER and VBO. The number after PARTIAL refers to how many frames it will redo a printed tile before skipping it, so you might try increasing it a bit if you have flickering when PARTIAL is set.  Please note that any of these combinations might cause frame rates to drop significantly or cause unpleasant side effects like flickering.
@@ -71,13 +71,13 @@ Change this to YES to keep the DF window on top of your other windows.
 
 Change this to YES if you want to see an FPS counter at the top left.
 
-[FPS:YES]
+[FPS:NO]
 
 Use this to set the maximum frame rate during play.  The movies are always capped at 100.  A frame in this case is not graphical but related to the movement speed of a creature.  A healthy, unencumbered dwarven peasant takes one step every 10 frames.
 
 You may set FPS_CAP to 0 to make it uncapped.
 
-[FPS_CAP:100]
+[FPS_CAP:00]
 
 Use this to set the maximum graphical frame refresh rate during play.
 
@@ -121,7 +121,8 @@ This controls the number of milliseconds that must pass before a held key sends 
 
 [KEY_REPEAT_MS:150]
 
-By setting KEY_REPEAT_ACCEL_LIMIT above one, after KEY_REPEAT_ACCEL_START repetitions the repetition delay will smoothly decrease until repetition is this number of times faster than at the start.
+If you set KEY_REPEAT_ACCEL_LIMIT above one, then after KEY_REPEAT_ACCEL_START repetitions the repetition delay will smoothly decrease until repetition is this number of times faster than at the start.
+
 [KEY_REPEAT_ACCEL_LIMIT:8]
 [KEY_REPEAT_ACCEL_START:10]
 

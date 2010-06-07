@@ -35,13 +35,16 @@ template <class T> void zero_vector(svector<T> &vc)
 	int32_t sz=vc.size();
 	if(sz==0)return;
 	//NOTE: vector MEMORY IS GUARANTEED TO BE CONTIGUOUS, AND THIS IS FASTER THAN GOING THROUGH ONE BY ONE
-	memset(&(vc[0]),0,sizeof(T)*sz);
+			//apparently this gives linux a headache though, so back to the slower way
+	//memset(&(vc[0]),0,sizeof(T)*sz);
+	int32_t i;
+	for(i=(int32_t)vc.size()-1;i>=0;--i)vc[i]=0;
 }
 
 template <class T> bool positive_vector(svector<T> &vc)
 {
 	int32_t i;
-	for(i=(int32_t)vc.size()-1;i>=0;i--)
+	for(i=(int32_t)vc.size()-1;i>=0;--i)
 		{
 		if(vc[i]>0)return true;
 		}
