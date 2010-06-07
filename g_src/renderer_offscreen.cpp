@@ -22,9 +22,15 @@ renderer_offscreen::renderer_offscreen(int grid_x, int grid_y) {
   dispy = enabler.is_fullscreen() ?
     init.font.large_font_dispy :
     init.font.small_font_dispy;
+  dispx_z = dispx;
+  dispy_z = dispy;
+  origin_x = origin_y = 0;
+  zoom_steps = forced_steps = 0;
+  natural_w = dispx * grid_x;
+  natural_h = dispy * grid_y;
   dimx = grid_x;
   dimy = grid_y;
-  init_video(dispx * grid_x, dispy * grid_y);
+  init_video(natural_w, natural_h);
   // Copy the GPS pointers here
   renderer::screen = gps.screen;
   renderer::screentexpos = gps.screentexpos;
