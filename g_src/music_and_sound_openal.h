@@ -3,7 +3,16 @@
 
 #include <AL/al.h>
 #include <AL/alc.h>
+
+// HACKY HACKY HACK
+// Fixes sndfile.h, until the bug is properly fixed
+#include <stdio.h>
+#include <sys/types.h>
+#define _MSCVER
+typedef int64_t __int64;
 #include <sndfile.h>
+#undef _MSCVER
+// END HACKY HACKY HACK
 
 #include <string>
 #include <vector>
