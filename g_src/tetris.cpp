@@ -7,11 +7,12 @@
 #include "random.h"
 #include "texture_handler.h"
 #include "KeybindingScreen.h"
+#include "initeditor.hpp"
 
 using namespace std;
 
 graphicst gps;
-initst init;
+initst init, init_pristine;
 interfacest gview;
 texture_handlerst texture;
 GameMode gamemode;
@@ -60,7 +61,7 @@ public:
     frame = 0;
   }
   virtual void feed(set<InterfaceKey> &events) {
-    if (events.count(INTERFACEKEY_LEAVESCREEN))
+    if (events.count(INTERFACEKEY_STRING_A032))
       breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
   }
   virtual void render() {
@@ -74,8 +75,8 @@ public:
   }
   virtual void logic() {
     if ((frame++) % 2) return;
-    if (enabler.tracking_on)
-      cout << gps.mouse_x << " " << gps.mouse_y << endl;
+    // if (enabler.tracking_on)
+    //   cout << gps.mouse_x << " " << gps.mouse_y << endl;
     enabler.flag |= ENABLERFLAG_RENDER;
     // Advance each line one step
     for (lit i = lines.begin(); i != lines.end();) {
@@ -112,9 +113,10 @@ public:
 
 char beginroutine() {
   mt_init();
-  viewscreen_movieplayerst *m = viewscreen_movieplayerst::create(INTERFACE_PUSH_AT_BACK);
-  m->force_play("data/initial_movies/dwarf_fortress.cmv");
-  gview.addscreen(new Matrix, INTERFACE_PUSH_AT_BACK, NULL);
+  // viewscreen_movieplayerst *m = viewscreen_movieplayerst::create(INTERFACE_PUSH_AT_BACK);
+  // m->force_play("data/initial_movies/dwarf_fortress.cmv");
+  // gview.addscreen(new Matrix, INTERFACE_PUSH_AT_BACK, NULL);
+  init_editor_screen();
   return 1;
 }
 
@@ -149,6 +151,9 @@ char secondaryscrolling(std::set<InterfaceKey> &events,int32_t &scroll,int32_t m
 
 void process_object_lines(textlinesst &lines, string &chktype, string &graphics_dir) {
 }
+
+bool viewscreenst::key_conflict(InterfaceKey k) { return false; }
+void viewscreenst::help() { }
 
 void drawborder(const char *str, char style, const char *color) {
   gps.erasescreen();

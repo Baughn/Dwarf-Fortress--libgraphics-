@@ -6,18 +6,14 @@
 class init_fontst
 {
 	public:
-		long small_font_texpos[256];
-		long large_font_texpos[256];
-		long small_font_datapos[256];
-		long large_font_datapos[256];
-		float small_font_adjx;
-		float small_font_adjy;
-		float large_font_adjx;
-		float large_font_adjy;
-		long small_font_dispx;
-		long small_font_dispy;
-		long large_font_dispx;
-		long large_font_dispy;
+		long font_texpos[256];
+		long font_datapos[256];
+		float font_adjx;
+		float font_adjy;
+		long font_dispx;
+		long font_dispy;
+
+                string fontfile;
 };
 
 enum InitDisplayFlag
@@ -61,6 +57,7 @@ class init_displayst
 
   
   char partial_print_count;
+  int fps, g_fps;
   
   init_displayst();
 };
@@ -150,6 +147,6 @@ class initst
 		void begin();
 };
 
-extern initst init;
+extern initst init, init_pristine;
 
 #endif

@@ -7,7 +7,7 @@ src_dll = ["basics.cpp","command_line.cpp","enabler.cpp","files.cpp",
            "keybindings.cpp","music_and_sound_openal.cpp", "random.cpp",
            "textlines.cpp","glew.c","enabler_input.cpp","ViewBase.cpp",
            "KeybindingScreen.cpp", "win32_compat.cpp", "textures.cpp",
-           "resize++.cpp", "renderer_offscreen.cpp"]
+           "resize++.cpp", "renderer_offscreen.cpp", "initeditor.cpp"]
 
 dll  = '#libs/libgraphics.so'
 
@@ -17,10 +17,10 @@ profile = False
 
 clang = False
 
-libgraphics = True
-tetris = False
+libgraphics = False
+tetris = True
 
-M64 = False
+M64 = True
 
 # Propagate PATH. We'll just take our chances with non-repeatable builds.
 env = Environment(ENV = {'PATH' : os.environ['PATH']})

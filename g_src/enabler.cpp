@@ -79,9 +79,7 @@ texture_fullid renderer::screen_to_texid(int x, int y) {
     }
   }
   
-  ret.texpos = enabler.is_fullscreen() ?
-    init.font.large_font_texpos[ch] :
-    init.font.small_font_texpos[ch];
+  ret.texpos = init.font.font_texpos[ch];
  use_ch:
   ret.r = enabler.ccolor[fg][0];
   ret.g = enabler.ccolor[fg][1];

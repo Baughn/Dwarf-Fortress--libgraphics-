@@ -52,8 +52,7 @@ void initst::begin()
   if (called) return;
   called = true;
   
-	string small_font="data/art/curses_640x300.png";
-	string large_font="data/art/curses_640x300.png";
+        init.font.fontfile = "curses_640x300.png";
 	std::ifstream fseed("data/init/init.txt");
 	if(fseed.is_open())
 		{
@@ -74,13 +73,7 @@ void initst::begin()
 
 				if(!token.compare("FONT"))
 					{
-					small_font="data/art/";
-					small_font+=token2;
-					}
-				if(!token.compare("FULLFONT"))
-					{
-					large_font="data/art/";
-					large_font+=token2;
+                                          font.fontfile = token2;
 					}
 				if(!token.compare("WINDOWEDX"))
 					{
@@ -121,7 +114,7 @@ void initst::begin()
 						}
                                         if(token2=="PROMPT")
                                                 {
-                                                  int answer = MessageBox(NULL, "Using only 2D (Click no) is more reliable, but means you lose features and, often, speed. Edit data/init/init.txt PRINT_MODE to avoid this dialog box.", "Use OpenGL?", MB_YESNO);
+                                                  int answer = MessageBox(NULL, "Using only 2D (Click no) is more reliable and looks better, but may be slower.", "Use OpenGL?", MB_YESNO);
                                                   if (answer == IDYES)
                                                     token2 = "STANDARD";
                                                   else
@@ -189,45 +182,6 @@ void initst::begin()
 						display.flag.add_flag(INIT_DISPLAY_FLAG_SINGLE_BUFFER);
 						}
 					}
-
-				if(display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS))
-					{
-					if(!token.compare("GRAPHICS_FONT"))
-						{
-						small_font="data/art/";
-						small_font+=token2;
-						}
-					if(!token.compare("GRAPHICS_FULLFONT"))
-						{
-						large_font="data/art/";
-						large_font+=token2;
-						}
-					if(!token.compare("GRAPHICS_WINDOWEDX"))
-						{
-						display.desired_windowed_width=convert_string_to_long(token2);
-						}
-					if(!token.compare("GRAPHICS_WINDOWEDY"))
-						{
-						display.desired_windowed_height=convert_string_to_long(token2);
-						}
-					if(!token.compare("GRAPHICS_FULLSCREENX"))
-						{
-						display.desired_fullscreen_width=convert_string_to_long(token2);
-						}
-					if(!token.compare("GRAPHICS_FULLSCREENY"))
-						{
-						display.desired_fullscreen_height=convert_string_to_long(token2);
-						}
-					if(!token.compare("GRAPHICS_BLACK_SPACE"))
-						{
-						if(token2=="YES")
-							{
-							display.flag.add_flag(INIT_DISPLAY_FLAG_BLACK_SPACE);
-							}
-						else display.flag.remove_flag(INIT_DISPLAY_FLAG_BLACK_SPACE);
-						}
-					}
-
 				if(!token.compare("GRAPHICS"))
 					{
 					if(token2=="YES")
@@ -331,11 +285,13 @@ void initst::begin()
 					}
 				if(!token.compare("FPS_CAP"))
 					{
-                                          enabler.set_fps(convert_string_to_long(token2));
+                                          display.fps = convert_string_to_long(token2);
+                                          enabler.set_fps(display.fps);
 					}
 				if(!token.compare("G_FPS_CAP"))
 					{
-                                          enabler.set_gfps(convert_string_to_long(token2));
+                                          display.g_fps = convert_string_to_long(token2);
+                                          enabler.set_gfps(display.g_fps);
 					}
 				if(token=="WINDOWED")
 					{
@@ -659,14 +615,17 @@ void initst::begin()
 #endif
         
 
-	enabler.textures.load_multi_pdim(small_font,font.small_font_texpos,16,16,true,&font.small_font_dispx,&font.small_font_dispy);
-	enabler.textures.load_multi_pdim(large_font,font.large_font_texpos,16,16,true,&font.large_font_dispx,&font.large_font_dispy);
+	enabler.textures.load_multi_pdim("data/art/" + font.fontfile,
+                                         font.font_texpos,16,16,true,&font.font_dispx,&font.font_dispy);
+
+        // Copy init.txt settings to a backup, since we alter init at runtime
+        init_pristine = *this;
 
         // compute the desired window size, if set to auto
         if (display.desired_windowed_width < MAX_GRID_X && display.desired_windowed_height < MAX_GRID_Y) {
           int dimx = MAX(display.desired_windowed_width,80);
           int dimy = MAX(display.desired_windowed_height,25);
-          display.desired_windowed_width = font.small_font_dispx * dimx;
-          display.desired_windowed_height = font.small_font_dispy * dimy;
+          display.desired_windowed_width = font.font_dispx * dimx;
+          display.desired_windowed_height = font.font_dispy * dimy;
         }
 }

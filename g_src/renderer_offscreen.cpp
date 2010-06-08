@@ -16,12 +16,8 @@ renderer_offscreen::~renderer_offscreen() {
 // Create an offscreen renderer of a given grid-size
 renderer_offscreen::renderer_offscreen(int grid_x, int grid_y) {
   screen = NULL;
-  dispx = enabler.is_fullscreen() ?
-    init.font.large_font_dispx :
-    init.font.small_font_dispx;
-  dispy = enabler.is_fullscreen() ?
-    init.font.large_font_dispy :
-    init.font.small_font_dispy;
+  dispx = init.font.font_dispx;
+  dispy = init.font.font_dispy;
   dispx_z = dispx;
   dispy_z = dispy;
   origin_x = origin_y = 0;

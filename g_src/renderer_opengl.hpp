@@ -260,12 +260,8 @@ public:
   }
   
   pair<int,int> compute_zoom(bool clamp = false) {
-    const int dispx = enabler.is_fullscreen() ?
-      init.font.large_font_dispx :
-      init.font.small_font_dispx;
-    const int dispy = enabler.is_fullscreen() ?
-      init.font.large_font_dispy :
-      init.font.small_font_dispy;
+    const int dispx = init.font.font_dispx;
+    const int dispy = init.font.font_dispy;
     int w, h;
     if (dispx < dispy) {
       w = natural_w + zoom_steps + forced_steps;
@@ -341,12 +337,8 @@ public:
   // Parameters: window size
   void resize(int w, int h) {
     // (Re)calculate grid-size
-    dispx = enabler.is_fullscreen() ?
-      init.font.large_font_dispx :
-      init.font.small_font_dispx;
-    dispy = enabler.is_fullscreen() ?
-      init.font.large_font_dispy :
-      init.font.small_font_dispy;
+    dispx = init.font.font_dispx;
+    dispy = init.font.font_dispy;
     natural_w = MAX(w / dispx,1);
     natural_h = MAX(h / dispy,1);
     // Compute forced_steps so we satisfy our grid-size limits

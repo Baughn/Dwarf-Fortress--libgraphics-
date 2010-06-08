@@ -168,12 +168,8 @@ public:
   }
 
   pair<int,int> compute_zoom(bool clamp = false) {
-    const int dispx = enabler.is_fullscreen() ?
-      init.font.large_font_dispx :
-      init.font.small_font_dispx;
-    const int dispy = enabler.is_fullscreen() ?
-      init.font.large_font_dispy :
-      init.font.small_font_dispy;
+    const int dispx = init.font.font_dispx;
+    const int dispy = init.font.font_dispy;
     int w, h;
     if (dispx < dispy) {
       w = natural_w + zoom_steps + forced_steps;
@@ -194,12 +190,8 @@ public:
     // We've gotten resized.. first step is to reinitialize video
     cout << "New window size: " << w << "x" << h << endl;
     init_video(w, h);
-    dispx = enabler.is_fullscreen() ?
-      init.font.large_font_dispx :
-      init.font.small_font_dispx;
-    dispy = enabler.is_fullscreen() ?
-      init.font.large_font_dispy :
-      init.font.small_font_dispy;
+    dispx = init.font.font_dispx;
+    dispy = init.font.font_dispy;
     cout << "Font size: " << dispx << "x" << dispy << endl;
     // If grid size is currently overridden, we don't change it
     if (enabler.overridden_grid_sizes.size() == 0) {
