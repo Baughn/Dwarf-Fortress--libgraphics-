@@ -67,7 +67,7 @@ protected:
         pixel_src = ((Uint8*)tex->pixels) + (y * tex->pitch);
         pixel_dst = ((Uint8*)color->pixels) + (y * color->pitch);
         for (int x = 0; x < tex->w; x++, pixel_src+=4, pixel_dst+=4) {
-          float alpha = pixel_src[3] / 255;
+          float alpha = pixel_src[3] / 255.0;
           for (int c = 0; c < 3; c++) {
             float fg = color_fg[c] / 255.0, bg = color_bg[c] / 255.0, tex = pixel_src[c] / 255.0;
             pixel_dst[c] = ((alpha * (tex * fg)) + ((1 - alpha) * bg)) * 255;
