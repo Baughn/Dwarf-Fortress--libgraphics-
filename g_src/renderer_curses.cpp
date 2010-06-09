@@ -52,6 +52,8 @@ class renderer_curses : public renderer {
   int lookup_pair(pair<int,int> color) {
     map<pair<int,int>,int>::iterator it = color_pairs.find(color);
     if (it != color_pairs.end()) return it->second;
+    // We don't already have it. Make sure it's in range.
+    if (color.first < 0 || color.first > 7 || color.second < 0 || color.second > 7) return 0;
     // We don't already have it. Generate a new pair if possible.
     if (color_pairs.size() < COLOR_PAIRS - 1) {
       const short pair = color_pairs.size() + 1;
