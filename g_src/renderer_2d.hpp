@@ -218,7 +218,7 @@ public:
   }
 
   void reshape(pair<int,int> max_grid) {
-    const int w = max_grid.first,
+    int w = max_grid.first,
       h = max_grid.second;
     // Compute the largest tile size that will fit this grid into the window, roughly maintaining aspect ratio
     double try_x = dispx, try_y = dispy;
@@ -233,6 +233,9 @@ public:
          ++it)
       SDL_FreeSurface(it->second);
     tile_cache.clear();
+    // Recompute grid based on the new tile size
+    w = CLAMP(screen->w / dispx_z, MIN_GRID_X, MAX_GRID_X);
+    h = CLAMP(screen->h / dispy_z, MIN_GRID_Y, MAX_GRID_Y);
     // Reset grid size
 #ifdef DEBUG
     cout << "Resizing grid to " << w << "x" << h << endl;
