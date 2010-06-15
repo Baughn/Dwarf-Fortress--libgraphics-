@@ -75,12 +75,26 @@ public:
     const int bg   = gps.screen[x*gps.dimy*4 + y*4 + 2];
     const int bold = gps.screen[x*gps.dimy*4 + y*4 + 3];
 
-    const int pair    = lookup_pair(make_pair<int,int>(fg,bg));
-    attron(COLOR_PAIR(pair));
-    if (bold) attron(A_BOLD);
-    wchar_t chs[2] = {charmap[ch] ? charmap[ch] : ch,0};
-    mvaddwstr(y, x, chs);
-    if (bold) attroff(A_BOLD);
+    const int pair = lookup_pair(make_pair<int,int>(fg,bg));
+
+    if (ch == 219 && !bold) {
+      // It's █, which is used for borders and digging designations.
+      // A_REVERSE space looks better if it isn't completely tall.
+      // Which is most of the time, for me at least.
+      // █ <-- Do you see gaps?
+      // █
+      // The color can't be bold.
+      attron(COLOR_PAIR(pair));
+      attron(A_REVERSE);
+      mvaddstr(y, x, " ");
+      attroff(A_REVERSE);
+    } else {
+      attron(COLOR_PAIR(pair));
+      if (bold) attron(A_BOLD);
+      wchar_t chs[2] = {charmap[ch] ? charmap[ch] : ch,0};
+      mvaddwstr(y, x, chs);
+      if (bold) attroff(A_BOLD);
+    }
   }
 
   void update_all() {
@@ -113,6 +127,7 @@ public:
     noecho();
     keypad(stdscr, true);
     nodelay(stdscr, true);
+    set_escdelay(25); // Possible bug
     start_color();
     curs_set(0);
     mmask_t dummy;
