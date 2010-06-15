@@ -104,43 +104,77 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
     toggle_screen = true;
   }
 # ifdef __APPLE__ // Cocoa code
-  if (type & MB_OK) {
-    CocoaAlertPanel(caption, text, "OK", NULL, NULL);
-  } else if (type & MB_YESNO) {
+  if (type & MB_YESNO) {
     ret = CocoaAlertPanel(caption, text, "Yes", "No", NULL);
     ret = (ret == 0 ? IDNO : IDYES);
+  } else {
+    CocoaAlertPanel(caption, text, "OK", NULL, NULL);
   }
 # else // GTK code
-  GtkWidget *dialog = gtk_message_dialog_new(NULL,
-					     GTK_DIALOG_DESTROY_WITH_PARENT,
-					     type & MB_YESNO ?
-					     GTK_MESSAGE_QUESTION :
-					     GTK_MESSAGE_ERROR,
-					     type & MB_YESNO ?
-					     GTK_BUTTONS_YES_NO :
-					     GTK_BUTTONS_OK,
-					     "%s", text);
-  gtk_window_set_position((GtkWindow*)dialog, GTK_WIN_POS_CENTER_ALWAYS);
-  gtk_window_set_title((GtkWindow*)dialog, caption);
-  gint dialog_ret = gtk_dialog_run(GTK_DIALOG(dialog));
-  gtk_widget_destroy(dialog);
-  while (gtk_events_pending())
-    gtk_main_iteration();
-				       
-  if (type & MB_YESNO) {
-    switch (dialog_ret) {
-    default:
-    case GTK_RESPONSE_DELETE_EVENT:
-    case GTK_RESPONSE_NO:
-      ret = IDNO;
-      break;
-    case GTK_RESPONSE_YES:
-      ret = IDYES;
-      break;
+  if (getenv("DISPLAY")) {
+    // Have X, will dialog
+    GtkWidget *dialog = gtk_message_dialog_new(NULL,
+                                               GTK_DIALOG_DESTROY_WITH_PARENT,
+                                               type & MB_YESNO ?
+                                               GTK_MESSAGE_QUESTION :
+                                               GTK_MESSAGE_ERROR,
+                                               type & MB_YESNO ?
+                                               GTK_BUTTONS_YES_NO :
+                                               GTK_BUTTONS_OK,
+                                               "%s", text);
+    gtk_window_set_position((GtkWindow*)dialog, GTK_WIN_POS_CENTER_ALWAYS);
+    gtk_window_set_title((GtkWindow*)dialog, caption);
+    gint dialog_ret = gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+    while (gtk_events_pending())
+      gtk_main_iteration();
+    
+    if (type & MB_YESNO) {
+      switch (dialog_ret) {
+      default:
+      case GTK_RESPONSE_DELETE_EVENT:
+      case GTK_RESPONSE_NO:
+        ret = IDNO;
+        break;
+      case GTK_RESPONSE_YES:
+        ret = IDYES;
+        break;
+      }
     }
+  } else {
+    // Use curses
+    init_curses();
+    erase();
+    gps.force_full_display_count = 1;
+    attrset(A_NORMAL | COLOR_PAIR(1));
+    
+    mvaddstr(0, 5, caption);
+    mvaddstr(2, 2, text);
+    nodelay(stdscr, false);
+    if (type & MB_YESNO) {
+      mvaddstr(5, 0, "Press 'y' or 'n'.");
+      refresh();
+      while (1) {
+        char i = getch();
+        if (i == 'y') {
+          ret = IDYES;
+          break;
+        }
+        else if (i == 'n') {
+          ret = IDNO;
+          break;
+        }
+      }
+    }
+    else {
+      mvaddstr(5, 0, "Press any key to continue.");
+      refresh();
+      getch();
+    }
+    nodelay(stdscr, -1);
   }
 # endif
-	
+  
   if (toggle_screen) {
     enabler.toggle_fullscreen();
   }

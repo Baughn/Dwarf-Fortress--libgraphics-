@@ -8,3 +8,6 @@ extern "C" {
 # undef COLOR_YELLOW
 #endif
 }
+
+extern bool curses_initialized;
+void init_curses();

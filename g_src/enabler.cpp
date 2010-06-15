@@ -669,10 +669,9 @@ int main (int argc, char* argv[]) {
   setlocale(LC_ALL, "");
 #endif
 #if !defined(__APPLE__) && defined(unix)
-  bool ok = gtk_init_check(&argc, &argv);
-  if (!ok) {
-    puts("Display initialization failed, DF will crash if asked to use a messagebox.");
-  }
+  bool gtk_ok = false;
+  if (getenv("DISPLAY"))
+    gtk_ok = gtk_init_check(&argc, &argv);
 #endif
 
   // Initialise minimal SDL subsystems.
@@ -690,7 +689,7 @@ int main (int argc, char* argv[]) {
   init.begin(); // Load init.txt settings
   
 #if !defined(__APPLE__) && defined(unix)
-  if (!ok && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
+  if (!gtk_ok && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
     puts("Display not found and PRINT_MODE not set to TEXT, aborting.");
     exit(EXIT_FAILURE);
   }
@@ -738,11 +737,6 @@ int main (int argc, char* argv[]) {
 
   SDL_Quit();
 
-#ifdef CURSES
-  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT))
-    endwin();
-#endif
-  
 #ifdef WIN32
   timeEndPeriod(ms);
 #endif

@@ -28,6 +28,34 @@ static int charmap[256] = {
   0xB0, 0x2219, 0xB7, 0x221A, 0x207F, 0xB2, 0x25A0, 0xA0
 };
 
+bool curses_initialized = false;
+
+static void endwin_void() {
+  if (curses_initialized) {
+    endwin();
+    curses_initialized = false;
+  }
+}
+
+void init_curses() {
+  // Initialize curses
+  if (!curses_initialized) {
+    curses_initialized = true;
+    initscr();
+    raw();
+    noecho();
+    keypad(stdscr, true);
+    nodelay(stdscr, true);
+    set_escdelay(25); // Possible bug
+    curs_set(0);
+    mmask_t dummy;
+    // mousemask(ALL_MOUSE_EVENTS, &dummy);
+    start_color();
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);
+
+    atexit(endwin_void);
+  }
+}
 
 class renderer_curses : public renderer {
   std::map<std::pair<int,int>,int> color_pairs; // For curses. MOVEME.
@@ -84,16 +112,12 @@ public:
       // █ <-- Do you see gaps?
       // █
       // The color can't be bold.
-      attron(COLOR_PAIR(pair));
-      attron(A_REVERSE);
+      attrset(COLOR_PAIR(pair) | A_REVERSE);
       mvaddstr(y, x, " ");
-      attroff(A_REVERSE);
     } else {
-      attron(COLOR_PAIR(pair));
-      if (bold) attron(A_BOLD);
+      attrset(COLOR_PAIR(pair) | (bold ? A_BOLD : 0));
       wchar_t chs[2] = {charmap[ch] ? charmap[ch] : ch,0};
       mvaddwstr(y, x, chs);
-      if (bold) attroff(A_BOLD);
     }
   }
 
@@ -121,17 +145,7 @@ public:
   }
 
   renderer_curses() {
-    // Initialize curses
-    initscr();
-    raw();
-    noecho();
-    keypad(stdscr, true);
-    nodelay(stdscr, true);
-    set_escdelay(25); // Possible bug
-    start_color();
-    curs_set(0);
-    mmask_t dummy;
-    // mousemask(ALL_MOUSE_EVENTS, &dummy);
+    init_curses();
   }
 
   bool get_mouse_coords(int &x, int &y) {
