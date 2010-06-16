@@ -62,6 +62,12 @@ By and large, 2D should be the most reliable, while STANDARD has a good combinat
 
 Linux/OS X users may also use PRINT_MODE:TEXT for primitive ncurses output.
 
+Mode examples:
+  PRINT_MODE:2D
+  PRINT_MODE:TEXT
+  PRINT_MODE:FRAME_BUFFER
+  PRINT_MODE:PARTIAL:0
+
 [PRINT_MODE:2D]
 [SINGLE_BUFFER:NO]
 
