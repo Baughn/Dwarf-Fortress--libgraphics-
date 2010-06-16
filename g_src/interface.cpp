@@ -928,6 +928,16 @@ char interfacest::loop() {
         if (era.count(INTERFACEKEY_TOGGLE_FULLSCREEN)) {
           enabler.toggle_fullscreen();
         }
+        if (era.count(INTERFACEKEY_FPS_UP)) {
+          int fps = enabler.get_fps();
+          enabler.set_fps(fps + fps/10);
+          enabler.clear_fps();
+        }
+        if (era.count(INTERFACEKEY_FPS_DOWN)) {
+          int fps = enabler.get_fps();
+          enabler.set_fps(fps - fps/10);
+          enabler.clear_fps();
+        }
       }
     }
     break;

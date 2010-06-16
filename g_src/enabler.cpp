@@ -600,11 +600,21 @@ void enablerst::zoom_display(zoom_commands command) {
   async_zoom.write(command);
 }
 
-int enablerst::calculate_fps() { return calculated_fps; }
-int enablerst::calculate_gfps() { return calculated_gfps; }
+int enablerst::calculate_fps() {
+  if (frame_timings.size() < 50)
+    return get_fps();
+  else
+    return calculated_fps;
+}
+int enablerst::calculate_gfps() {
+  if (gframe_timings.size() < 50)
+    return get_gfps();
+  else
+    return calculated_gfps;
+}
 
 void enablerst::do_update_fps(queue<int> &q, int &sum, int &last, int &calc) {
-  while (q.size() && sum > 10000) {
+  while (q.size() > 50 && sum > 10000) {
     sum -= q.front();
     q.pop();
   }
@@ -615,6 +625,14 @@ void enablerst::do_update_fps(queue<int> &q, int &sum, int &last, int &calc) {
   last = now;
   if (sum)
     calc = q.size() * 1000 / sum;
+}
+
+void enablerst::clear_fps() {
+  while (frame_timings.size())
+    frame_timings.pop();
+  frame_sum = 0;
+  frame_last = SDL_GetTicks();
+  calculated_fps = get_fps();
 }
 
 void enablerst::update_fps() {

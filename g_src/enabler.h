@@ -884,6 +884,9 @@ class enablerst : public enabler_inputst
   int frame_sum, gframe_sum;
   int frame_last, gframe_last; // SDL_GetTick returns
   void do_update_fps(queue<int> &q, int &sum, int &last, int &calc);
+ public:
+  void clear_fps();
+ private:
   void update_fps();
   void update_gfps();
 

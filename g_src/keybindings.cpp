@@ -1365,6 +1365,9 @@ void keybinding_init() {
 	bindingNames.insert(INTERFACEKEY_CUSTOM_ALT_X, "CUSTOM_ALT_X");
 	bindingNames.insert(INTERFACEKEY_CUSTOM_ALT_Y, "CUSTOM_ALT_Y");
 	bindingNames.insert(INTERFACEKEY_CUSTOM_ALT_Z, "CUSTOM_ALT_Z");
+        bindingNames.insert(INTERFACEKEY_FPS_UP, "FPS_UP");
+        bindingNames.insert(INTERFACEKEY_FPS_DOWN, "FPS_DOWN");
+        
 
 	displayNames.insert(INTERFACEKEY_NONE, "None");
 	displayNames.insert(INTERFACEKEY_SELECT, "Select");
@@ -2722,6 +2725,9 @@ void keybinding_init() {
 	displayNames.insert(INTERFACEKEY_CUSTOM_ALT_X, "Custom: Alt + X");
 	displayNames.insert(INTERFACEKEY_CUSTOM_ALT_Y, "Custom: Alt + Y");
 	displayNames.insert(INTERFACEKEY_CUSTOM_ALT_Z, "Custom: Alt + Z");
+        displayNames.insert(INTERFACEKEY_FPS_UP, "Increase FPS limit");
+        displayNames.insert(INTERFACEKEY_FPS_DOWN, "Decrease FPS limit");
+        
 
   sdlNames.insert(SDLK_BACKSPACE, "Backspace");
   sdlNames.insert(SDLK_TAB, "Tab");
