@@ -146,16 +146,16 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
     init_curses();
     erase();
     gps.force_full_display_count = 1;
-    attrset(A_NORMAL | COLOR_PAIR(1));
+    wattrset(*stdscr_p, A_NORMAL | COLOR_PAIR(1));
     
-    mvaddstr(0, 5, caption);
-    mvaddstr(2, 2, text);
-    nodelay(stdscr, false);
+    mvwaddstr(*stdscr_p, 0, 5, caption);
+    mvwaddstr(*stdscr_p, 2, 2, text);
+    nodelay(*stdscr_p, false);
     if (type & MB_YESNO) {
-      mvaddstr(5, 0, "Press 'y' or 'n'.");
+      mvwaddstr(*stdscr_p, 5, 0, "Press 'y' or 'n'.");
       refresh();
       while (1) {
-        char i = getch();
+        char i = wgetch(*stdscr_p);
         if (i == 'y') {
           ret = IDYES;
           break;
@@ -167,11 +167,11 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
       }
     }
     else {
-      mvaddstr(5, 0, "Press any key to continue.");
+      mvwaddstr(*stdscr_p, 5, 0, "Press any key to continue.");
       refresh();
-      getch();
+      wgetch(*stdscr_p);
     }
-    nodelay(stdscr, -1);
+    nodelay(*stdscr_p, -1);
   }
 # endif
   

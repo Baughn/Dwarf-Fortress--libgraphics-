@@ -176,3 +176,7 @@ void drawborder(const char *str, char style, const char *color) {
     gps.addst(str);
   }
 }
+
+void viewscreenst::help() { }
+
+bool viewscreenst::key_conflict(InterfaceKey k) { return false; }

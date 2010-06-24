@@ -28,32 +28,12 @@ static int charmap[256] = {
   0xB0, 0x2219, 0xB7, 0x221A, 0x207F, 0xB2, 0x25A0, 0xA0
 };
 
-bool curses_initialized = false;
+static bool curses_initialized = false;
 
 static void endwin_void() {
   if (curses_initialized) {
     endwin();
     curses_initialized = false;
-  }
-}
-
-void init_curses() {
-  // Initialize curses
-  if (!curses_initialized) {
-    curses_initialized = true;
-    initscr();
-    raw();
-    noecho();
-    keypad(stdscr, true);
-    nodelay(stdscr, true);
-    set_escdelay(25); // Possible bug
-    curs_set(0);
-    mmask_t dummy;
-    // mousemask(ALL_MOUSE_EVENTS, &dummy);
-    start_color();
-    init_pair(1, COLOR_WHITE, COLOR_BLACK);
-
-    atexit(endwin_void);
   }
 }
 
@@ -112,12 +92,12 @@ public:
       // █ <-- Do you see gaps?
       // █
       // The color can't be bold.
-      attrset(COLOR_PAIR(pair) | A_REVERSE);
-      mvaddstr(y, x, " ");
+      wattrset(*stdscr_p, COLOR_PAIR(pair) | A_REVERSE);
+      mvwaddstr(*stdscr_p, y, x, " ");
     } else {
-      attrset(COLOR_PAIR(pair) | (bold ? A_BOLD : 0));
+      wattrset(*stdscr_p, COLOR_PAIR(pair) | (bold ? A_BOLD : 0));
       wchar_t chs[2] = {charmap[ch] ? charmap[ch] : ch,0};
-      mvaddwstr(y, x, chs);
+      mvwaddwstr(*stdscr_p, y, x, chs);
     }
   }
 
@@ -157,13 +137,13 @@ public:
 // character.  Ncurses symbols (left arrow, etc.) are returned as
 // positive values, unicode as negative. Error returns 0.
 static int getch_utf8() {
-  int byte = getch();
+  int byte = wgetch(*stdscr_p);
   if (byte == ERR) return 0;
   if (byte > 0xff) return byte;
   int len = decode_utf8_predict_length(byte);
   if (!len) return 0;
   string input(len,0); input[0] = byte;
-  for (int i = 1; i < len; i++) input[i] = getch();
+  for (int i = 1; i < len; i++) input[i] = wgetch(*stdscr_p);
   return -decode_utf8(input);
 }
 
@@ -173,7 +153,7 @@ void enablerst::eventLoop_ncurses() {
   
   while (loopvar) {
     // Check for terminal resize
-    getmaxyx(stdscr, y, x);
+    getmaxyx(*stdscr_p, y, x);
     if (y != oldy || x != oldx) {
       pause_async_loop();
       renderer->resize(x, y);
@@ -215,3 +195,155 @@ void enablerst::eventLoop_ncurses() {
     do_frame();
   }
 }
+
+
+//// libncursesw stub ////
+
+extern "C" {
+  static void *handle;
+  WINDOW **stdscr_p;
+
+  int COLOR_PAIRS;
+  static int (*_erase)(void);
+  static int (*_wmove)(WINDOW *w, int y, int x);
+  static int (*_waddnstr)(WINDOW *w, const char *s, int n);
+  static int (*_nodelay)(WINDOW *w, bool b);
+  static int (*_refresh)(void);
+  static int (*_wgetch)(WINDOW *w);
+  static int (*_endwin)(void);
+  static WINDOW *(*_initscr)(void);
+  static int (*_raw)(void);
+  static int (*_keypad)(WINDOW *w, bool b);
+  static int (*_noecho)(void);
+  static int (*_set_escdelay)(int delay);
+  static int (*_curs_set)(int s);
+  static int (*_start_color)(void);
+  static int (*_init_pair)(short p, short fg, short bg);
+  static int (*_getmouse)(MEVENT *m);
+  static int (*_waddnwstr)(WINDOW *w, const wchar_t *s, int i);
+
+  static void *dlsym_orexit(const char *symbol) {
+    void *sym = dlsym(handle, symbol);
+    if (!sym) {
+      printf("Symbol not found: %s\n", symbol);
+      exit(EXIT_FAILURE);
+    }
+    return sym;
+  }
+
+  void init_curses() {
+    static bool stub_initialized = false;
+    // Initialize the stub
+    if (!stub_initialized) {
+      stub_initialized = true;
+      // We prefer libncursesw, but we'll accept libncurses if we have to
+      handle = dlopen("libncursesw.so", RTLD_LAZY);
+      if (handle) {
+        puts("Opened libncursesw");
+      } else {
+        handle = dlopen("libncurses.so", RTLD_LAZY);
+        if (handle) {
+          puts("Fallback: Opened libncurses, output may be broken");
+          sleep(10);
+        }
+      }
+      if (!handle) {
+        puts("Unable to open any flavor of libncurses!");
+        exit(EXIT_FAILURE);
+      }
+      // Okay, look up our symbols
+      int *pairs = (int*)dlsym_orexit("COLOR_PAIRS");
+      COLOR_PAIRS = *pairs;
+      stdscr_p = (WINDOW**)dlsym_orexit("stdscr");
+      _erase = (int (*)(void))dlsym_orexit("erase");
+      _wmove = (int (*)(WINDOW *w, int y, int x))dlsym_orexit("wmove");
+      _waddnstr = (int (*)(WINDOW *w, const char *s, int n))dlsym_orexit("waddnstr");
+      _nodelay = (int (*)(WINDOW *w, bool b))dlsym_orexit("nodelay");
+      _refresh = (int (*)(void))dlsym_orexit("refresh");
+      _wgetch = (int (*)(WINDOW *w))dlsym_orexit("wgetch");
+      _endwin = (int (*)(void))dlsym_orexit("endwin");
+      _initscr = (WINDOW *(*)(void))dlsym_orexit("initscr");
+      _raw = (int (*)(void))dlsym_orexit("raw");
+      _keypad = (int (*)(WINDOW *w, bool b))dlsym_orexit("keypad");
+      _noecho = (int (*)(void))dlsym_orexit("noecho");
+      _set_escdelay = (int (*)(int delay))dlsym_orexit("set_escdelay");
+      _curs_set = (int (*)(int s))dlsym_orexit("curs_set");
+      _start_color = (int (*)(void))dlsym_orexit("start_color");
+      _init_pair = (int (*)(short p, short fg, short bg))dlsym_orexit("init_pair");
+      _getmouse = (int (*)(MEVENT *m))dlsym_orexit("getmouse");
+      _waddnwstr = (int (*)(WINDOW *w, const wchar_t *s, int i))dlsym_orexit("waddnwstr");
+    }
+    
+    // Initialize curses
+    if (!curses_initialized) {
+      curses_initialized = true;
+      initscr();
+      raw();
+      noecho();
+      keypad(*stdscr_p, true);
+      nodelay(*stdscr_p, true);
+      set_escdelay(25); // Possible bug
+      curs_set(0);
+      mmask_t dummy;
+      // mousemask(ALL_MOUSE_EVENTS, &dummy);
+      start_color();
+      init_pair(1, COLOR_WHITE, COLOR_BLACK);
+      
+      atexit(endwin_void);
+    }
+  }
+  
+  
+  int erase(void) {
+    return _erase();
+  }
+  int wmove(WINDOW *w, int y, int x) {
+    return _wmove(w, y, x);
+  }
+  int waddnstr(WINDOW *w, const char *s, int n) {
+    return _waddnstr(w, s, n);
+  }
+  int nodelay(WINDOW *w, bool b) {
+    return _nodelay(w, b);
+  }
+  int refresh(void) {
+    return _refresh();
+  }
+  int wgetch(WINDOW *w) {
+    return _wgetch(w);
+  }
+  int endwin(void) {
+    return _endwin();
+  }
+  WINDOW *initscr(void) {
+    return _initscr();
+  }
+  int raw(void) {
+    return _raw();
+  }
+  int keypad(WINDOW *w, bool b) {
+    return _keypad(w, b);
+  }
+  int noecho(void) {
+    return _noecho();
+  }
+  int set_escdelay(int delay) {
+    return _set_escdelay(delay);
+  }
+  int curs_set(int s) {
+    return _curs_set(s);
+  }
+  int start_color(void) {
+    return _start_color();
+  }
+  int init_pair(short p, short fg, short bg) {
+    return _init_pair(p, fg, bg);
+  }
+  int getmouse(MEVENT *m) {
+    return _getmouse(m);
+  }
+  int waddnwstr(WINDOW *w, const wchar_t *s, int n) {
+    return _waddnwstr(w, s, n);
+  }
+};
+
