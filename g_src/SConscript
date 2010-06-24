@@ -17,8 +17,8 @@ profile = False
 
 clang = False
 
-libgraphics = False
-tetris = True
+libgraphics = True
+tetris = False
 
 M64 = False
 
@@ -66,8 +66,8 @@ if not clang and not M64:
    env['LINKFLAGS'].append("-m32")
    env["CCFLAGS"].append("-m32")
 env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
-env.ParseConfig('pkg-config openal --cflags --libs')
-env.ParseConfig('pkg-config sndfile --libs --cflags')
+env.ParseConfig('pkg-config openal --cflags')
+env.ParseConfig('pkg-config sndfile --cflags')
 env.ParseConfig('pkg-config sdl --libs --cflags')
 env.ParseConfig('pkg-config glu --cflags --libs')
 
