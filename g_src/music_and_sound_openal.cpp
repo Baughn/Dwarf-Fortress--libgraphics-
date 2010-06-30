@@ -33,10 +33,12 @@ bool musicsoundst::initsound() {
   // Load the libraries
   if (!init_openal()) {
     puts("Dynamically loading the OpenAL library failed, disabling sound");
+    MessageBox(NULL, "Dynamically loading the OpenAL library failed, disabling sound", 0, 0);
     return false;
   }
   if (!init_sndfile()) {
     puts("Dynamically loading the sndfile library failed, disabling sound");
+    MessageBox(NULL, "Dynamically loading the sndfile library failed, disabling sound", 0, 0);
     return false;
   }
   
