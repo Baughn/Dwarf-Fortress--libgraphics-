@@ -422,16 +422,18 @@ void render_things()
 	}
   else gps.erasescreen();
 
-  // HACK: Render REC when recording macros. Definitely want this screen-specific. Or do we?
-  if (enabler.is_recording()) {
-    static int frame = 0;
-    frame++;
-    int rate = enabler.get_fps();
-    if (frame % rate < rate/2) {
-      gps.locate(0, 20);
-      gps.changecolor(4,1,1);
-      gps.addst("REC");
-    }
+  // Render REC when recording macros. Definitely want this screen-specific. Or do we?
+  const Time now = SDL_GetTicks();
+  if (enabler.is_recording() && now % 1000 > 500) {
+    gps.locate(0, 20);
+    gps.changecolor(4,1,1);
+    gps.addst("REC");
+  }
+  // Render PLAY when playing a macro
+  if (enabler.is_macro_playing() && now % 1000 <= 500) {
+    gps.locate(0,20);
+    gps.changecolor(2,1,1);
+    gps.addst("PLAY");
   }
   if (gps.display_frames) {
     ostringstream fps_stream;

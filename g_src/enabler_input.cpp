@@ -73,6 +73,7 @@ static map<InterfaceKey,set<string,less_sz> > keydisplay; // Used only for displ
 static bool macro_recording = false;
 static macro active_macro; // Active macro
 static map<string,macro> macros;
+static Time macro_end = 0; // Time at which the currently playing macro will end
 
 // Keybinding editing
 static bool key_registering = false;
@@ -831,14 +832,20 @@ bool enabler_inputst::is_recording() {
 }
 
 void enabler_inputst::play_macro() {
-  const Time now = SDL_GetTicks();
+  Time now = SDL_GetTicks();
   for (macro::iterator sim = active_macro.begin(); sim != active_macro.end(); ++sim) {
     Event e; e.r = REPEAT_NOT; e.repeats = 0; e.serial = next_serial(); e.time = now;
     for (set<InterfaceKey>::iterator k = sim->begin(); k != sim->end(); ++k) {
       e.k = *k;
       timeline.insert(e);
+      now += init.input.macro_time;
     }
   }
+  macro_end = MAX(macro_end, now);
+}
+
+bool enabler_inputst::is_macro_playing() {
+  return SDL_GetTicks() <= macro_end;
 }
 
 // Replaces any illegal letters.

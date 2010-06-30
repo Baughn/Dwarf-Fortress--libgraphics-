@@ -134,7 +134,7 @@ If you set KEY_REPEAT_ACCEL_LIMIT above one, then after KEY_REPEAT_ACCEL_START r
 
 This controls the number of milliseconds between macro instructions.
 
-[MACRO_MS:150]
+[MACRO_MS:15]
 
 This controls the number of milliseconds that must pass before input works again after the view recenters on an event in dwarf mode.
 

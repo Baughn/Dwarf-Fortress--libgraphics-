@@ -106,6 +106,7 @@ class enabler_inputst {
   void record_stop(); // Stops recording, saving it as the active macro
   bool is_recording();
   void play_macro(); // Runs the active macro, if any
+  bool is_macro_playing();
   std::list<string> list_macros();
   void load_macro(string name); // Loads some macro as the active one
   void save_macro(string name); // Saves the active macro under some name
