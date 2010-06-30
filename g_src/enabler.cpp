@@ -45,11 +45,8 @@ texture_fullid renderer::screen_to_texid(int x, int y) {
 
   const int ch   = screen[tile*4 + 0];
   const int bold = (screen[tile*4 + 3] != 0) * 8;
-  const int fg   = screen[tile*4 + 1] + bold;
-  const int bg   = screen[tile*4 + 2];
-
-  assert(fg >= 0 && fg < 16);
-  assert(bg >= 0 && bg < 16);  
+  const int fg   = (screen[tile*4 + 1] + bold) % 16;
+  const int bg   = screen[tile*4 + 2] % 16;
 
   static bool use_graphics = init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS);
 
