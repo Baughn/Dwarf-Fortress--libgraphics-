@@ -26,32 +26,16 @@ protected:
       // Create the colorized texture
       SDL_Surface *tex   = enabler.textures.get_texture_data(id.texpos);
       SDL_Surface *color;
-      static bool use_hw        = init.display.flag.has_flag(INIT_DISPLAY_FLAG_2DHW);
-      if (use_hw) {
-        color = SDL_CreateRGBSurface(SDL_HWSURFACE,
-                                     tex->w, tex->h,
-                                     tex->format->BitsPerPixel,
-                                     tex->format->Rmask,
-                                     tex->format->Gmask,
-                                     tex->format->Bmask,
-                                     0);
-        if (!color) {
-          use_hw = false;
-          MessageBox (NULL, "Unable to create texture in video memory. Performance will suffer. Use 2DSW, or don't use graphical tiles.", "Out of VRAM", MB_OK | MB_ICONEXCLAMATION);
-        }
-      }
-      if (!use_hw) {
-        color = SDL_CreateRGBSurface(SDL_SWSURFACE,
-                                     tex->w, tex->h,
-                                     tex->format->BitsPerPixel,
-                                     tex->format->Rmask,
-                                     tex->format->Gmask,
-                                     tex->format->Bmask,
-                                     0);
-        if (!color) {
-          MessageBox (NULL, "Unable to create texture!", "Fatal error", MB_OK | MB_ICONEXCLAMATION);
-          abort();
-        }
+      color = SDL_CreateRGBSurface(SDL_SWSURFACE,
+                                   tex->w, tex->h,
+                                   tex->format->BitsPerPixel,
+                                   tex->format->Rmask,
+                                   tex->format->Gmask,
+                                   tex->format->Bmask,
+                                   0);
+      if (!color) {
+        MessageBox (NULL, "Unable to create texture!", "Fatal error", MB_OK | MB_ICONEXCLAMATION);
+        abort();
       }
       
       // Fill it
