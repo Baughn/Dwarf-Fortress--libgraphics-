@@ -11,6 +11,7 @@
 #include "random.h"
 #include "init.h"
 #include "music_and_sound_g.h"
+#include "scheme-base.h"
 
 #ifdef unix
 # include <locale.h>
@@ -675,8 +676,8 @@ void enablerst::set_gfps(int gfps) {
 }
 
 int call_loop(void *dummy) {
-  enabler.async_loop();
-  return 0;
+  // Start scheme, then call the async-loop
+  return scheme_main_setup(1, scheme_start, 0, NULL);
 }
 
 int main (int argc, char* argv[]) {
