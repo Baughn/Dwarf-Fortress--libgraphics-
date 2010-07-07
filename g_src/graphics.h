@@ -92,10 +92,11 @@ class graphicst
                     }
                   if(advance)screenx++;
                 }
-                void addchar(int x, int y, unsigned char c, int f, int b, int bright) {
+                void addchar(unsigned int x, unsigned int y, unsigned char c,
+                             unsigned char f, unsigned char b, unsigned char bright) {
                   /* assert (screen_limit == screen + dimy * dimx * 4); */
                   unsigned char *s = screen + x*dimy*4 + y*4;
-                  if (s < screen_limit) {
+                  if (s >= screen && s < screen_limit) {
                     *s++ = c;
                     *s++ = f;
                     *s++ = b;
