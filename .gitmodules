@@ -1,0 +1,3 @@
+[submodule "plt"]
+	path = plt
+	url = git://git.racket-lang.org/plt.git
