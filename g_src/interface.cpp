@@ -39,6 +39,7 @@ using std::string;
 #include "keybindings.h"
 #include "interface.h"
 #include "KeybindingScreen.h"
+#include "console.h"
 
 #include <list>
 #include <set>
@@ -857,8 +858,8 @@ char interfacest::loop() {
 
     const Time now = SDL_GetTicks();
     // Process as much input as possible. Some screens can't handle multiple input events
-    // per logic call (retain_nonzero_input, and any alteration to the window setup
-    // requires us to stop until the next logic call.
+    // per logic call (marked with retain_nonzero_input), and any alteration to the window
+    // setup requires us to stop until the next logic call.
     for (;;) {
       if (currentscreen->child || currentscreen->breakdownlevel != INTERFACE_BREAKDOWN_NONE)
         break; // Some previous input or logic had the effect of switching screens
@@ -923,6 +924,16 @@ char interfacest::loop() {
           gview.addscreen(new MacroScreenSave(), INTERFACE_PUSH_AT_BACK, NULL);
         if (era.count(INTERFACEKEY_LOAD_MACRO))
           gview.addscreen(new MacroScreenLoad(), INTERFACE_PUSH_AT_BACK, NULL);
+        // Console command
+        if (era.count(INTERFACEKEY_TOGGLE_CONSOLE)) {
+          if (console.is_displaying()) {
+            removescreen(&console, false);
+          } else {
+            insertscreen_at_back(&console);
+          }
+          console.toggle_display();
+          break;
+        }
         // Feed input
         currentscreen->feed(era);
         if (era.count(INTERFACEKEY_TOGGLE_FULLSCREEN)) {
@@ -989,7 +1000,7 @@ void interfacest::remove_to_first()
 		}
 }
 
-void interfacest::removescreen(viewscreenst *scr)
+void interfacest::removescreen(viewscreenst *scr, bool also_delete)
 {
 	//THE MINIMAP IS EXPENSIVE, SO WE REFRESH IT WHENEVER INTERFACE GETS IN THE WAY
 	if(gamemode==GAMEMODE_DWARF)dwarf_remove_screen();
@@ -999,7 +1010,8 @@ void interfacest::removescreen(viewscreenst *scr)
 	if(scr->child!=NULL)scr->child->parent=scr->parent;
 
 	//WASTE SCREEN
-	delete scr;
+        if (also_delete)
+          delete scr;
 }
 
 int interfacest::write_movie_chunk()
@@ -1693,7 +1705,7 @@ char standardstringentry(string &str,int maxlen,unsigned int flag,std::set<Inter
 		}
 
 	if(entry!=255)
-		{
+          {
 		if(entry=='\x0')
 			{
 			if(str.length()>0)str.resize(str.length()-1);

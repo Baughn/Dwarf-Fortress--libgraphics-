@@ -944,7 +944,7 @@ class enablerst : public enabler_inputst
   unsigned long flag; // ENABLERFLAG_RENDER, ENABLERFLAG_MAXFPS
 
   int loop(string cmdline);
-  void async_loop();
+  void async_loop(bool already_initialized);
   void do_frame();
   
   // Framerate interface

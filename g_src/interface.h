@@ -86,7 +86,7 @@ class interfacest
 
 		char loop();
 		void remove_to_first();
-		void removescreen(viewscreenst *scr);
+		void removescreen(viewscreenst *scr, bool also_delete = true);
 		void addscreen(viewscreenst *scr,char pushtype,viewscreenst *relate);
 		char is_supermovie_on()
 			{
@@ -139,6 +139,7 @@ char secondaryscrolling(std::set<InterfaceKey> &events,int32_t &scroll,int32_t m
 #define STRINGENTRY_NUMBERS BIT3
 #define STRINGENTRY_CAPS BIT4
 #define STRINGENTRY_SYMBOLS BIT5
+#define STRINGENTRY_PRINTABLE (STRINGENTRY_LETTERS|STRINGENTRY_SPACE|STRINGENTRY_NUMBERS|STRINGENTRY_SYMBOLS)
 char standardstringentry(char *str,int maxlen,unsigned int flag,std::set<InterfaceKey> &events);
 char standardstringentry(string &str,int maxlen,unsigned int flag,std::set<InterfaceKey> &events);
 

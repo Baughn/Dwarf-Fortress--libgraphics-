@@ -7,7 +7,7 @@ src_dll = ["basics.cpp","command_line.cpp","enabler.cpp","files.cpp",
            "keybindings.cpp","music_and_sound_openal.cpp", "random.cpp",
            "textlines.cpp","glew.c","enabler_input.cpp","ViewBase.cpp",
            "KeybindingScreen.cpp", "win32_compat.cpp", "textures.cpp",
-           "resize++.cpp", "renderer_offscreen.cpp", "scheme-base.3m.cpp"]
+           "resize++.cpp", "renderer_offscreen.cpp", "scheme-base.cpp"]
 
 dll  = '#libs/libgraphics.so'
 
@@ -51,7 +51,7 @@ if clang:
 # below.
 env['CPPPATH']=["#g_src/fmodexinclude"]
 env['CCFLAGS']=["-Dunix"]
-env['LIBS']=["SDL_image","z","racket3m"]
+env['LIBS']=["SDL_image","z","racket","mzgc"]
 # If there's a library in the libs folder it will get linked over a system one.
 env['LIBPATH']=["#libs"]
 env['LINKFLAGS']=["-Wl,--as-needed",'-Wl,-rpath=\$$ORIGIN/libs']
@@ -61,10 +61,11 @@ env["CPPPATH"].append('#g_src/glext')
 env["CCFLAGS"].append('-DGLEW_STATIC') # Should only be needed on windows, but can't hurt.
 
 # Build the Scheme modules file and transform the base file
-env.Command("scheme-modules.cpp", None, "raco ctool --3m --c-mods $TARGET ++lib racket/base")
-env.Command("scheme-base.3m.cpp",
-            ["scheme-base.cpp", "scheme-modules.cpp"],
-            "raco ctool --3m -x $SOURCE; mv g_src/scheme-base.3m.c $TARGET")
+# env.Command("scheme-modules.cpp", None, "raco ctool --3m --c-mods $TARGET ++lib racket/base")
+env.Command("scheme-modules.cpp", None, "raco ctool --cgc --c-mods $TARGET ++lib racket ++lib racket/date")
+# env.Command("scheme-base.3m.cpp",
+#             ["scheme-base.cpp", "scheme-modules.cpp"],
+#             "raco ctool --3m -x $SOURCE; mv g_src/scheme-base.3m.c $TARGET")
 
 
 # Generic unix, including Linux

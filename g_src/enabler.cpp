@@ -12,6 +12,7 @@
 #include "init.h"
 #include "music_and_sound_g.h"
 #include "scheme-base.h"
+#include "console.h"
 
 #ifdef unix
 # include <locale.h>
@@ -20,7 +21,7 @@
 using namespace std;
 
 enablerst enabler;
-
+viewscreen_console console;
 
 // For the printGLError macro
 int glerrorcount = 0;
@@ -262,10 +263,14 @@ void enablerst::async_wait() {
   }
 }
 
-void enablerst::async_loop() {
-  async_paused = false;
-  async_frames = 0;
+void enablerst::async_loop(bool already_initialized) {
   int fps = 100; // Just a thread-local copy
+  if (already_initialized) {
+    fps = get_fps();
+  } else {
+    async_paused = false;
+    async_frames = 0;
+  }
   for (;;) {
     // cout << "FRAMES: " << frames << endl;
     // Check for commands

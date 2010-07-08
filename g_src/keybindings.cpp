@@ -1367,6 +1367,7 @@ void keybinding_init() {
 	bindingNames.insert(INTERFACEKEY_CUSTOM_ALT_Z, "CUSTOM_ALT_Z");
         bindingNames.insert(INTERFACEKEY_FPS_UP, "FPS_UP");
         bindingNames.insert(INTERFACEKEY_FPS_DOWN, "FPS_DOWN");
+        bindingNames.insert(INTERFACEKEY_TOGGLE_CONSOLE, "TOGGLE_CONSOLE");
         
 
 	displayNames.insert(INTERFACEKEY_NONE, "None");
@@ -2727,6 +2728,7 @@ void keybinding_init() {
 	displayNames.insert(INTERFACEKEY_CUSTOM_ALT_Z, "Custom: Alt + Z");
         displayNames.insert(INTERFACEKEY_FPS_UP, "Increase FPS limit");
         displayNames.insert(INTERFACEKEY_FPS_DOWN, "Decrease FPS limit");
+        displayNames.insert(INTERFACEKEY_TOGGLE_CONSOLE, "Toggle console");
         
 
   sdlNames.insert(SDLK_BACKSPACE, "Backspace");

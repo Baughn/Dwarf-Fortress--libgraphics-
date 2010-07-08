@@ -19,6 +19,7 @@ using std::endl;
 using std::ofstream;
 
 #include "endian.h"
+#include "console.h"
 
 #ifdef WIN32
 
@@ -57,6 +58,9 @@ void errorlog_string(const string &str)
 		fseed<<str.c_str()<<std::endl;
 		}
 	fseed.close();
+
+        // Log to the console
+        console.log(4,0,1, str);
 }
 
 void gamelog_string(const string &str)
@@ -70,24 +74,15 @@ void gamelog_string(const string &str)
 		fseed<<str.c_str()<<std::endl;
 		}
 	fseed.close();
+
+        // Log to the console
+        console.log(1,0,1, str);
 }
 
 void errorlog_string(const char *ptr)
 {
 	if(ptr==NULL)return;
-
-	//SAVE AN ERROR TO THE LOG FILE
-	std::ofstream fseed("errorlog.txt", std::ios::out | std::ios::app);
-	if(fseed.is_open())
-		{
-		if(!errorlog_prefix.empty())
-			{
-			fseed<<errorlog_prefix.c_str()<<std::endl;
-			errorlog_prefix.clear();
-			}
-		fseed<<ptr<<std::endl;
-		}
-	fseed.close();
+        errorlog_string(string(ptr));
 }
 
 int32_t convert_string_to_long(string &str)
