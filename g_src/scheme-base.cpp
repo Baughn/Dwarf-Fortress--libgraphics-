@@ -8,7 +8,6 @@
 #include "curses.h"
 
 #include "scheme-base.h"
-#include "scheme-modules.cpp"
 
 
 static void register_function(Scheme_Env *e, const char *name, Scheme_Prim *prim, int arity) {
@@ -104,6 +103,16 @@ static Scheme_Object *print(int argc, Scheme_Object **argv) {
   return scheme_void;
 }
 
+static Scheme_Object *set_color(int argc, Scheme_Object **argv) {
+  for (int i=0; i < 3; i++)
+    if (!SCHEME_INTP(argv[i]))
+      scheme_wrong_type("set-color%", "fixnum", i, argc, argv);
+
+  gps.changecolor(SCHEME_INT_VAL(argv[0]),
+                  SCHEME_INT_VAL(argv[1]),
+                  SCHEME_INT_VAL(argv[2]));
+}
+
 // Define primitive calls, i.e. Scheme->C++ calls
 static void define_primitives(Scheme_Env *e) {
   register_function(e, "simticks", simticks, 0);
@@ -112,7 +121,7 @@ static void define_primitives(Scheme_Env *e) {
   register_function(e, "push-interface", push_interface, 4);
   register_function(e, "del-interface", del_interface, 1);
   register_function(e, "addstr", print, 3);
-  // register_function(e, "set-color", set_color, 3);
+  register_function(e, "set-color%", set_color, 3);
 }
 
 static long console_write_primitive(const char *buffer, long offset, long size, bool as_error) {
@@ -169,11 +178,14 @@ Scheme_Object *scheme_apply_safe(Scheme_Object *f, int argc, Scheme_Object **arg
   return ret;
 }
 
+void call_declare_modules(Scheme_Env *env);
+  
 int scheme_start(Scheme_Env *e, int argc, char **argv) {
   // Declare embedded modules from scheme-modules.c
-  declare_modules(e);
+  call_declare_modules(e);
   scheme_namespace_require(scheme_intern_symbol("racket"));
   scheme_namespace_require(scheme_intern_symbol("racket/date"));
+  scheme_namespace_require(scheme_intern_symbol("rnrs"));
 
   // Declare primitive functions
   define_primitives(e);

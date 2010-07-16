@@ -7,7 +7,8 @@ src_dll = ["basics.cpp","command_line.cpp","enabler.cpp","files.cpp",
            "keybindings.cpp","music_and_sound_openal.cpp", "random.cpp",
            "textlines.cpp","glew.c","enabler_input.cpp","ViewBase.cpp",
            "KeybindingScreen.cpp", "win32_compat.cpp", "textures.cpp",
-           "resize++.cpp", "renderer_offscreen.cpp", "scheme-base.cpp"]
+           "resize++.cpp", "renderer_offscreen.cpp", "scheme-base.cpp",
+           "scheme-modules-wrapper.cpp"]
 
 dll  = '#libs/libgraphics.so'
 
@@ -62,7 +63,8 @@ env["CCFLAGS"].append('-DGLEW_STATIC') # Should only be needed on windows, but c
 
 # Build the Scheme modules file and transform the base file
 # env.Command("scheme-modules.cpp", None, "raco ctool --3m --c-mods $TARGET ++lib racket/base")
-env.Command("scheme-modules.cpp", None, "raco ctool --cgc --c-mods $TARGET ++lib racket ++lib racket/date")
+env.Command("scheme-modules.cpp", None,
+            "raco ctool --cgc --c-mods $TARGET ++lib racket ++lib racket/date ++lib rnrs")
 # env.Command("scheme-base.3m.cpp",
 #             ["scheme-base.cpp", "scheme-modules.cpp"],
 #             "raco ctool --3m -x $SOURCE; mv g_src/scheme-base.3m.c $TARGET")
