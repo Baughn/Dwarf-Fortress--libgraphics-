@@ -282,7 +282,7 @@ extern "C" {
       noecho();
       keypad(*stdscr_p, true);
       nodelay(*stdscr_p, true);
-      set_escdelay(25); // Possible bug
+      //set_escdelay(25); // Possible bug
       curs_set(0);
       mmask_t dummy;
       // mousemask(ALL_MOUSE_EVENTS, &dummy);

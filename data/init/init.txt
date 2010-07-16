@@ -16,7 +16,7 @@ The sound volume runs from 0 (off) to 255 (full).  You can set the volume from t
 
 Change this to skip the wonderful intro movies.
 
-[INTRO:NO]
+[INTRO:YES]
 
 This lets you set the starting windowed/fullscreen setting.  Can be YES, NO or PROMPT.
 
@@ -43,7 +43,7 @@ If this is set to YES, the tiles will not be stretched, but rather the game view
 
 [BLACK_SPACE:YES]
 
-Graphics info, most of it as above.  Set GRAPHICS to YES to turn it all on.  This will use the "raw/graphics" folder for tile information.  Currently this is limited to whatever creature graphics you have downloaded.  The game comes with a few pictures to demonstrate.  As of September 2008, the Dwarf Fortress Wiki has graphical tilesets available at http://www.dwarffortresswiki.net/index.php/List_of_user_graphics_sets.
+Graphics info, most of it as above.  Set GRAPHICS to YES to turn it all on.  This will use the "raw/graphics" folder for tile information.  Currently this is limited to whatever creature graphics you have downloaded.  The game comes with a few pictures to demonstrate.  As of July 2010, the Dwarf Fortress Wiki has graphical tilesets available at http://www.dwarffortresswiki.net/index.php/List_of_user_graphics_sets.
 
 [GRAPHICS:NO]
 [GRAPHICS_WINDOWEDX:0]
@@ -62,13 +62,12 @@ By and large, 2D should be the most reliable, while STANDARD has a good combinat
 
 Linux/OS X users may also use PRINT_MODE:TEXT for primitive ncurses output.
 
-Mode examples:
-  PRINT_MODE:2D
-  PRINT_MODE:TEXT
-  PRINT_MODE:FRAME_BUFFER
-  PRINT_MODE:PARTIAL:0
-
 [PRINT_MODE:2D]
+	Mode examples:
+	 PRINT_MODE:2D
+	 PRINT_MODE:TEXT
+	 PRINT_MODE:FRAME_BUFFER
+	 PRINT_MODE:PARTIAL:0
 [SINGLE_BUFFER:NO]
 
 Change this to YES to keep the DF window on top of your other windows.
@@ -77,7 +76,7 @@ Change this to YES to keep the DF window on top of your other windows.
 
 Change this to YES if you want to see an FPS counter at the top left.
 
-[FPS:YES]
+[FPS:NO]
 
 Use this to set the maximum frame rate during play.  The movies are always capped at 100.  A frame in this case is not graphical but related to the movement speed of a creature.  A healthy, unencumbered dwarven peasant takes one step every 10 frames.
 

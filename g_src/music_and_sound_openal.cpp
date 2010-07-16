@@ -236,6 +236,8 @@ void musicsoundst::stop_sound(slot slot) {
 }
 
 void musicsoundst::deinitsound() {
+  if (!functional) return;
+
   std::map<std::string,ALuint>::iterator it;
   // Free all sources
   for (it = sources.begin(); it != sources.end(); ++it) {

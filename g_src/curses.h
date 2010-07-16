@@ -13,10 +13,12 @@ extern "C" {
 #endif
 }
 
+#ifdef unix
 extern "C" {
   void init_curses();
   extern WINDOW **stdscr_p;
 };
+#endif
 
 
 #endif
