@@ -231,10 +231,20 @@ public:
     origin_x = (screen->w - dispx_z * w) / 2;
     origin_y = (screen->h - dispy_z * h) / 2;
   }
+
+private:
+  // Stores the window size when in fullscreen
+  int last_windowed_w, last_windowed_h;
   
   void set_fullscreen() {
-    resize(init.display.desired_fullscreen_width,
-           init.display.desired_fullscreen_height);
+    if (enabler.is_fullscreen()) {
+      last_windowed_w = screen->w;
+      last_windowed_h = screen->h;
+      resize(init.display.desired_fullscreen_width,
+             init.display.desired_fullscreen_height);
+    } else {
+      resize(last_windowed_w, last_windowed_h);
+    }
   }
 
   bool get_mouse_coords(int &x, int &y) {
