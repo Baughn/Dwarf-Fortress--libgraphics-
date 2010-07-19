@@ -293,16 +293,18 @@ extern "C" {
     if (!stub_initialized) {
       stub_initialized = true;
       // We prefer libncursesw, but we'll accept libncurses if we have to
+      handle = dlopen("libncursesw.so.5", RTLD_LAZY);
+      if (handle) goto opened;
       handle = dlopen("libncursesw.so", RTLD_LAZY);
-      if (handle) {
-        puts("Opened libncursesw");
-      } else {
-        handle = dlopen("libncurses.so", RTLD_LAZY);
-        if (handle) {
-          puts("Fallback: Opened libncurses, output may be broken");
-          sleep(10);
-        }
-      }
+      if (handle) goto opened;
+      puts("Didn't find any flavor of libncursesw, attempting libncurses");
+      sleep(5);
+      handle = dlopen("libncurses.so.5", RTLD_LAZY);
+      if (handle) goto opened;
+      handle = dlopen("libncurses.so", RTLD_LAZY);
+      if (handle) goto opened;
+
+    opened:
       if (!handle) {
         puts("Unable to open any flavor of libncurses!");
         exit(EXIT_FAILURE);
