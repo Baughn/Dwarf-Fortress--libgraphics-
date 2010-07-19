@@ -222,13 +222,69 @@ extern "C" {
   static int (*_getmouse)(MEVENT *m);
   static int (*_waddnwstr)(WINDOW *w, const wchar_t *s, int i);
 
-  static void *dlsym_orexit(const char *symbol) {
+  static void *dlsym_orexit(const char *symbol, bool actually_exit = true) {
     void *sym = dlsym(handle, symbol);
     if (!sym) {
       printf("Symbol not found: %s\n", symbol);
-      exit(EXIT_FAILURE);
+      if (actually_exit)
+        exit(EXIT_FAILURE);
     }
     return sym;
+  }
+
+  int erase(void) {
+    return _erase();
+  }
+  int wmove(WINDOW *w, int y, int x) {
+    return _wmove(w, y, x);
+  }
+  int waddnstr(WINDOW *w, const char *s, int n) {
+    return _waddnstr(w, s, n);
+  }
+  int nodelay(WINDOW *w, bool b) {
+    return _nodelay(w, b);
+  }
+  int refresh(void) {
+    return _refresh();
+  }
+  int wgetch(WINDOW *w) {
+    return _wgetch(w);
+  }
+  int endwin(void) {
+    return _endwin();
+  }
+  WINDOW *initscr(void) {
+    return _initscr();
+  }
+  int raw(void) {
+    return _raw();
+  }
+  int keypad(WINDOW *w, bool b) {
+    return _keypad(w, b);
+  }
+  int noecho(void) {
+    return _noecho();
+  }
+  int set_escdelay(int delay) {
+    if (_set_escdelay)
+      return _set_escdelay(delay);
+    else
+      return 0;
+  }
+  int curs_set(int s) {
+    return _curs_set(s);
+  }
+  int start_color(void) {
+    return _start_color();
+  }
+  int init_pair(short p, short fg, short bg) {
+    return _init_pair(p, fg, bg);
+  }
+  int getmouse(MEVENT *m) {
+    return _getmouse(m);
+  }
+  int waddnwstr(WINDOW *w, const wchar_t *s, int n) {
+    return _waddnwstr(w, s, n);
   }
 
   void init_curses() {
@@ -266,7 +322,7 @@ extern "C" {
       _raw = (int (*)(void))dlsym_orexit("raw");
       _keypad = (int (*)(WINDOW *w, bool b))dlsym_orexit("keypad");
       _noecho = (int (*)(void))dlsym_orexit("noecho");
-      _set_escdelay = (int (*)(int delay))dlsym_orexit("set_escdelay");
+      _set_escdelay = (int (*)(int delay))dlsym_orexit("set_escdelay", false);
       _curs_set = (int (*)(int s))dlsym_orexit("curs_set");
       _start_color = (int (*)(void))dlsym_orexit("start_color");
       _init_pair = (int (*)(short p, short fg, short bg))dlsym_orexit("init_pair");
@@ -282,7 +338,7 @@ extern "C" {
       noecho();
       keypad(*stdscr_p, true);
       nodelay(*stdscr_p, true);
-      //set_escdelay(25); // Possible bug
+      set_escdelay(25); // Possible bug
       curs_set(0);
       mmask_t dummy;
       // mousemask(ALL_MOUSE_EVENTS, &dummy);
@@ -291,59 +347,6 @@ extern "C" {
       
       atexit(endwin_void);
     }
-  }
-  
-  
-  int erase(void) {
-    return _erase();
-  }
-  int wmove(WINDOW *w, int y, int x) {
-    return _wmove(w, y, x);
-  }
-  int waddnstr(WINDOW *w, const char *s, int n) {
-    return _waddnstr(w, s, n);
-  }
-  int nodelay(WINDOW *w, bool b) {
-    return _nodelay(w, b);
-  }
-  int refresh(void) {
-    return _refresh();
-  }
-  int wgetch(WINDOW *w) {
-    return _wgetch(w);
-  }
-  int endwin(void) {
-    return _endwin();
-  }
-  WINDOW *initscr(void) {
-    return _initscr();
-  }
-  int raw(void) {
-    return _raw();
-  }
-  int keypad(WINDOW *w, bool b) {
-    return _keypad(w, b);
-  }
-  int noecho(void) {
-    return _noecho();
-  }
-  int set_escdelay(int delay) {
-    return _set_escdelay(delay);
-  }
-  int curs_set(int s) {
-    return _curs_set(s);
-  }
-  int start_color(void) {
-    return _start_color();
-  }
-  int init_pair(short p, short fg, short bg) {
-    return _init_pair(p, fg, bg);
-  }
-  int getmouse(MEVENT *m) {
-    return _getmouse(m);
-  }
-  int waddnwstr(WINDOW *w, const wchar_t *s, int n) {
-    return _waddnwstr(w, s, n);
   }
 };
 
