@@ -368,19 +368,15 @@ public:
     reshape(make_pair<int,int>(w, h));
   }
 
-private:
-  // Stores the window size when in fullscreen
-  int last_windowed_w, last_windowed_h;
-
 public:
   void set_fullscreen() {
     if (enabler.is_fullscreen()) {
-      last_windowed_w = screen->w;
-      last_windowed_h = screen->h;
+      init.display.desired_windowed_width = screen->w;
+      init.display.desired_windowed_height = screen->h;
       resize(init.display.desired_fullscreen_width,
              init.display.desired_fullscreen_height);
     } else {
-      resize(last_windowed_w, last_windowed_h);
+      resize(init.display.desired_windowed_width, init.display.desired_windowed_height);
     }
   }
 };
