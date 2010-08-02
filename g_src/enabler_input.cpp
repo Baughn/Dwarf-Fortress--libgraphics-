@@ -341,11 +341,11 @@ void enabler_inputst::load_keybindings(const string &file) {
             matcher.unicode = decode_utf8(match[1]);
             matcher.mod = KMOD_NONE;
             if (matcher.unicode) {
-              keymap.insert(pair<EventMatch,InterfaceKey>(matcher, (InterfaceKey)binding));
+              keymap.insert(make_pair(matcher, (InterfaceKey)binding));
               if (matcher.unicode < 256) {
                 // This unicode key is part of the latin-1 mapped portion of unicode, so we can
                 // actually display it. Nice.
-                char c[2] = {matcher.unicode, 0};
+                char c[2] = {char(matcher.unicode), 0};
                 update_keydisplay(binding, display(matcher));
               }
             } else {
@@ -459,13 +459,13 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
       KeyEvent synth;
       synth.release = true;
       synth.match = *pkit;
-      synthetics.push_back(make_pair<KeyEvent,int>(synth, next_serial()));
+      synthetics.push_back(make_pair(synth, next_serial()));
       // Re-press them, with new modifiers, if they aren't unicode. We can't re-translate unicode.
       if (synth.match.type != type_unicode) {
         synth.release = false;
         synth.match.mod = getModState();
         if (!key_registering) // We don't want extras when registering keys
-          synthetics.push_back(make_pair<KeyEvent,int>(synth, next_serial()));
+          synthetics.push_back(make_pair(synth, next_serial()));
       }
     }
   } else {
@@ -477,7 +477,7 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
           KeyEvent synth;
           synth.release = true;
           synth.match = *pkit;
-          synthetics.push_back(make_pair<KeyEvent,int>(synth, next_serial()));
+          synthetics.push_back(make_pair(synth, next_serial()));
         }
       }
     }
@@ -495,20 +495,20 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
       real.match.type = type_button;
       real.match.scancode = 0;
       real.match.button = e.button.button;
-      synthetics.push_back(make_pair<KeyEvent,int>(real, serial));
+      synthetics.push_back(make_pair(real, serial));
     }
     if (e.type == SDL_KEYUP || e.type == SDL_KEYDOWN) {
       real.match.type = type_key;
       real.match.scancode = e.key.keysym.scancode;
       real.match.key = e.key.keysym.sym;
-      synthetics.push_back(make_pair<KeyEvent,int>(real, serial));
+      synthetics.push_back(make_pair(real, serial));
     }
     if (e.type == SDL_KEYDOWN && e.key.keysym.unicode && getModState() < 2) {
       real.match.mod = KMOD_NONE;
       real.match.type = type_unicode;
       real.match.scancode = e.key.keysym.scancode;
       real.match.unicode = e.key.keysym.unicode;
-      synthetics.push_back(make_pair<KeyEvent,int>(real, serial));
+      synthetics.push_back(make_pair(real, serial));
     }
     if (e.type == SDL_QUIT) {
       // This one, we insert directly into the timeline.

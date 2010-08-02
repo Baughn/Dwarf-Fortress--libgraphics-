@@ -2,6 +2,7 @@
 #define INIT_H
 
 #include "enabler.h"
+#include <SDL/SDL_ttf.h>
 
 class init_fontst
 {
@@ -18,6 +19,7 @@ class init_fontst
 		long small_font_dispy;
 		long large_font_dispx;
 		long large_font_dispy;
+                bool use_ttf;
 };
 
 enum InitDisplayFlag

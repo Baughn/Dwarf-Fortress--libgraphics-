@@ -6,7 +6,7 @@
 #include "music_and_sound_openal.h"
 #else
 #include "music_and_sound_fmodex.h"
- #endif // unix
+#endif // unix
 
 extern musicsoundst musicsound;
 

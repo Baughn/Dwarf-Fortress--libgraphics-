@@ -15,6 +15,7 @@
 #include <cassert>
 
 #include "svector.h"
+#include "ttf_manager.hpp"
 
 #ifdef WIN32
 
@@ -109,37 +110,62 @@ void graphicst::addcoloredst(const char *str,const char *colorstr)
     }
 }
 
-void graphicst::addst(const string &str)
+void graphicst::addst(const string &str, justification just)
 {
- 	int s;
-	for(s=0;s<str.length()&&screenx<init.display.grid_x;s++)
-		{
-		if(screenx<0)
-			{
-			s-=screenx;
-			screenx=0;
-			if(s>=str.length())break;
-			}
-
-		addchar(str[s]);
-		}
+  if (just != not_truetype && ttf_manager.was_init()) {
+    struct ttf_id id = {str, screenf, screenb, screenbright, just};
+    pair<int,int> handleAndWidth = ttf_manager.get_handle(id);
+    const int handle = handleAndWidth.first;
+    const int width = handleAndWidth.second;
+    int ourx;
+    switch (just) {
+    case justify_left: ourx = screenx; break;
+    case justify_center: ourx = MAX(0, screenx - width / 2); break;
+    default: ourx = MAX(0, screenx - width); break;
+    }
+    unsigned char * const s = screen + ourx*dimy*4 + screeny*4;
+    s[0] = (handle >> 16) & 0xff;
+    s[1] = (handle >> 8) & 0xff;
+    s[2] = handle & 0xff;
+    s[3] = GRAPHICSTYPE_TTF;
+    // Also set the other tiles this text covers
+    for (int x = 1; x < width; ++x) {
+#ifdef DEBUG
+      *(s + x*dimy*4 + 0) = 4;
+      *(s + x*dimy*4 + 1) = 2;
+      *(s + x*dimy*4 + 2) = 0;
+      *(s + x*dimy*4 + 3) = 82;
+#else
+      *(s + x*dimy*4 + 3) = GRAPHICSTYPE_TTFCONT;
+#endif
+    }
+  } else {
+    int ourx;
+    switch (just) {
+    case justify_left: ourx = screenx; break;
+    case justify_center: ourx = MAX(0, screenx - str.length() / 2); break;
+    default: ourx = MAX(0, screenx - str.length()); break;
+    }
+    gps.locate(screeny, ourx);
+    int s;
+    for(s=0;s<str.length()&&screenx<init.display.grid_x;s++)
+      {
+        if(screenx<0)
+          {
+            s-=ourx;
+            ourx=0;
+            if(s>=str.length())break;
+          }
+        
+        addchar(str[s]);
+      }
+  }
 }
 
-void graphicst::addst(const char *str)
+void graphicst::addst(const char *str, justification just)
 {
-  int s;
-  const int slen = strlen(str);
-  for(s=0; s < slen && screenx < init.display.grid_x; s++)
-    {
-      if(screenx<0)
-        {
-          s-=screenx;
-          screenx=0;
-          if(s >= slen) break;
-        }
-      
-      addchar(str[s]);
-    }
+  string s(str);
+  addst(s, just);
 }
 
 void graphicst::erasescreen_clip()

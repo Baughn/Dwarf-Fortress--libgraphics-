@@ -1,3 +1,6 @@
+#ifndef G_BASICS_H
+#define G_BASICS_H
+
 #define MAX_GRID_X 256
 #define MAX_GRID_Y 256
 #define MIN_GRID_X 80
@@ -25,4 +28,6 @@ extern int glerrorcount;
 #else
 # define printGLError()
 # define deputs(str)
+#endif
+
 #endif

@@ -114,35 +114,39 @@ protected:
   }
 
   void write_tile_arrays(int x, int y, GLfloat *fg, GLfloat *bg, GLfloat *tex) {
-    struct texture_fullid id = screen_to_texid(x, y);
-    const gl_texpos *txt = enabler.textures.gl_texpos;
-    // TODO: Only bother to set the one that's actually read in flat-shading mode
-    // And set flat-shading mode.
-    for (int i = 0; i < 6; i++) {
-      *(fg++) = id.r;
-      *(fg++) = id.g;
-      *(fg++) = id.b;
-      *(fg++) = 1;
+    Either<texture_fullid,texture_ttfid> id = screen_to_texid(x, y);
+    if (id.isL) {          // An ordinary tile
+      const gl_texpos *txt = enabler.textures.gl_texpos;
+      // TODO: Only bother to set the one that's actually read in flat-shading mode
+      // And set flat-shading mode.
+      for (int i = 0; i < 6; i++) {
+        *(fg++) = id.left.r;
+        *(fg++) = id.left.g;
+        *(fg++) = id.left.b;
+        *(fg++) = 1;
+        
+        *(bg++) = id.left.br;
+        *(bg++) = id.left.bg;
+        *(bg++) = id.left.bb;
+        *(bg++) = 1;
+      }
+      // Set texture coordinates
+      *(tex++) = txt[id.left.texpos].left;   // Upper left
+      *(tex++) = txt[id.left.texpos].bottom;
+      *(tex++) = txt[id.left.texpos].right;  // Upper right
+      *(tex++) = txt[id.left.texpos].bottom;
+      *(tex++) = txt[id.left.texpos].left;   // Lower left
+      *(tex++) = txt[id.left.texpos].top;
       
-      *(bg++) = id.br;
-      *(bg++) = id.bg;
-      *(bg++) = id.bb;
-      *(bg++) = 1;
+      *(tex++) = txt[id.left.texpos].left;   // Lower left
+      *(tex++) = txt[id.left.texpos].top;
+      *(tex++) = txt[id.left.texpos].right;  // Upper right
+      *(tex++) = txt[id.left.texpos].bottom;
+      *(tex++) = txt[id.left.texpos].right;  // Lower right
+      *(tex++) = txt[id.left.texpos].top;
+    } else {
+      // TODO
     }
-    // Set texture coordinates
-    *(tex++) = txt[id.texpos].left;   // Upper left
-    *(tex++) = txt[id.texpos].bottom;
-    *(tex++) = txt[id.texpos].right;  // Upper right
-    *(tex++) = txt[id.texpos].bottom;
-    *(tex++) = txt[id.texpos].left;   // Lower left
-    *(tex++) = txt[id.texpos].top;
-
-    *(tex++) = txt[id.texpos].left;   // Lower left
-    *(tex++) = txt[id.texpos].top;
-    *(tex++) = txt[id.texpos].right;  // Upper right
-    *(tex++) = txt[id.texpos].bottom;
-    *(tex++) = txt[id.texpos].right;  // Lower right
-    *(tex++) = txt[id.texpos].top;
   }
   
 public:

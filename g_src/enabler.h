@@ -8,6 +8,7 @@
 #include "platform.h"
 #include <SDL/SDL.h>
 #include <SDL/SDL_thread.h>
+#include <SDL/SDL_ttf.h>
 #ifdef __APPLE__
 # include <SDL_image/SDL_image.h>
 #else
@@ -25,10 +26,13 @@
 #include <sstream>
 #include <stack>
 #include <queue>
+#include <set>
+#include <functional>
 
 using std::vector;
 using std::pair;
 using std::map;
+using std::set;
 using std::list;
 using std::stack;
 using std::queue;
@@ -724,7 +728,35 @@ struct gl_texpos {
   GLfloat left, right, top, bottom;
 };
 
-// Being a texture catalog interface, with opengl and sdl capability
+// Covers every allowed permutation of text
+struct ttf_id {
+  std::string text;
+  unsigned char fg, bg, bold;
+  unsigned char justification;
+  
+  bool operator< (const ttf_id &other) const {
+    if (fg != other.fg) return fg < other.fg;
+    if (bg != other.bg) return bg < other.bg;
+    if (bold != other.bold) return bold < other.bold;
+    if (justification != other.justification) return justification < other.justification;
+    return text < other.text;
+  }
+
+  bool operator== (const ttf_id &other) const {
+    return fg == other.fg && bg == other.bg && bold == other.bold && justification == other.justification && text == other.text;
+  }
+};
+
+namespace std {
+  template<> struct hash<ttf_id> {
+    size_t operator()(ttf_id val) const {
+      // Not the ideal hash function, but it'll do. And it's better than GCC's. id? Seriously?
+      return hash<string>()(val.text) + val.fg + (val.bg << 4) + (val.bold << 8) + (val.justification << 12);
+    }
+  };
+};
+
+// Being a texture catalog interface, with opengl, sdl and truetype capability
 class textures
 {
   friend class enablerst;
@@ -739,19 +771,19 @@ class textures
  public:
   // Initialize state variables
   textures() {
-    uploaded=false;
+    uploaded = false;
     gl_texpos = NULL;
   }
   int textureCount() {
     return raws.size();
   }
-  // Upload in-memory textures to the GPU, or delete them
+  // Upload in-memory textures to the GPU
   // When textures are uploaded, any alteration to a texture
   // is automatically reflected in the uploaded copy - eg. it's replaced.
   // This is very expensive in opengl mode. Don't do it often.
   void upload_textures();
-  // Also, you really should make sure to remove uploaded textures before
-  // deleting a window.
+  // Also, you really should try to remove uploaded textures before
+  // deleting a window, in case of driver memory leaks.
   void remove_uploaded_textures();
   // Returns the most recent texture data
   SDL_Surface *get_texture_data(long pos);
@@ -767,13 +799,9 @@ class textures
   // The calculated size of individual tiles is saved to disp_x, disp_y
   void load_multi_pdim(const string &filename,long *tex_pos,long dimx,long dimy,
 		       bool convert_magenta,
-/* 		       long *adj_x, long *adj_y, */
 		       long *disp_x, long *disp_y);
   // Loads a single texture from a file, returning the handle
   long load(const string &filename, bool convert_magenta);
-/*   SDL_Surface *get_texture_data(long pos); */
-/*   SDL_Surface *load_bitmap_file(const string &filename); */
-/*   SDL_Surface *load_bitmap_file_with_alpha(const string &filename); */
   // To delete a texture..
   void delete_texture(long pos);
 };
@@ -815,6 +843,8 @@ struct texture_fullid {
   }
 };
 
+typedef int texture_ttfid; // Just the texpos
+
 class renderer {
  protected:
   unsigned char *screen;
@@ -832,7 +862,7 @@ class renderer {
   unsigned char *screentexpos_cbr_old;
 
   void gps_allocate(int x, int y);
-  texture_fullid screen_to_texid(int x, int y);
+  Either<texture_fullid,texture_ttfid> screen_to_texid(int x, int y);
  public:
   void display();
   virtual void update_tile(int x, int y) = 0;
@@ -884,6 +914,7 @@ class enablerst : public enabler_inputst
   int frame_sum, gframe_sum;
   int frame_last, gframe_last; // SDL_GetTick returns
   void do_update_fps(queue<int> &q, int &sum, int &last, int &calc);
+
  public:
   void clear_fps();
  private:
@@ -988,6 +1019,7 @@ class enablerst : public enabler_inputst
 
   // TOADY: MOVE THESE TO "FRAMERATE INTERFACE"
   MVar<int> simticks, gputicks;
+  Uint32 clock; // An *approximation* of the current time for use in garbage collection thingies, updated every frame or so.
 };
 #endif
 

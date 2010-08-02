@@ -68,14 +68,17 @@ public:
     drawborder("Matrix", 1, 0);
     for (lit i = lines.begin(); i != lines.end(); ++i) {
       for (int j = 0; j < i->s.size(); ++j) {
-        gps.addchar(i->x, i->y + j, i->s[j], i->color, 0, 0);
+        int x = i->x;
+        int y = i->y + j;
+        if (x < gps.dimx && y > 0 && y < gps.dimy)
+          gps.addchar(i->x, i->y + j, i->s[j], i->color, 0, 0);
       }
     }
   }
   virtual void logic() {
     if ((frame++) % 2) return;
-    if (enabler.tracking_on)
-      cout << gps.mouse_x << " " << gps.mouse_y << endl;
+    // if (enabler.tracking_on)
+    //   cout << gps.mouse_x << " " << gps.mouse_y << endl;
     enabler.flag |= ENABLERFLAG_RENDER;
     // Advance each line one step
     for (lit i = lines.begin(); i != lines.end();) {
@@ -168,12 +171,15 @@ void drawborder(const char *str, char style, const char *color) {
     }
   }
   if (!str) return;
-  gps.locate(0, MAX((gps.dimx - strlen(str)) / 2,0));
+  // gps.locate(0, MAX((gps.dimx - strlen(str)) / 2,0));
+  gps.locate(0, gps.dimx/2);
   if (color)
     gps.addcoloredst(str, color);
   else {
     gps.changecolor(7,0,1);
-    gps.addst(str);
+    // Uint32 now = SDL_GetTicks() % 3000;
+    // gps.addst(str, now < 1000 ? justify_left : now < 2000 ? justify_center : justify_right);
+    gps.addst(str, justify_center);
   }
 }
 

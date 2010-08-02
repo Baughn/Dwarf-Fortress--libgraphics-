@@ -37,7 +37,6 @@ using std::string;
 extern enablerst enabler;
 extern graphicst gps;
 
-
 init_displayst::init_displayst()
 {
 	flag.set_size_on_flag_num(INIT_DISPLAY_FLAGNUM);
@@ -71,6 +70,11 @@ void initst::begin()
 					{
 					grab_token_string_pos(token2,str,token.length()+2);
 					}
+                                if(!token.compare("TRUETYPE")) {
+                                  if (token2=="YES") {
+                                    font.use_ttf = true;
+                                  }
+                                }
 
 				if(!token.compare("FONT"))
 					{

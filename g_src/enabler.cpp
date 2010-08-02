@@ -39,17 +39,26 @@ void report_error(const char *error_preface, const char *error_message)
   delete [] buf;
 }
 
-texture_fullid renderer::screen_to_texid(int x, int y) {
-  struct texture_fullid ret;
+Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int x, int y) {
   const int tile = x * gps.dimy + y;
+  const unsigned char *s = screen + tile*4;
 
-  const int ch   = screen[tile*4 + 0];
-  const int bold = (screen[tile*4 + 3] != 0) * 8;
-  const int fg   = (screen[tile*4 + 1] + bold) % 16;
-  const int bg   = screen[tile*4 + 2] % 16;
+  // TTF text does not get the full treatment.
+  if (s[3] == GRAPHICSTYPE_TTF) {
+    texture_ttfid texpos = (s[0] << 16) | (s[1] << 8) | s[2];
+    return Either<texture_fullid,texture_ttfid>(texpos);
+  } else if (s[3] == GRAPHICSTYPE_TTFCONT)
+    return Either<texture_fullid,texture_ttfid>(0);
 
+  // Otherwise, it's a normal (graphical?) tile.
+  struct texture_fullid ret;
+  const int ch   = s[0];
+  const int bold = (s[3] != 0) * 8;
+  const int fg   = (s[1] + bold) % 16;
+  const int bg   = s[2] % 16;
+  
   static bool use_graphics = init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS);
-
+  
   if (use_graphics) {
     const long texpos             = screentexpos[tile];
     const char addcolor           = screentexpos_addcolor[tile];
@@ -89,7 +98,7 @@ texture_fullid renderer::screen_to_texid(int x, int y) {
 
  skip_ch:
 
-  return ret;
+  return Either<texture_fullid,texture_ttfid>(ret);
 }
 
 
@@ -346,6 +355,9 @@ void enablerst::do_frame() {
     outstanding_frames -= cmd.val;
     async_tobox.write(cmd);
   }
+
+  // Store the current time, for things that are fine with approximations
+  enabler.clock = SDL_GetTicks();
 
   // If it's time to render..
   if (outstanding_gframes >= 1 &&

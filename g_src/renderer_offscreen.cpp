@@ -45,12 +45,17 @@ void renderer_offscreen::update_all(int offset_x, int offset_y) {
   for (int x = 0; x < gps.dimx; x++) {
     for (int y = 0; y < gps.dimy; y++) {
       // Read tiles from gps, create cached texture
-      struct texture_fullid id = screen_to_texid(x, y);
-      SDL_Surface *tex = tile_cache_lookup(id);
+      Either<texture_fullid,texture_ttfid> id = screen_to_texid(x, y);
+      SDL_Surface *tex = id.isL ? tile_cache_lookup(id.left) : ttf_manager.get_texture(id.right);
+      if (id.isL) {
+        tex = tile_cache_lookup(id.left);
+      } else {
+        tex = enabler.textures.get_texture_data(id.right);
+      }
       // Figure out where to blit
       SDL_Rect dst;
-      dst.x = tex->w * (x+offset_x);
-      dst.y = tex->h * (y+offset_y);
+      dst.x = dispx * (x+offset_x);
+      dst.y = dispy * (y+offset_y);
       // And blit.
       SDL_BlitSurface(tex, NULL, screen, &dst);
     }

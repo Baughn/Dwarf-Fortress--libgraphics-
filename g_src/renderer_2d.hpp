@@ -1,6 +1,7 @@
 #include "enabler.h"
 #include "init.h"
 #include "resize++.h"
+#include "ttf_manager.hpp"
 
 #include <iostream>
 using namespace std;
@@ -91,16 +92,27 @@ protected:
   }
   
 public:
+  list<pair<SDL_Surface*,SDL_Rect> > ttfs_to_render;
+  
   void update_tile(int x, int y) {
-    // Read tiles from gps, create cached texture
-    struct texture_fullid id = screen_to_texid(x, y);
-    SDL_Surface *tex = tile_cache_lookup(id);
     // Figure out where to blit
     SDL_Rect dst;
-    dst.x = tex->w * x + origin_x;
-    dst.y = tex->h * y + origin_y;
-    // And blit.
-    SDL_BlitSurface(tex, NULL, screen, &dst);
+    dst.x = dispx_z * x + origin_x;
+    dst.y = dispy_z * y + origin_y;
+    // Read tiles from gps, create cached texture
+    Either<texture_fullid,texture_ttfid> id = screen_to_texid(x, y);
+    SDL_Surface *tex;
+    if (id.isL) {      // Ordinary tile, cached here
+      tex = tile_cache_lookup(id.left);
+      // And blit.
+      SDL_BlitSurface(tex, NULL, screen, &dst);
+    } else { // TTF, cached in ttf_manager so no point in also caching here
+      if (id.right) {
+        tex = ttf_manager.get_texture(id.right);
+        // Blit later
+        ttfs_to_render.push_back(make_pair(tex, dst));
+      }
+    }
   }
 
   void update_all() {
@@ -111,6 +123,11 @@ public:
   }
 
   virtual void render() {
+    // Render the TTFs, which we left for last
+    for (auto it = ttfs_to_render.begin(); it != ttfs_to_render.end(); ++it)
+      SDL_BlitSurface(it->first, NULL, screen, &it->second);
+    ttfs_to_render.clear();
+    // And flip out.
     SDL_Flip(screen);
   }
 
@@ -209,7 +226,7 @@ public:
     try_x = screen->w / w;
     try_y = MIN(try_x / dispx * dispy, screen->h / h);
     try_x = MIN(try_x, try_y / dispy * dispx);
-    dispx_z = try_x; dispy_z = try_y;
+    dispx_z = MAX(1,try_x); dispy_z = MAX(try_y,1);
     cout << "Resizing font to " << dispx_z << "x" << dispy_z << endl;
     // Remove now-obsolete tile catalog
     for (map<texture_fullid, SDL_Surface*>::iterator it = tile_cache.begin();
@@ -230,6 +247,8 @@ public:
     // Calculate viewport origin, for centering
     origin_x = (screen->w - dispx_z * w) / 2;
     origin_y = (screen->h - dispy_z * h) / 2;
+    // Reset TTF rendering
+    ttf_manager.init(dispy_z, dispx_z);
   }
 
 private:

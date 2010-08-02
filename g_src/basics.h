@@ -100,4 +100,13 @@ enum Song
 	SONG_GAME,
 	SONGNUM
 };
+
+
+enum justification : unsigned char {
+  justify_left, justify_center, justify_right,
+  not_truetype
+};
+
+extern int charmap[256];
+
 #endif
