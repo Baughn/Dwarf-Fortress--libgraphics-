@@ -139,6 +139,7 @@ void graphicst::addst(const string &str, justification just)
       *(s + x*dimy*4 + 3) = GRAPHICSTYPE_TTFCONT;
 #endif
     }
+    if (just == justify_left) screenx += width;
   } else {
     int ourx;
     switch (just) {
