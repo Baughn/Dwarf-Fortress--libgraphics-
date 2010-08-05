@@ -130,14 +130,10 @@ void graphicst::addst(const string &str, justification just)
     s[3] = GRAPHICSTYPE_TTF;
     // Also set the other tiles this text covers
     for (int x = 1; x < width; ++x) {
-#ifdef DEBUG
-      *(s + x*dimy*4 + 0) = 4;
-      *(s + x*dimy*4 + 1) = 2;
-      *(s + x*dimy*4 + 2) = 0;
-      *(s + x*dimy*4 + 3) = 82;
-#else
+      *(s + x*dimy*4 + 0) = (handle >> 16) & 0xff;
+      *(s + x*dimy*4 + 1) = (handle >> 8) & 0xff;
+      *(s + x*dimy*4 + 2) = handle & 0xff;
       *(s + x*dimy*4 + 3) = GRAPHICSTYPE_TTFCONT;
-#endif
     }
     if (just == justify_left) screenx += width;
   } else {
