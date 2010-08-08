@@ -68,7 +68,7 @@ namespace widgets {
         if (start + space >= total) return start;
       }
     }
-    pair<string,T> mp(string s, T t) { return make_pair<string,T>(s,t); }
+    pair<string,T> mp(string s, T t) { return make_pair(s,t); }
 
     // Scrolls N lines up/down; positive = down
     void scroll(int n) {
@@ -116,7 +116,7 @@ namespace widgets {
     }
     // Set the color of a line
     void set_color(int line, int fg, int bg) {
-      colors[line] = make_pair<int,int>(fg,bg);
+      colors[line] = make_pair(fg,bg);
     }
     // Handles (page) up/down
     void feed(std::set<InterfaceKey> &input) {
@@ -138,7 +138,7 @@ namespace widgets {
       typename dict::iterator it = lines.lower_bound(first);
       for (; it != lines.end() && it->first - first < h; ++it) {
         gps.locate(it->first - first + y, x);
-        map<int,pair<int,int> >::iterator color = colors.find(it->first - first);
+        auto color = colors.find(it->first - first);
         int fg = 7, bg = 0;
         if (color != colors.end()) {
           fg = color->second.first;

@@ -187,7 +187,7 @@ public:
       w = MIN(MAX(w, MIN_GRID_X), MAX_GRID_X);
       h = MIN(MAX(h, MIN_GRID_Y), MAX_GRID_Y);
     }
-    return make_pair<int,int>(w,h);
+    return make_pair(w,h);
   }
 
   

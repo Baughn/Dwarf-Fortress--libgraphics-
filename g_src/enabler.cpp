@@ -583,7 +583,7 @@ void enablerst::override_grid_size(int x, int y) {
     async_fromcomplete.read();
   } else {
     // We are the renderer; do it.
-    overridden_grid_sizes.push(make_pair<int,int>(init.display.grid_x,init.display.grid_y));
+    overridden_grid_sizes.push(make_pair(init.display.grid_x,init.display.grid_y));
     renderer->grid_resize(x, y);
   }
 }
