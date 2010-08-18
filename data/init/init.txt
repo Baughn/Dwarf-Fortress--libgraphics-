@@ -27,7 +27,7 @@ If set below 256x256 it specifies the grid size instead, with a minimum of 80x25
 
 [WINDOWEDX:80]
 [WINDOWEDY:25]
-[FONT:curses_800x600.png]
+[FONT:newset]
 
 You may turn off truetype rendering if you wish for DF to use its old look.
 [TRUETYPE:YES]
@@ -39,39 +39,41 @@ Full screen info.  The 0s below mean that the game will choose a resolution for 
 
 [FULLSCREENX:0]
 [FULLSCREENY:0]
-[FULLFONT:curses_800x600.png]
+# [FULLFONT:curses_800x600.png]
 
 If this is set to NO, tiles will be stretched to fit the screen if there is a resolution mismatch.
 If this is set to YES, the tiles will not be stretched, but rather the game view will be centralized, surrounded by black space.  Tiles that are too large will always be compressed rather than running off the screen.
 
 [BLACK_SPACE:YES]
 
-Graphics info, most of it as above.  Set GRAPHICS to YES to turn it all on.  This will use the "raw/graphics" folder for tile information.  Currently this is limited to whatever creature graphics you have downloaded.  The game comes with a few pictures to demonstrate.  As of July 2010, the Dwarf Fortress Wiki has graphical tilesets available at http://www.dwarffortresswiki.net/index.php/List_of_user_graphics_sets.
+Set GRAPHICS to YES to turn extra graphics on.  This will use the "raw/graphics" folder for tile information.  Currently this is limited to whatever creature graphics you have downloaded.  The game comes with a few pictures to demonstrate.  As of July 2010, the Dwarf Fortress Wiki has graphical tilesets available at http://www.dwarffortresswiki.net/index.php/List_of_user_graphics_sets.
 
 [GRAPHICS:NO]
-[GRAPHICS_WINDOWEDX:0]
-[GRAPHICS_WINDOWEDY:0]
-[GRAPHICS_FONT:curses_square_16x16.png]
-[GRAPHICS_FULLSCREENX:0]
-[GRAPHICS_FULLSCREENY:0]
-[GRAPHICS_FULLFONT:curses_square_16x16.png]
-[GRAPHICS_BLACK_SPACE:YES]
 
-These settings can have a significant impact on frame rate, especially for people that have slow frame rates on the title screen.  Available modes are 2D, 2DSW, 2DASYNC, STANDARD, PARTIAL:<number>, ACCUM_BUFFER, FRAME_BUFFER and VBO. The number after PARTIAL refers to how many frames it will redo a printed tile before skipping it, so you might try increasing it a bit if you have flickering when PARTIAL is set.  Please note that any of these combinations might cause frame rates to drop significantly or cause unpleasant side effects like flickering.
+If you want max compatibility, use 2D.
+If you want max speed and graphics quality, use SHADER.
+If your GPU does not support SHADER, try STANDARD.
+Otherwise experiment, and read below. There is no absolute best mode.
+
+[PRINT_MODE:2D]
+	Mode examples:
+         PRINT_MODE:SHADER
+	 PRINT_MODE:2D
+	 PRINT_MODE:STANDARD
+	 PRINT_MODE:FRAME_BUFFER
+	 PRINT_MODE:PARTIAL:0
+[SINGLE_BUFFER:NO]
+
+The above settings can have a significant impact on frame rate, especially for people that have slow frame rates on the title screen.  Available modes are 2D, 2DSW, 2DASYNC, STANDARD, PARTIAL:<number>, ACCUM_BUFFER, FRAME_BUFFER, VBO and SHADER. The number after PARTIAL refers to how many frames it will redo a printed tile before skipping it, so you might try increasing it a bit if you have flickering when PARTIAL is set.  Please note that any of these combinations might cause frame rates to drop significantly or cause unpleasant side effects like flickering.
 
 By and large, 2D should be the most reliable, while STANDARD has a good combination of speed and reliability. However, all 2D modes are normally far slower than even STANDARD, which may be the slowest OpenGL mode.
+
+SHADER mode supports extra-fine graphics, but requires a modern GPU and a tileset that takes advantage of it.
 
 2DASYNC may be slightly more responsive than 2D on a multi-core machine, but this has recently become doubtful due to improvements to the other modes.
 
 Linux/OS X users may also use PRINT_MODE:TEXT for primitive ncurses output.
 
-[PRINT_MODE:2D]
-	Mode examples:
-	 PRINT_MODE:2D
-	 PRINT_MODE:TEXT
-	 PRINT_MODE:FRAME_BUFFER
-	 PRINT_MODE:PARTIAL:0
-[SINGLE_BUFFER:NO]
 
 Change this to YES to keep the DF window on top of your other windows.
 
@@ -79,7 +81,7 @@ Change this to YES to keep the DF window on top of your other windows.
 
 Change this to YES if you want to see an FPS counter at the top left.
 
-[FPS:NO]
+[FPS:YES]
 
 Use this to set the maximum frame rate during play.  The movies are always capped at 100.  A frame in this case is not graphical but related to the movement speed of a creature.  A healthy, unencumbered dwarven peasant takes one step every 10 frames.
 
@@ -93,7 +95,7 @@ Use this to set the maximum graphical frame refresh rate during play.
 
 On cards that support the OpenGL ARB_sync extension, turning this on can improve framerates in GPU overload conditions. It defaults to NO, as many cards that claim to support this will crash if asked to do so.
 
-[ARB_SYNC:NO]
+[ARB_SYNC:YES]
 
 This sets the applications vertical synchronization behavior.  Changing this to YES can impact your FPS if your G_FPS is high. ARB_SYNC is a better option, if your system supports it.
 

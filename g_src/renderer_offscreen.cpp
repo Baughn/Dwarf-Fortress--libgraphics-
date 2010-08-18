@@ -50,7 +50,7 @@ void renderer_offscreen::update_all(int offset_x, int offset_y) {
       if (id.isL) {
         tex = tile_cache_lookup(id.left);
       } else {
-        tex = enabler.textures.get_texture_data(id.right);
+        tex = enabler.tileset.get_texture_data(id.right);
       }
       // Figure out where to blit
       SDL_Rect dst;

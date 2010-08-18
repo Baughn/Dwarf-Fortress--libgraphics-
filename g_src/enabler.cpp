@@ -39,56 +39,15 @@ void report_error(const char *error_preface, const char *error_message)
   delete [] buf;
 }
 
-Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int x, int y) {
-  const int tile = x * gps.dimy + y;
-  const unsigned char *s = screen + tile*4;
+texture_fullid renderer_cpu::screen_to_texid(int x, int y) {
+  const unsigned int tile = screen[x * gps.dimy + y];
 
-  // TTF text does not get the full treatment.
-  if (s[3] == GRAPHICSTYPE_TTF) {
-    texture_ttfid texpos = (s[0] << 16) | (s[1] << 8) | s[2];
-    return Either<texture_fullid,texture_ttfid>(texpos);
-  } else if (s[3] == GRAPHICSTYPE_TTFCONT)
-    return Either<texture_fullid,texture_ttfid>(0);
-
-  // Otherwise, it's a normal (graphical?) tile.
   struct texture_fullid ret;
-  const int ch   = s[0];
-  const int bold = (s[3] != 0) * 8;
-  const int fg   = (s[1] + bold) % 16;
-  const int bg   = s[2] % 16;
-  
-  static bool use_graphics = init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS);
-  
-  if (use_graphics) {
-    const long texpos             = screentexpos[tile];
-    const char addcolor           = screentexpos_addcolor[tile];
-    const unsigned char grayscale = screentexpos_grayscale[tile];
-    const unsigned char cf        = screentexpos_cf[tile];
-    const unsigned char cbr       = screentexpos_cbr[tile];
+  const int tex = tile & 0x00ffffff;
+  const int fg  = (tile >> 24) & 0xf;
+  const int bg  = (tile >> 28) & 0xf;
 
-    if (texpos) {
-      ret.texpos = texpos;
-      if (grayscale) {
-        ret.r = enabler.ccolor[cf][0];
-        ret.g = enabler.ccolor[cf][1];
-        ret.b = enabler.ccolor[cf][2];
-        ret.br = enabler.ccolor[cbr][0];
-        ret.bg = enabler.ccolor[cbr][1];
-        ret.bb = enabler.ccolor[cbr][2];
-      } else if (addcolor) {
-        goto use_ch;
-      } else {
-        ret.r = ret.g = ret.b = 1;
-        ret.br = ret.bg = ret.bb = 0;
-      }
-      goto skip_ch;
-    }
-  }
-  
-  ret.texpos = enabler.is_fullscreen() ?
-    init.font.large_font_texpos[ch] :
-    init.font.small_font_texpos[ch];
- use_ch:
+  ret.texpos = tex;
   ret.r = enabler.ccolor[fg][0];
   ret.g = enabler.ccolor[fg][1];
   ret.b = enabler.ccolor[fg][2];
@@ -96,18 +55,16 @@ Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int x, int y) {
   ret.bg = enabler.ccolor[bg][1];
   ret.bb = enabler.ccolor[bg][2];
 
- skip_ch:
-
-  return Either<texture_fullid,texture_ttfid>(ret);
+  return ret;
 }
 
 
 #ifdef CURSES
 # include "renderer_curses.cpp"
 #endif
-#include "renderer_2d.hpp"
-#include "renderer_opengl.hpp"
-
+// #include "renderer_2d.hpp"
+// #include "renderer_opengl.hpp"
+#include "renderer_shader.hpp"
 
 enablerst::enablerst() {
   fullscreen = false;
@@ -119,43 +76,19 @@ enablerst::enablerst() {
   last_tick = 0;
 }
 
-void renderer::display()
+void renderer_cpu::display()
 {
   const int dimx = init.display.grid_x;
   const int dimy = init.display.grid_y;
-  static bool use_graphics = init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS);
   if (gps.force_full_display_count) {
     // Update the entire screen
     update_all();
   } else {
-    Uint32 *screenp = (Uint32*)screen, *oldp = (Uint32*)screen_old;
-    if (use_graphics) {
-      int off = 0;
-      for (int x2=0; x2 < dimx; x2++) {
-        for (int y2=0; y2 < dimy; y2++, ++off, ++screenp, ++oldp) {
-          // We don't use pointers for the non-screen arrays because we mostly fail at the
-          // *first* comparison, and having pointers for the others would exceed register
-          // count.
-          // Partial printing (and color-conversion): Big-ass if.
-          if (*screenp == *oldp &&
-              screentexpos[off] == screentexpos_old[off] &&
-              screentexpos_addcolor[off] == screentexpos_addcolor_old[off] &&
-              screentexpos_grayscale[off] == screentexpos_grayscale_old[off] &&
-              screentexpos_cf[off] == screentexpos_cf_old[off] &&
-              screentexpos_cbr[off] == screentexpos_cbr_old[off])
-            {
-              // Nothing's changed, this clause deliberately empty
-            } else {
-            update_tile(x2, y2);
-          }
-        }
-      }
-    } else {
-      for (int x2=0; x2 < dimx; ++x2) {
-        for (int y2=0; y2 < dimy; ++y2, ++screenp, ++oldp) {
-          if (*screenp != *oldp) {
-            update_tile(x2, y2);
-          }
+    unsigned int *screenp = screen, *oldp = screen_old;
+    for (int x2=0; x2 < dimx; ++x2) {
+      for (int y2=0; y2 < dimy; ++y2, ++screenp, ++oldp) {
+        if (*screenp != *oldp) {
+          update_tile(x2, y2);
         }
       }
     }
@@ -163,56 +96,21 @@ void renderer::display()
   if (gps.force_full_display_count > 0) gps.force_full_display_count--;
 }
 
-void renderer::gps_allocate(int x, int y) {
+void renderer_cpu::gps_allocate(int x, int y) {
   if (screen) delete[] screen;
-  if (screentexpos) delete[] screentexpos;
-  if (screentexpos_addcolor) delete[] screentexpos_addcolor;
-  if (screentexpos_grayscale) delete[] screentexpos_grayscale;
-  if (screentexpos_cf) delete[] screentexpos_cf;
-  if (screentexpos_cbr) delete[] screentexpos_cbr;
   if (screen_old) delete[] screen_old;
-  if (screentexpos_old) delete[] screentexpos_old;
-  if (screentexpos_addcolor_old) delete[] screentexpos_addcolor_old;
-  if (screentexpos_grayscale_old) delete[] screentexpos_grayscale_old;
-  if (screentexpos_cf_old) delete[] screentexpos_cf_old;
-  if (screentexpos_cbr_old) delete[] screentexpos_cbr_old;
   
-  gps.screen = screen = new unsigned char[x*y*4];
-  memset(screen, 0, x*y*4);
-  gps.screentexpos = screentexpos = new long[x*y];
-  memset(screentexpos, 0, x*y*sizeof(long));
-  gps.screentexpos_addcolor = screentexpos_addcolor = new char[x*y];
-  memset(screentexpos_addcolor, 0, x*y);
-  gps.screentexpos_grayscale = screentexpos_grayscale = new unsigned char[x*y];
-  memset(screentexpos_grayscale, 0, x*y);
-  gps.screentexpos_cf = screentexpos_cf = new unsigned char[x*y];
-  memset(screentexpos_cf, 0, x*y);
-  gps.screentexpos_cbr = screentexpos_cbr = new unsigned char[x*y];
-  memset(screentexpos_cbr, 0, x*y);
+  gps.screen = screen = new unsigned int[x*y];
+  memset(screen, 0, x*y*sizeof(unsigned int));
 
-  screen_old = new unsigned char[x*y*4];
-  memset(screen_old, 0, x*y*4);
-  screentexpos_old = new long[x*y];
-  memset(screentexpos_old, 0, x*y*sizeof(long));
-  screentexpos_addcolor_old = new char[x*y];
-  memset(screentexpos_addcolor_old, 0, x*y);
-  screentexpos_grayscale_old = new unsigned char[x*y];
-  memset(screentexpos_grayscale_old, 0, x*y);
-  screentexpos_cf_old = new unsigned char[x*y];
-  memset(screentexpos_cf_old, 0, x*y);
-  screentexpos_cbr_old = new unsigned char[x*y];
-  memset(screentexpos_cbr_old, 0, x*y);
+  screen_old = new unsigned int[x*y];
+  memset(screen_old, 0, x*y*sizeof(unsigned int));
 
   gps.resize(x,y);
 }
 
-void renderer::swap_arrays() {
+void renderer_cpu::swap_arrays() {
   screen = screen_old; screen_old = gps.screen; gps.screen = screen;
-  screentexpos = screentexpos_old; screentexpos_old = gps.screentexpos; gps.screentexpos = screentexpos;
-  screentexpos_addcolor = screentexpos_addcolor_old; screentexpos_addcolor_old = gps.screentexpos_addcolor; gps.screentexpos_addcolor = screentexpos_addcolor;
-  screentexpos_grayscale = screentexpos_grayscale_old; screentexpos_grayscale_old = gps.screentexpos_grayscale; gps.screentexpos_grayscale = screentexpos_grayscale;
-  screentexpos_cf = screentexpos_cf_old; screentexpos_cf_old = gps.screentexpos_cf; gps.screentexpos_cf = screentexpos_cf;
-  screentexpos_cbr = screentexpos_cbr_old; screentexpos_cbr_old = gps.screentexpos_cbr; gps.screentexpos_cbr = screentexpos_cbr;
 
   gps.screen_limit = gps.screen + gps.dimx * gps.dimy * 4;
 }
@@ -240,8 +138,7 @@ void enablerst::async_wait() {
     case async_msg::complete:
       if (reset_textures) {
         puts("Resetting textures");
-        textures.remove_uploaded_textures();
-        textures.upload_textures();
+        // TODO TODO TODO
       }
       return;
     case async_msg::set_fps:
@@ -298,12 +195,10 @@ void enablerst::async_loop() {
           // puts("UNpaused");
           break;
         case async_cmd::render:
-          if (flag & ENABLERFLAG_RENDER) {
-            renderer->swap_arrays();
-            render_things();
-            flag &= ~ENABLERFLAG_RENDER;
-            update_gfps();
-          }
+          renderer->swap_arrays();
+          render_things();
+          flag &= ~ENABLERFLAG_RENDER;
+          update_gfps();
           async_frombox.write(async_msg(async_msg::complete));
           break;
         case async_cmd::inc:
@@ -360,18 +255,25 @@ void enablerst::do_frame() {
   enabler.clock = SDL_GetTicks();
 
   // If it's time to render..
-  if (outstanding_gframes >= 1 &&
-      (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
-    // Get the async-loop to render_things
-    async_cmd cmd(async_cmd::render);
-    async_tobox.write(cmd);
-    async_wait();
-    // Then finish here
-    renderer->display();
-    renderer->render();
-    gputicks.lock();
-    gputicks.val++;
-    gputicks.unlock();
+  if (outstanding_gframes >= 1) {
+    if ((enabler.flag & ENABLERFLAG_RENDER) &&
+        (!sync || glClientWaitSync(sync, 0, 10) == GL_ALREADY_SIGNALED)) {
+      if (sync) {
+        glDeleteSync(sync);
+        sync = NULL;
+      }
+      renderer->prepare();
+      // Get the async-loop to render_things
+      async_cmd cmd(async_cmd::render);
+      async_tobox.write(cmd);
+      async_wait();
+      // Then finish here
+      renderer->display();
+      renderer->render();
+      gputicks.lock();
+      gputicks.val++;
+      gputicks.unlock();
+    }
     outstanding_gframes--;
   }
 
@@ -541,21 +443,23 @@ int enablerst::loop(string cmdline) {
     report_error("PRINT_MODE","TEXT not supported on windows");
     exit(EXIT_FAILURE);
 #endif
+  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_SHADER)) {
+    renderer = new renderer_shader();
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_2D)) {
     renderer = new renderer_2d();
-  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER)) {
-    renderer = new renderer_accum_buffer();
-  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER)) {
-    renderer = new renderer_framebuffer();
-  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
-    if (init.display.partial_print_count)
-      renderer = new renderer_partial();
-    else
-      renderer = new renderer_once();
-  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO)) {
-    renderer = new renderer_vbo();
-  } else {
-    renderer = new renderer_opengl();
+  // } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER)) {
+  //   renderer = new renderer_accum_buffer();
+  // } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER)) {
+  //   renderer = new renderer_framebuffer();
+  // } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
+  //   if (init.display.partial_print_count)
+  //     renderer = new renderer_partial();
+  //   else
+  //     renderer = new renderer_once();
+  // } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO)) {
+  //   renderer = new renderer_vbo();
+  // } else {
+  //   renderer = new renderer_opengl();
   }
 
   // At this point we should have a window that is setup to render DF.
@@ -947,4 +851,20 @@ void curses_text_boxst::add_paragraph(stringvectst &src,int32_t para_width)
 
 	//FLUSH FINAL BIT
 	if(!curstr.empty())text.add_string(curstr);
+}
+
+string glErrToString(GLenum err) {
+  switch (err) {
+  case GL_NO_ERROR: return "No error";
+  case GL_INVALID_ENUM: return "Invalid enum";
+  case GL_INVALID_VALUE: return "Invalid value";
+  case GL_INVALID_OPERATION: return "Invalid operation";
+  case GL_INVALID_FRAMEBUFFER_OPERATION: return "Invalid framebuffer operation";
+  case GL_OUT_OF_MEMORY: return "GL out of memory";
+  default: {
+    ostringstream s;
+    s << "Unknown error: " << hex << err;
+    return s.str();
+  }
+  }
 }

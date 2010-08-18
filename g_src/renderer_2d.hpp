@@ -6,8 +6,6 @@
 #include <iostream>
 using namespace std;
 
-void report_error(const char*, const char*);
-
 class renderer_2d_base : public renderer {
 protected:
   SDL_Surface *screen;
@@ -25,7 +23,7 @@ protected:
       return it->second;
     } else {
       // Create the colorized texture
-      SDL_Surface *tex   = enabler.textures.get_texture_data(id.texpos);
+      SDL_Surface *tex   = enabler.tileset.get_texture_data(id.texpos);
       SDL_Surface *color;
       color = SDL_CreateRGBSurface(SDL_SWSURFACE,
                                    tex->w, tex->h,

@@ -1340,11 +1340,11 @@ void interfacest::handlemovie(char flushall)
 
 void interfacest::print_interface_token(InterfaceKey key)
 {
-	short o_screenf=gps.screenf,o_screenb=gps.screenb,o_screenbright=gps.screenbright;
-	gps.changecolor(2,0,1);
-        string tok = enabler.GetKeyDisplay(key);
-	gps.addst(tok);
-	gps.changecolor(o_screenf,o_screenb,o_screenbright);
+  short o_screenf=gps.screenf,o_screenb=gps.screenb;
+  gps.changecolor(2,0,1);
+  string tok = enabler.GetKeyDisplay(key);
+  gps.addst(tok);
+  gps.changecolor(o_screenf,o_screenb);
 }
 
 char standardstringentry(char *str,int maxlen,unsigned int flag,std::set<InterfaceKey> &events)

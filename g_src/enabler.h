@@ -89,6 +89,59 @@ using std::queue;
 
 char get_slot_and_addbit_uchar(unsigned char &addbit,long &slot,long checkflag,long slotnum);
 
+#ifdef ENABLER
+
+#define COLOR_BLACK 0
+#define COLOR_BLUE 1
+#define COLOR_GREEN 2
+#define COLOR_CYAN 3
+#define COLOR_RED 4
+#define COLOR_MAGENTA 5
+#define COLOR_YELLOW 6
+#define COLOR_WHITE	7
+
+enum ColorData
+  {
+    COLOR_DATA_WHITE_R,
+    COLOR_DATA_WHITE_G,
+    COLOR_DATA_WHITE_B,
+    COLOR_DATA_RED_R,
+    COLOR_DATA_RED_G,
+    COLOR_DATA_RED_B,
+    COLOR_DATA_GREEN_R,
+    COLOR_DATA_GREEN_G,
+    COLOR_DATA_GREEN_B,
+    COLOR_DATA_BLUE_R,
+    COLOR_DATA_BLUE_G,
+    COLOR_DATA_BLUE_B,
+    COLOR_DATA_YELLOW_R,
+    COLOR_DATA_YELLOW_G,
+    COLOR_DATA_YELLOW_B,
+    COLOR_DATA_MAGENTA_R,
+    COLOR_DATA_MAGENTA_G,
+    COLOR_DATA_MAGENTA_B,
+    COLOR_DATA_CYAN_R,
+    COLOR_DATA_CYAN_G,
+    COLOR_DATA_CYAN_B,
+    COLOR_DATANUM
+  };
+
+#define TILEFLAG_DEAD BIT1
+#define TILEFLAG_ROTATE BIT2
+#define TILEFLAG_PIXRECT BIT3
+#define TILEFLAG_HORFLIP BIT4
+#define TILEFLAG_VERFLIP BIT5
+#define TILEFLAG_LINE BIT6
+#define TILEFLAG_RECT BIT7
+#define TILEFLAG_BUFFER_DRAW BIT8
+#define TILEFLAG_MODEL_PERSPECTIVE BIT9
+#define TILEFLAG_MODEL_ORTHO BIT10
+#define TILEFLAG_MODEL_TRANSLATE BIT11
+#define TILEFLAG_LINE_3D BIT12
+
+#define TRIMAX 9999
+
+
 class pstringst
 {
  public:
@@ -348,147 +401,11 @@ class flagarrayst
 		long slotnum;
 };
 
-#ifdef ENABLER
-
-#define COLOR_BLACK 0
-#define COLOR_BLUE 1
-#define COLOR_GREEN 2
-#define COLOR_CYAN 3
-#define COLOR_RED 4
-#define COLOR_MAGENTA 5
-#define COLOR_YELLOW 6
-#define COLOR_WHITE	7
-
-enum ColorData
-  {
-    COLOR_DATA_WHITE_R,
-    COLOR_DATA_WHITE_G,
-    COLOR_DATA_WHITE_B,
-    COLOR_DATA_RED_R,
-    COLOR_DATA_RED_G,
-    COLOR_DATA_RED_B,
-    COLOR_DATA_GREEN_R,
-    COLOR_DATA_GREEN_G,
-    COLOR_DATA_GREEN_B,
-    COLOR_DATA_BLUE_R,
-    COLOR_DATA_BLUE_G,
-    COLOR_DATA_BLUE_B,
-    COLOR_DATA_YELLOW_R,
-    COLOR_DATA_YELLOW_G,
-    COLOR_DATA_YELLOW_B,
-    COLOR_DATA_MAGENTA_R,
-    COLOR_DATA_MAGENTA_G,
-    COLOR_DATA_MAGENTA_B,
-    COLOR_DATA_CYAN_R,
-    COLOR_DATA_CYAN_G,
-    COLOR_DATA_CYAN_B,
-    COLOR_DATANUM
-  };
-
-#define TILEFLAG_DEAD BIT1
-#define TILEFLAG_ROTATE BIT2
-#define TILEFLAG_PIXRECT BIT3
-#define TILEFLAG_HORFLIP BIT4
-#define TILEFLAG_VERFLIP BIT5
-#define TILEFLAG_LINE BIT6
-#define TILEFLAG_RECT BIT7
-#define TILEFLAG_BUFFER_DRAW BIT8
-#define TILEFLAG_MODEL_PERSPECTIVE BIT9
-#define TILEFLAG_MODEL_ORTHO BIT10
-#define TILEFLAG_MODEL_TRANSLATE BIT11
-#define TILEFLAG_LINE_3D BIT12
-
-#define TRIMAX 9999
-
 enum render_phase {
   setup, // 0
   complete,
   phase_count
 };
-
-class texture_bo {
-  GLuint bo, tbo;
- public:
-  texture_bo() { bo = tbo = 0; }
-  void reset() {
-    if (bo) {
-      glDeleteBuffers(1, &bo);
-      glDeleteTextures(1, &tbo);
-      bo = tbo = 0;
-      printGLError();
-    }
-  }
-  void buffer(GLvoid *ptr, GLsizeiptr sz) {
-    if (bo) reset();
-    glGenBuffersARB(1, &bo);
-    glGenTextures(1, &tbo);
-    glBindBufferARB(GL_TEXTURE_BUFFER_ARB, bo);
-    glBufferDataARB(GL_TEXTURE_BUFFER_ARB, sz, ptr, GL_STATIC_DRAW_ARB);
-    printGLError();
-  }
-  void bind(GLenum texture_unit, GLenum type) {
-    glActiveTexture(texture_unit);
-    glBindTexture(GL_TEXTURE_BUFFER_ARB, tbo);
-    glTexBufferARB(GL_TEXTURE_BUFFER_ARB, type, bo);
-    printGLError();
-  }
-  GLuint texnum() { return tbo; }
-};
-
-
-class shader {
-  string filename;
-  std::ostringstream lines;
- public:
-  std::ostringstream header;
-  void load(const string &filename) {
-    this->filename = filename;
-    std::ifstream file(filename.c_str());
-    string version;
-    getline(file, version);
-    header << version << std::endl;
-    while (file.good()) {
-      string line;
-      getline(file, line);
-      lines << line << std::endl;
-    }
-    file.close();
-  }
-  GLuint upload(GLenum type) {
-    GLuint shader = glCreateShader(type);
-    string lines_done = lines.str(), header_done = header.str();
-    const char *ptrs[3];
-    ptrs[0] = header_done.c_str();
-    ptrs[1] = "#line 1 0\n";
-    ptrs[2] = lines_done.c_str();
-    glShaderSource(shader, 3, ptrs, NULL);
-    glCompileShader(shader);
-    // Let's see if this compiled correctly..
-    GLint status;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    if (status == GL_FALSE) { // ..no. Check the compilation log.
-      GLint log_size;
-      glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_size);
-      //errorlog << filename << " preprocessed source:" << std::endl;
-      std::cerr << filename << " preprocessed source:" << std::endl;
-      //errorlog << header_done << "#line 1 0\n" << lines_done;
-      std::cerr << header_done << "#line 1 0\n" << lines_done;
-      //errorlog << filename << " shader compilation log (" << log_size << "):" << std::endl;
-      std::cerr << filename << " shader compilation log (" << log_size << "):" << std::endl;
-      char *buf = new char[log_size];
-      glGetShaderInfoLog(shader, log_size, NULL, buf);
-      //errorlog << buf << std::endl;
-      std::cerr << buf << std::endl;
-      //errorlog.flush();
-      delete[] buf;
-      MessageBox(NULL, "Shader compilation failed; details in errorlog.txt", "Critical error", MB_OK);
-      abort();
-    }
-    printGLError();
-    return shader;
-  }
-};
-
 
 class text_info_elementst
 {
@@ -756,59 +673,64 @@ namespace std {
   };
 };
 
-// Being a texture catalog interface, with opengl, sdl and truetype capability
-class textures
+// Being a tileset class.
+class tileset
 {
-  friend class enablerst;
-  friend class renderer_opengl;
  private:
-  vector<SDL_Surface *> raws;
-  bool uploaded;
-  long add_texture(SDL_Surface*);
- protected:
-  GLuint gl_catalog; // texture catalog gennum
-  struct gl_texpos *gl_texpos; // Texture positions in the GL catalog, if any
- public:
-  // Initialize state variables
-  textures() {
-    uploaded = false;
-    gl_texpos = NULL;
-  }
-  int textureCount() {
-    return raws.size();
-  }
-  // Upload in-memory textures to the GPU
-  // When textures are uploaded, any alteration to a texture
-  // is automatically reflected in the uploaded copy - eg. it's replaced.
-  // This is very expensive in opengl mode. Don't do it often.
-  void upload_textures();
-  // Also, you really should try to remove uploaded textures before
-  // deleting a window, in case of driver memory leaks.
-  void remove_uploaded_textures();
-  // Returns the most recent texture data
-  SDL_Surface *get_texture_data(long pos);
-  // Clone a texture
-  long clone_texture(long src);
-  // Remove all color, but not transparency
-  void grayscale_texture(long pos);
+  vector<SDL_Surface*> tiles;
+  // For each array, stores the number of tiles and the magnification.
+  map<string, pair<int,double> > arrays;
+  int add_texture(SDL_Surface*);
   // Loads dimx*dimy textures from a file, assuming all tiles
   // are equally large and arranged in a grid
   // Texture positions are saved in row-major order to tex_pos
   // If convert_magenta is true and the file does not have built-in transparency,
   // any magenta (255,0,255 RGB) is converted to full transparency
   // The calculated size of individual tiles is saved to disp_x, disp_y
-  void load_multi_pdim(const string &filename,long *tex_pos,long dimx,long dimy,
-		       bool convert_magenta,
-		       long *disp_x, long *disp_y);
-  // Loads a single texture from a file, returning the handle
-  long load(const string &filename, bool convert_magenta);
-  // To delete a texture..
-  void delete_texture(long pos);
-};
+  string load_multi_pdim(const string &filename,int dimx,int dimy,
+                         bool convert_magenta,
+                         int *disp_x, int *disp_y);
+  // The same as above, but reading from an SDL_Surface*
+  void load_multi_pdim(SDL_Surface *s, int dimx, int dimy,
+                       bool convert_magenta,
+                       int *disp_x, int *disp_y);
+ public:
+  int dispx, dispy; // Nominal tile size, used to be init.font.dispx/y
+  tileset() {
+    dispx = dispy = 0;
+  }
+  ~tileset() {
+    clear();
+  }
+  void clear() {
+    for (auto it = tiles.begin(); it != tiles.end(); ++it) SDL_FreeSurface(*it);
+    tiles.clear();
+    arrays.clear();
+    dispx = dispy = 0;
+  }
+  int textureCount() {
+    return tiles.size();
+  }
+  // Clone a texture
+  int clone_texture(int src);
+  // Remove all color, but not transparency. Affects the raw texture.
+  void grayscale_texture(int pos);
 
-struct tile {
-  int x, y;
-  long tex;
+  // Load a tileset, old or new-style. Returns an error description, empty if it worked.
+  // If loading failed, the state of the tileset object is not changed.
+  // If load_shaders is true, the error string may include shader loading error reports.
+  // If the tileset fails to load, this object is *cleared*. To avoid hot-switching
+  // causing loss of tileset, only overwrite enabler.textures (operator= will do) once
+  // you've called load_tileset on a temporary.
+  string load_tileset(const string &filename, bool convert_magenta = true);
+
+  // Returns tiles resized to a given base tile size; may be larger or smaller due to
+  // magnification. Caller frees.
+  SDL_Surface *get_texture(int index, int width, int height);
+  vector<pair<string, vector<SDL_Surface*> > > get_all_textures(int width, int height);
+
+  // Shader filenames
+  string vertex_shader, fragment_shader, geometry_shader;
 };
 
 typedef struct {									// Window Creation Info
@@ -843,66 +765,18 @@ struct texture_fullid {
   }
 };
 
-typedef int texture_ttfid; // Just the texpos
-
-class renderer {
- protected:
-  unsigned char *screen;
-  long *screentexpos;
-  char *screentexpos_addcolor;
-  unsigned char *screentexpos_grayscale;
-  unsigned char *screentexpos_cf;
-  unsigned char *screentexpos_cbr;
-  // For partial printing:
-  unsigned char *screen_old;
-  long *screentexpos_old;
-  char *screentexpos_addcolor_old;
-  unsigned char *screentexpos_grayscale_old;
-  unsigned char *screentexpos_cf_old;
-  unsigned char *screentexpos_cbr_old;
-
-  void gps_allocate(int x, int y);
-  Either<texture_fullid,texture_ttfid> screen_to_texid(int x, int y);
- public:
-  void display();
-  virtual void update_tile(int x, int y) = 0;
-  virtual void update_all() = 0;
-  virtual void render() = 0;
-  virtual void set_fullscreen() {} // Should read from enabler.is_fullscreen()
-  virtual void zoom(zoom_commands cmd) {};
-  virtual void resize(int w, int h) = 0;
-  virtual void grid_resize(int w, int h) = 0;
-  void swap_arrays();
-  renderer() {
-    screen = NULL;
-    screentexpos = NULL;
-    screentexpos_addcolor = NULL;
-    screentexpos_grayscale = NULL;
-    screentexpos_cf = NULL;
-    screentexpos_cbr = NULL;
-    screen_old = NULL;
-    screentexpos_old = NULL;
-    screentexpos_addcolor_old = NULL;
-    screentexpos_grayscale_old = NULL;
-    screentexpos_cf_old = NULL;
-    screentexpos_cbr_old = NULL;
-  }
-  virtual bool get_mouse_coords(int &x, int &y) = 0;
-  virtual bool uses_opengl() { return false; };
-};
+#include "renderer.hpp"
 
 class enablerst : public enabler_inputst
 {
   friend class initst;
-  friend class renderer_2d_base;
-  friend class renderer_2d;
-  friend class renderer_opengl;
+  friend class renderer_sdl;
   friend class renderer_curses;
 
   bool fullscreen;
   stack<pair<int,int> > overridden_grid_sizes;
 
-  class renderer *renderer;
+  class renderer_minimal *renderer;
   void eventLoop_SDL();
 #ifdef CURSES
   void eventLoop_ncurses();
@@ -991,14 +865,10 @@ class enablerst : public enabler_inputst
   char tracking_on;   // Whether we're tracking the mouse or not
 
   // OpenGL state (wrappers)
-  class textures textures; // Font/graphics texture catalog
+  class tileset tileset; // Tileset & shaders
   GLsync sync; // Rendering barrier
   void reset_textures() {
     async_frombox.write(async_msg(async_msg::reset_textures));
-  }
-  bool uses_opengl() {
-    if (!renderer) return false;
-    return renderer->uses_opengl();
   }
   
   // Grid-size interface

@@ -84,11 +84,11 @@ protected:
   }
   
   virtual void init_opengl() {
-    enabler.textures.upload_textures();
+    enabler.tileset.upload_textures();
   }
 
   virtual void uninit_opengl() {
-    enabler.textures.remove_uploaded_textures();
+    enabler.tileset.remove_uploaded_textures();
   }
   
   virtual void draw(int vertex_count) {
@@ -116,7 +116,7 @@ protected:
   void write_tile_arrays(int x, int y, GLfloat *fg, GLfloat *bg, GLfloat *tex) {
     Either<texture_fullid,texture_ttfid> id = screen_to_texid(x, y);
     if (id.isL) {          // An ordinary tile
-      const gl_texpos *txt = enabler.textures.gl_texpos;
+      const gl_texpos *txt = enabler.tileset.gl_texpos;
       // TODO: Only bother to set the one that's actually read in flat-shading mode
       // And set flat-shading mode.
       for (int i = 0; i < 6; i++) {

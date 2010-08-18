@@ -114,9 +114,9 @@ public:
 
 char beginroutine() {
   mt_init();
-  // viewscreen_movieplayerst *m = viewscreen_movieplayerst::create(INTERFACE_PUSH_AT_BACK);
-  // m->force_play("data/initial_movies/dwarf_fortress.cmv");
   gview.addscreen(new Matrix, INTERFACE_PUSH_AT_BACK, NULL);
+  // viewscreen_movieplayerst *m = viewscreen_movieplayerst::create(INTERFACE_PUSH_AT_BACK);
+  // m->force_play("data/initial_movies/test.cmv");
   return 1;
 }
 
