@@ -158,7 +158,7 @@ public:
     last_x = x;
   }
   bool is_free(int x) {
-    unsigned char c = gps.screen[x*gps.dimy*4 + y*4];
+    unsigned int c = gps.screen[x*gps.dimy + y] & 0x00ffffff;
     switch (c) {
     case 0:
     case 20:
