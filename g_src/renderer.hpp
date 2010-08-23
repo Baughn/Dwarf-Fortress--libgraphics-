@@ -46,20 +46,16 @@ class renderer_cpu : virtual public renderer_minimal {
 // Common sdl-mode setup
 class renderer_sdl : virtual public renderer_minimal {
   bool init_opengl;
-  // Zoom calculations
-  int preferred_zoom, current_zoom;
   bool init_video(int w, int h);
-
 public:
   renderer_sdl(bool init_opengl);
   virtual void resize(int w, int h);
-  virtual void zoom(zoom_commands cmd) {
-  }
+  virtual void zoom(zoom_commands cmd);
   virtual bool get_mouse_coords(int &x, int &y) {
   }
   // Current screen geometry
+  int preferred_zoom, current_zoom;   // Zoom requests (in pixels bias to the tileset's smallest dimension)
   int dispx, dispy; // Tile size
-  int gridx, gridy; // Grid size
   int originx, originy; // Origin of the top-left-most tile
 };
 
@@ -73,8 +69,14 @@ public:
     surface = SDL_GetVideoSurface();
   }
   virtual void resize(int w, int h) {
+    int prev_dispx = dispx, prev_dispy = dispy;
     renderer_sdl::resize(w, h);
     surface = SDL_GetVideoSurface();
+    if (prev_dispx != dispx || prev_dispy != dispy) {
+      for (auto it = tile_cache.begin(); it != tile_cache.end(); ++it)
+        SDL_FreeSurface(it->second);
+      tile_cache.clear();
+    }
   }
   void render();
   void grid_resize(int w, int h);

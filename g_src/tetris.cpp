@@ -60,7 +60,8 @@ public:
     frame = 0;
   }
   virtual void feed(set<InterfaceKey> &events) {
-    breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
+    if (events.count(INTERFACEKEY_D_PAUSE))
+      breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
   }
   virtual void render() {
     gps.erasescreen();

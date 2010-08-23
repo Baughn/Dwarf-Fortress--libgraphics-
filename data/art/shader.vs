@@ -1,12 +1,14 @@
-#version 140 // -*- Mode: C++ -*-
+#version 150 // -*- Mode: C++ -*-
 
 // Inserted by DF:
 // GRID_X: Number of tiles (horizontally)
 // GRID_Y: Number of tiles (vertically)
 // DISP_X: Horizontal tile size, in pixels
 // DISP_Y: Vertical tile size, in pixels
+// DISP_X_SCR: // Horizontal tile size, in normalized device coordinates (0-1)
+// DISP_Y_SCR: // Vertical tile size, same
 // vec4[16] colors: colors.txt
-#line 9
+#line 11
 
 // Inputs from DF. DO NOT RENAME!
 in vec4 screenpos;      // Normalized device location for this vertex
@@ -17,13 +19,12 @@ uniform float time;     // Seconds since DF was started
 // Buffer containing DF screen data
 uniform usamplerBuffer tile_array;
 
-// Output defined by OpenGL
-out vec4 gl_Position;   // Location to actually draw the vertex at
-// Output to fragment shader. Feel free to use whatever.
-flat out vec4 color_fg, color_bg;
-// Three-dimensional texture position. The actual tile to use is in z,
-// but we also need texture coordinates ranging from 0 to 1.
-smooth out vec3 texpos;
+// Outputs to the geometry shader
+out vec4 gl_Position;   // Bottom left corner of the tile
+// Colors
+out vec4 v_color_fg, v_color_bg;
+// Tile to use
+out float tile;
 
 uint get_data(ivec2 loc) { return texelFetch(tile_array, loc.x * GRID_Y + loc.y).r; }
 uint get_tile(uint data) { return           data & 0x00ffffffu; }
@@ -35,11 +36,7 @@ void main() {
   gl_Position = screenpos;
   // Compute the foreground and background colors
   uint data = get_data(rel_tile);
-  color_fg  = get_fg(data);
-  color_bg  = get_bg(data);
-  // Compute the texture position. Notice how we prefer a bit of extra calculation to ifs..
-  // Though TODO: We can save quite a lot of work with a geometry shader.
-  vec2 coords[6] = vec2[](vec2(0,1), vec2(1,1), vec2(0,0),
-                          vec2(0,0), vec2(1,1), vec2(1,0));
-  texpos = vec3(coords[gl_VertexID % 6], get_tile(data));
+  v_color_fg  = get_fg(data);
+  v_color_bg  = get_bg(data);
+  tile = get_tile(data);
 }

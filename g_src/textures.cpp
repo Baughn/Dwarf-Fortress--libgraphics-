@@ -181,8 +181,8 @@ vector<pair<string, vector<SDL_Surface*> > > tileset::get_all_textures(int width
       assert (tile != tiles.end());
       assert ((*tile)->w);
       array.push_back(SDL_Resize(*tile,
-                                 int((*tile)->w * it->second.second),
-                                 int((*tile)->h * it->second.second),
+                                 int(float(width) * it->second.second),
+                                 int(float(height) * it->second.second),
                                  false));
     }
     ret.push_back(make_pair(it->first, array));

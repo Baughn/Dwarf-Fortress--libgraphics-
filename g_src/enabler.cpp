@@ -256,7 +256,7 @@ void enablerst::do_frame() {
 
   // If it's time to render..
   if (outstanding_gframes >= 1) {
-    if ((enabler.flag & ENABLERFLAG_RENDER) &&
+    if ((enabler.flag & ENABLERFLAG_RENDER || 1) &&
         (!sync || glClientWaitSync(sync, 0, 10) == GL_ALREADY_SIGNALED)) {
       if (sync) {
         glDeleteSync(sync);

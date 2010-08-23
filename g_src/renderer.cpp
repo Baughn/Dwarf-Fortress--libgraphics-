@@ -1,6 +1,7 @@
 #include "enabler.h"
 #include "renderer.hpp"
 #include "init.h"
+using namespace std;
 
 bool renderer_sdl::init_video(int w, int h) {
   // Get ourselves a 2D SDL window
@@ -99,21 +100,97 @@ renderer_sdl::renderer_sdl(bool init_opengl) {
   }
 }
 
+// Calculate the tile size, given some tileset size and bias
+static pair<int,int> calculate_tile(int dispx, int dispy, int bias = 0) {
+  float aspect = float(dispx) / float(dispy);
+  if (aspect >= 1) {
+    dispx += bias;
+    dispy += bias / aspect;
+  } else {
+    dispy += bias;
+    dispx += bias * aspect;
+  }
+  return make_pair(dispx, dispy);
+}
+static pair<int,int> tile_to_grid(const pair<int,int> &tile) {
+  SDL_Surface *scr = SDL_GetVideoSurface();
+  return make_pair(scr->w / tile.first, scr->h / tile.second);
+}
+static bool too_small(const pair<int,int> &grid) {
+  return grid.first < MIN_GRID_X || grid.second < MIN_GRID_Y;
+}
+static bool too_large(const pair<int,int> &grid) {
+  return grid.first >= MAX_GRID_X || grid.second >= MAX_GRID_Y;
+}
+
 void renderer_sdl::resize(int w, int h) {
   cout << "New window size: " << w << " " << h << endl;
   // Re-initialize video
   init_video(w,h);
+  int gridx, gridy;
   if (!enabler.overridden_grid_sizes.size()) {
-    // Recalculate the grid
-    gridx = w / enabler.tileset.dispx;
-    gridy = h / enabler.tileset.dispy;
-    dispx = enabler.tileset.dispx;
-    dispy = enabler.tileset.dispy;
-    originx = originy = 0;
+    // Recalculate grid. Find the grid closest to the preferred zoom
+    // that will still fit in our limits.
+    current_zoom = preferred_zoom;
+    for (;;) {
+      auto tile = calculate_tile(enabler.tileset.dispx, enabler.tileset.dispy, current_zoom);
+      auto grid = tile_to_grid(tile);
+      // cout << "Trying grid size " << grid.first << "x" << grid.second << endl;
+      bool small = too_small(grid), large = too_large(grid);
+      if (small && large) { // WTF?
+        puts("Insane window size! Help!");
+        gridx = 80; gridy = 25;
+        dispx = 2; dispy = 2;
+        originx = originy = 0;
+        break;
+      } else if (small) {
+        current_zoom--;
+      } else if (large) {
+        current_zoom++;
+      } else {
+        SDL_Surface *scr = SDL_GetVideoSurface();
+        gridx = grid.first;
+        gridy = grid.second;
+        dispx = tile.first;
+        dispy = tile.second;
+        originx = (scr->w - gridx*dispx) / 2;
+        originy = (scr->h - gridy*dispy) / 2;
+        break;
+      }
+    }
     // And done.
+    cout << "New grid size " << gridx << "x" << gridy << ", zoom " << current_zoom << endl;
     grid_resize(gridx, gridy);
   }
 }
+
+void renderer_sdl::zoom(zoom_commands cmd) {
+  int old_zoom = current_zoom, old_pref_zoom = preferred_zoom;
+  preferred_zoom = current_zoom;
+  SDL_Surface *scr = SDL_GetVideoSurface();
+  switch (cmd) {
+  case zoom_in:
+    preferred_zoom++;
+    resize(scr->w, scr->h);
+    if (old_zoom == current_zoom)
+      preferred_zoom = old_pref_zoom;
+    break;
+  case zoom_out:
+    preferred_zoom--;
+    resize(scr->w, scr->h);
+    if (old_zoom == current_zoom)
+      preferred_zoom = old_pref_zoom;
+    break;
+  case zoom_reset:
+    preferred_zoom = 0;
+  case zoom_resetgrid:
+  case zoom_fullscreen:
+    resize(scr->w, scr->h);
+    break;
+  }
+}
+
+
 
 void renderer_2d::render() {
   SDL_Flip(surface);

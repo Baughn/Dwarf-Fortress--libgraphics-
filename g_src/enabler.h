@@ -776,7 +776,9 @@ class enablerst : public enabler_inputst
   bool fullscreen;
   stack<pair<int,int> > overridden_grid_sizes;
 
+ public:
   class renderer_minimal *renderer;
+ private:
   void eventLoop_SDL();
 #ifdef CURSES
   void eventLoop_ncurses();

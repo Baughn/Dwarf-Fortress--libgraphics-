@@ -94,7 +94,6 @@ public:
             for (int c = 0; c < 4; c++) {
               data.push_back(((unsigned char*)(*tile)->pixels)
                              [y * pitch + x*4 + c]);
-              // data.push_back(0x77);
             }
           }
         }
@@ -107,27 +106,17 @@ public:
       glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
       glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, width, height, layers, 0, GL_RGBA,
                    GL_UNSIGNED_BYTE, &data[0]);
-      // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data[0]);
       printGLError();
     }
 
-    // Construct attribute arrays.
+    // Construct attribute arrays - tile locations.
     vector<interleaved_attributes> points;
-    points.reserve(w*h*6);
+    points.reserve(w*h);
     for (int x=0; x < w; x++) {
       for (int y=0; y < h; y++) {
-        // Top left
-        points.push_back(interleaved_attributes({float(x) / w * 2 - 1,   float(y) / h * -2 + 1,   x, y}));
-        // Top right
-        points.push_back(interleaved_attributes({float(x+1) / w * 2 - 1, float(y) / h * -2 + 1,   x, y}));
-        // Bottom left
-        points.push_back(interleaved_attributes({float(x) / w * 2 - 1,   float(y+1) / h * -2 + 1, x, y}));
-        // Bottom left
-        points.push_back(interleaved_attributes({float(x) / w * 2 - 1,   float(y+1) / h * -2 + 1, x, y}));
-        // Top right
-        points.push_back(interleaved_attributes({float(x+1) / w * 2 - 1, float(y) / h * -2 + 1,   x, y}));
-        // Bottom right
-        points.push_back(interleaved_attributes({float(x+1) / w * 2 - 1, float(y+1) / h * -2 + 1, x, y}));
+        float xpos = float(x * dispx + originx) / float(SDL_GetVideoSurface()->w);
+        float ypos = float(y * dispy + originy) / float(SDL_GetVideoSurface()->h);
+        points.push_back(interleaved_attributes({xpos * 2 - 1, ypos * -2 + 1, x, y}));
       }
     }
     // And bind them.
@@ -147,10 +136,12 @@ public:
   void prepare() {
     if (!gps.screen) {
       glActiveTexture(GL_TEXTURE0);
-      gps.screen = (unsigned int*)glMapBufferRange(GL_TEXTURE_BUFFER, 0, screen_sz,
-                                                   GL_MAP_WRITE_BIT //| GL_MAP_READ_BIT);
-                                                   | GL_MAP_INVALIDATE_BUFFER_BIT);
+      gps.screen = static_cast<unsigned int*>
+        (glMapBufferRange(GL_TEXTURE_BUFFER, 0, screen_sz,
+                          GL_MAP_WRITE_BIT //| GL_MAP_READ_BIT);
+                          | GL_MAP_INVALIDATE_BUFFER_BIT));
       assert(gps.screen);
+      gps.screen_limit = gps.screen + gps.dimx * gps.dimy * 4;
     }
   }
   void display() {
@@ -172,10 +163,11 @@ public:
     glUniform1f(shader.uniform("time"), float(SDL_GetTicks()) / 1000.0);
     glUniform1i(shader.uniform("tile_array"), 0);
 
-    glDrawArrays(GL_TRIANGLES, 0, gps.dimx * gps.dimy * 6);
+    glDrawArrays(GL_POINTS, 0, gps.dimx * gps.dimy);
     printGLError();
-    
-    enabler.sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);    
+
+    if (!enabler.sync)
+      enabler.sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);    
     SDL_GL_SwapBuffers();
     printGLError();
 

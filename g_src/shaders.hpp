@@ -1,11 +1,13 @@
 #ifndef SHADERS_HPP
 #define SHADERS_HPP
 
-class shaderst {
+struct shaderst {
   // Shader objects
-  GLuint v, f, p;
+  GLuint v, g, f, p;
   
   void ensource(GLuint shader, const string &file) {
+    renderer_sdl *renderer = dynamic_cast<renderer_sdl*>(enabler.renderer);
+    SDL_Surface *screen = SDL_GetVideoSurface();
     printGLError();
     cout << "Opening shader " << file << endl;
     ifstream s(file);
@@ -16,8 +18,13 @@ class shaderst {
       getline(s, line);
       if (line == "// Inserted by DF:") {
         ostringstream s;
+        // Geometry
         s << "#define GRID_X " << gps.dimx << endl;
         s << "#define GRID_Y " << gps.dimy << endl;
+        s << "#define DISP_X " << renderer->dispx << endl;
+        s << "#define DISP_Y " << renderer->dispy << endl;
+        s << "#define DISP_X_SCR " << 2 / double(gps.dimx) << endl;
+        s << "#define DISP_Y_SCR " << -2 / double(gps.dimy) << endl;
         // Color palette
         s << "const vec4 colors[] = vec4[16](";
         for (int i=0; i<16; i++) {
@@ -56,19 +63,16 @@ class shaderst {
     // Create, load, compile and link shader
     v = glCreateShader(GL_VERTEX_SHADER);
     f = glCreateShader(GL_FRAGMENT_SHADER);
-    // g = glCreateShader(GL_GEOMETRY_SHADER);
+    g = glCreateShader(GL_GEOMETRY_SHADER);
     p = glCreateProgram();
 
     glAttachShader(p, v);
     glAttachShader(p, f);
-    // glAttachShader(p, g);
+    glAttachShader(p, g);
 
     ensource(v, enabler.tileset.vertex_shader);
     ensource(f, enabler.tileset.fragment_shader);
-    // ensource(g, enabler.tileset.geometry_shader);
-
-    // Link in attributes
-    // glBindAttribLocation(
+    ensource(g, enabler.tileset.geometry_shader);
 
     glLinkProgram(p);
 
@@ -93,13 +97,13 @@ class shaderst {
     if (p) {
       glDeleteShader(v);
       glDeleteShader(f);
+      glDeleteShader(g);
       glDeleteProgram(p);
       glUseProgram(0);
       p = 0;
     }
   }
   
-public:
   shaderst() {
     v = f = p = 0;
     GLint max;
