@@ -55,7 +55,7 @@ If you want max speed and graphics quality, use SHADER.
 If your GPU does not support SHADER, try STANDARD.
 Otherwise experiment, and read below. There is no absolute best mode.
 
-[PRINT_MODE:SHADER]
+[PRINT_MODE:STANDARD]
 	Mode examples:
          PRINT_MODE:SHADER
 	 PRINT_MODE:2D
@@ -95,7 +95,7 @@ Use this to set the maximum graphical frame refresh rate during play.
 
 On cards that support the OpenGL ARB_sync extension, turning this on can improve framerates in GPU overload conditions. It defaults to NO, as many cards that claim to support this will crash if asked to do so.
 
-[ARB_SYNC:NO]
+[ARB_SYNC:YES]
 
 This sets the applications vertical synchronization behavior.  Changing this to YES can impact your FPS if your G_FPS is high. ARB_SYNC is a better option, if your system supports it.
 

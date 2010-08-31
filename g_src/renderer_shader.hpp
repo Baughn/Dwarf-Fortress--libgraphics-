@@ -18,7 +18,7 @@ public:
   struct interleaved_attributes {
     GLfloat vx, vy;
     GLint x, y;
-  } __attribute__((packed));
+  };
 
   void grid_resize(int w, int h) {
     cout << "Resizing grid to " << w << "x" << h << endl;
@@ -166,7 +166,7 @@ public:
     glDrawArrays(GL_POINTS, 0, gps.dimx * gps.dimy);
     printGLError();
 
-    if (!enabler.sync)
+    if (!enabler.sync && init.display.flag.has_flag(INIT_DISPLAY_FLAG_ARB_SYNC))
       enabler.sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);    
     SDL_GL_SwapBuffers();
     printGLError();

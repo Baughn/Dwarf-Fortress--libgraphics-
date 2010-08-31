@@ -64,7 +64,6 @@ public:
       breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
   }
   virtual void render() {
-    gps.erasescreen();
     drawborder("Matrix", 1, 0);
     for (lit i = lines.begin(); i != lines.end(); ++i) {
       for (int j = 0; j < i->s.size(); ++j) {

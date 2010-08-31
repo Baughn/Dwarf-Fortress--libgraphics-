@@ -9,30 +9,26 @@ using namespace std;
 // Converts an arbitrary Surface to something like the display format
 // (32-bit RGBA), and converts magenta to transparency if convert_magenta is set
 // and the source surface didn't already have an alpha channel.
-//
-// It uses the same pixel format (RGBA, R at lowest address) regardless of
-// hardware.
 static SDL_Surface *canonicalize_format(SDL_Surface *src, bool convert_magenta) {
-  SDL_Surface *tgt;
   SDL_PixelFormat fmt;
   fmt.palette = NULL;
   fmt.BitsPerPixel = 32;
   fmt.BytesPerPixel = 4;
   fmt.Rloss = fmt.Gloss = fmt.Bloss = fmt.Aloss = 0;
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
-  fmt.Rshift = 24; fmt.Gshift = 16; fmt.Bshift = 8; fmt.Ashift = 0;
-#else
   fmt.Rshift = 0; fmt.Gshift = 8; fmt.Bshift = 16; fmt.Ashift = 24;
+#else
+  fmt.Rshift = 16; fmt.Gshift = 8; fmt.Bshift = 0; fmt.Ashift = 24;
 #endif
   fmt.Rmask = 255 << fmt.Rshift;
   fmt.Gmask = 255 << fmt.Gshift;
   fmt.Bmask = 255 << fmt.Bshift;
   fmt.Amask = 255 << fmt.Ashift;
   fmt.colorkey = 0;
-  fmt.alpha = 255;
+  fmt.alpha = SDL_ALPHA_OPAQUE;
 
-  tgt = SDL_CreateRGBSurface(SDL_SWSURFACE, src->w, src->h, 32,
-			     fmt.Rmask, fmt.Gmask, fmt.Bmask, fmt.Amask);
+  SDL_Surface *tgt = SDL_CreateRGBSurface(SDL_SWSURFACE, src->w, src->h, 32,
+        		     fmt.Rmask, fmt.Gmask, fmt.Bmask, fmt.Amask);
   if (src->format->Amask == 0 && convert_magenta) { // No alpha
     SDL_SetColorKey(src, SDL_SRCCOLORKEY,
 		    SDL_MapRGB(src->format, 255, 0, 255));

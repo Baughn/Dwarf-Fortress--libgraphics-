@@ -62,8 +62,8 @@ texture_fullid renderer_cpu::screen_to_texid(int x, int y) {
 #ifdef CURSES
 # include "renderer_curses.cpp"
 #endif
-// #include "renderer_2d.hpp"
-// #include "renderer_opengl.hpp"
+#include "renderer_2d.hpp"
+#include "renderer_opengl.hpp"
 #include "renderer_shader.hpp"
 
 enablerst::enablerst() {
@@ -256,8 +256,15 @@ void enablerst::do_frame() {
 
   // If it's time to render..
   if (outstanding_gframes >= 1) {
-    if ((enabler.flag & ENABLERFLAG_RENDER || 1) &&
-        (!sync || glClientWaitSync(sync, 0, 10) == GL_ALREADY_SIGNALED)) {
+    if (!(enabler.flag & ENABLERFLAG_RENDER)) {
+#ifdef DEBUG
+      // puts("Skipping render because enablerflag_render not set");
+#endif
+    } else if (sync && (glClientWaitSync(sync, 0, 25) != GL_ALREADY_SIGNALED)) {
+#ifdef DEBUG
+      puts("Skipping render due to ARB_SYNC - last frame incomplete");
+#endif
+    } else {
       if (sync) {
         glDeleteSync(sync);
         sync = NULL;
@@ -276,7 +283,7 @@ void enablerst::do_frame() {
     }
     outstanding_gframes--;
   }
-
+  
   // Sleep until the next gframe
   if (outstanding_gframes < 1) {
     float fragment = 1 - outstanding_gframes;
@@ -458,8 +465,8 @@ int enablerst::loop(string cmdline) {
   //     renderer = new renderer_once();
   // } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO)) {
   //   renderer = new renderer_vbo();
-  // } else {
-  //   renderer = new renderer_opengl();
+  } else {
+    renderer = new renderer_opengl();
   }
 
   // At this point we should have a window that is setup to render DF.
