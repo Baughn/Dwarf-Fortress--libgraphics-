@@ -1,5 +1,8 @@
 #include "renderer.hpp"
 #include <boost/scoped_ptr.hpp>
+#include <boost/circular_buffer.hpp>
+
+using boost::circular_buffer;
 using boost::scoped_ptr;
 
 class catalog_fitter {
@@ -93,6 +96,7 @@ public:
 };
 
 class renderer_opengl : public renderer_sdl, public renderer_cpu {
+protected:
   struct interleaved_attributes {
     GLfloat fg_red, fg_green, fg_blue, fg_alpha;
     GLfloat bg_red, bg_green, bg_blue, bg_alpha;
@@ -108,7 +112,7 @@ class renderer_opengl : public renderer_sdl, public renderer_cpu {
   // Rewritten every frame
   vector<interleaved_attributes> attributes;
 
-  void realloc_arrays(int w, int h) {
+  virtual void realloc_arrays(int w, int h) {
     // The vertex array doesn't change per-frame, so we rebuild it here.
     vertices.clear();
     vertices.reserve(w*h*6*2);
@@ -132,11 +136,9 @@ class renderer_opengl : public renderer_sdl, public renderer_cpu {
         vertices.push_back(ypos(y+1));
       }
     }
-    glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(2, GL_FLOAT, 0, &vertices[0]);
     // The attribute array does change per-frame. We just allocate space.
     attributes.resize(w*h*6);
-    glEnableClientState(GL_COLOR_ARRAY);
   }
 public:
   renderer_opengl() : renderer_sdl(true) {
@@ -149,6 +151,8 @@ public:
     glLoadIdentity();
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
     realloc_arrays(w,h);
     // Load textures. All the tile textures are the same size, so building the catalog is
     // dead simple. Also, we always make a square catalog.
@@ -303,7 +307,109 @@ public:
 };
 
 class renderer_once : public renderer_opengl {
-  
+  struct interleaved_attributes {
+    GLfloat x, y;
+    GLfloat fg_red, fg_green, fg_blue, fg_alpha;
+    GLfloat bg_red, bg_green, bg_blue, bg_alpha;
+    GLfloat tex_u, tex_v;
+  };
+
+  vector<interleaved_attributes> attributes;
+  int fill;
+
+  void realloc_arrays(int w, int h) {
+    // We reserve sufficient space for a worst-case render. Memory's cheap.
+    attributes.resize(w*h*6);
+    fill = 0;
+  }
+
+  void update_tile(int x, int y) {
+    texture_fullid id = screen_to_texid(x, y);
+    int screenw = SDL_GetVideoSurface()->w;
+    int screenh = SDL_GetVideoSurface()->h;
+    auto xpos = [&](int x){return float(x * dispx + originx) / screenw * 2 - 1; };
+    auto ypos = [&](int y){return float(y * dispy + originy) / screenh * -2 + 1; };
+    for (int i = 0; i < 6; i++) {
+      interleaved_attributes &out = attributes[fill++];
+      out.fg_red   = id.r;
+      out.fg_green = id.g;
+      out.fg_blue  = id.b;
+      out.fg_alpha = 1;
+      
+      out.bg_red   = id.br;
+      out.bg_green = id.bg;
+      out.bg_blue  = id.bb;
+      out.bg_alpha = 1;
+
+      if (id.texpos < 256) {
+        const catalog_position &pos = texture_pos[id.texpos];
+        switch (i) {
+        case 0:
+          out.tex_u = pos.s;
+          out.tex_v = pos.t;
+          out.x = xpos(x);
+          out.y = ypos(y);
+          break;
+        case 1:
+        case 4:
+          out.tex_u = pos.p;
+          out.tex_v = pos.t;
+          out.x = xpos(x+1);
+          out.y = ypos(y);
+          break;
+        case 2:
+        case 3:
+          out.tex_u = pos.s;
+          out.tex_v = pos.q;
+          out.x = xpos(x);
+          out.y = ypos(y+1);
+          break;
+        case 5:
+          out.tex_u = pos.p;
+          out.tex_v = pos.q;
+          out.x = xpos(x+1);
+          out.y = ypos(y+1);
+          break;
+        }
+      } else {
+        out.tex_u = 0;
+        out.tex_v = 0;
+      }
+    }
+  }
+
+  void render() {
+    // Draw the background
+    glDisable(GL_TEXTURE_2D);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisable(GL_BLEND);
+    glDisable(GL_ALPHA_TEST);
+    glVertexPointer(2, GL_FLOAT, sizeof(interleaved_attributes),
+                    &(attributes[0].x));
+    glColorPointer(4, GL_FLOAT, sizeof(interleaved_attributes),
+                   &(attributes[0].bg_red));
+    glDrawArrays(GL_TRIANGLES, 0, fill);
+    printGLError();
+    // Draw the foreground, colors and textures both
+    glEnable(GL_ALPHA_TEST);
+    glAlphaFunc(GL_NOTEQUAL, 0);
+    glEnable(GL_TEXTURE_2D);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glTexCoordPointer(2, GL_FLOAT, sizeof(interleaved_attributes),
+                      &(attributes[0].tex_u));
+    glColorPointer(4, GL_FLOAT, sizeof(interleaved_attributes),
+                   &(attributes[0].fg_red));
+    glDrawArrays(GL_TRIANGLES, 0, fill);
+    printGLError();
+    // Flip the screen
+    if (!enabler.sync && init.display.flag.has_flag(INIT_DISPLAY_FLAG_ARB_SYNC))
+      enabler.sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);    
+    SDL_GL_SwapBuffers();
+    // Done.
+    fill = 0;
+  }
 };
 
 
