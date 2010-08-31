@@ -1,8 +1,6 @@
 #include "renderer.hpp"
 #include <boost/scoped_ptr.hpp>
-#include <boost/circular_buffer.hpp>
 
-using boost::circular_buffer;
 using boost::scoped_ptr;
 
 class catalog_fitter {
@@ -270,7 +268,8 @@ public:
       }
     }
   }
-  void update_tile(int x, int y) {
+
+  virtual void update_tile(int x, int y) {
     texture_fullid id = screen_to_texid(x, y);
     const int tile = (x * gps.dimy + y) * 6;
     write_attributes(&attributes[tile], id);
@@ -322,13 +321,13 @@ struct renderer_once : public renderer_opengl {
   vector<interleaved_attributes> attributes;
   int fill;
 
-  void realloc_arrays(int w, int h) {
+  virtual void realloc_arrays(int w, int h) {
     // We reserve sufficient space for a worst-case render. Memory's cheap.
     attributes.resize(w*h*6);
     fill = 0;
   }
 
-  void update_tile(int x, int y) {
+  virtual void update_tile(int x, int y) {
     texture_fullid id = screen_to_texid(x, y);
     int screenw = SDL_GetVideoSurface()->w;
     int screenh = SDL_GetVideoSurface()->h;
@@ -425,8 +424,12 @@ public:
 
 
 
-class renderer_framebuffer : public renderer_once {
+struct renderer_framebuffer : public renderer_once {
   GLuint framebuffer, fb_texture;
+
+  renderer_framebuffer() {
+    framebuffer = fb_texture = 0;
+  }
   
   void grid_resize(int w, int h) {
     if (fb_texture) {
@@ -475,7 +478,7 @@ class renderer_framebuffer : public renderer_once {
   }
 };
 
-class renderer_vbo : public renderer_opengl {
+struct renderer_vbo : public renderer_opengl {
   GLuint vbo; // Vertexes only
 
   void realloc_arrays(int w, int h) {
@@ -488,5 +491,122 @@ class renderer_vbo : public renderer_opengl {
                     &vertices[0], GL_STATIC_DRAW_ARB);
     glVertexPointer(2, GL_FLOAT, 0, 0);
     glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+  }
+
+  renderer_vbo() : vbo(0) {
+  }
+};
+
+struct renderer_partial : public renderer_once {
+  // To render-more-than-once, we use multiple attribute arrays - one per frame.
+  vector<pair<int,vector<interleaved_attributes> > > arrays;
+  int epoch; // Index of the /oldest/ array
+  int fill; // Number of used arrays
+
+  renderer_partial() {
+    arrays.resize(init.display.partial_print_count);
+    epoch = 0;
+    fill = 1;
+  }
+
+  virtual void realloc_arrays(int w, int h) {
+    for (auto it = arrays.begin(); it != arrays.end(); ++it)
+      it->second.resize(w*h*6);
+  }
+  
+  virtual void draw() {
+    for (int i = 0; i < fill; i++) {
+      vector<interleaved_attributes> &attributes = arrays[(epoch + i) % arrays.size()].second;
+      int vertices = arrays[(epoch + i) % arrays.size()].first;
+      // Draw the background
+      glDisable(GL_TEXTURE_2D);
+      glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+      glDisable(GL_BLEND);
+      glDisable(GL_ALPHA_TEST);
+      glVertexPointer(2, GL_FLOAT, sizeof(interleaved_attributes),
+                      &(attributes[0].x));
+      glColorPointer(4, GL_FLOAT, sizeof(interleaved_attributes),
+                     &(attributes[0].bg_red));
+      glDrawArrays(GL_TRIANGLES, 0, vertices);
+      printGLError();
+      // Draw the foreground, colors and textures both
+      glEnable(GL_ALPHA_TEST);
+      glAlphaFunc(GL_NOTEQUAL, 0);
+      glEnable(GL_TEXTURE_2D);
+      glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+      glEnable(GL_BLEND);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glTexCoordPointer(2, GL_FLOAT, sizeof(interleaved_attributes),
+                        &(attributes[0].tex_u));
+      glColorPointer(4, GL_FLOAT, sizeof(interleaved_attributes),
+                     &(attributes[0].fg_red));
+      glDrawArrays(GL_TRIANGLES, 0, vertices);
+      printGLError();
+    }
+    // Zero the oldest attribute array, and increment epoch
+    if (fill < arrays.size()) {
+      fill++;
+    } else {
+      arrays[epoch].first = 0;
+      epoch = (epoch+1) % arrays.size();
+    }
+  }
+
+  virtual void update_tile(int x, int y) {
+    texture_fullid id = screen_to_texid(x, y);
+    int screenw = SDL_GetVideoSurface()->w;
+    int screenh = SDL_GetVideoSurface()->h;
+    auto xpos = [&](int x){return float(x * dispx + originx) / screenw * 2 - 1; };
+    auto ypos = [&](int y){return float(y * dispy + originy) / screenh * -2 + 1; };
+    pair<int,vector<interleaved_attributes> > &array = arrays[(epoch + fill - 1) % arrays.size()];
+    int &cur_fill = array.first;
+    vector<interleaved_attributes> &attributes = array.second;
+    for (int i = 0; i < 6; i++) {
+      interleaved_attributes &out = attributes[cur_fill++];
+      out.fg_red   = id.r;
+      out.fg_green = id.g;
+      out.fg_blue  = id.b;
+      out.fg_alpha = 1;
+      
+      out.bg_red   = id.br;
+      out.bg_green = id.bg;
+      out.bg_blue  = id.bb;
+      out.bg_alpha = 1;
+
+      if (id.texpos < 256) {
+        const catalog_position &pos = texture_pos[id.texpos];
+        switch (i) {
+        case 0:
+          out.tex_u = pos.s;
+          out.tex_v = pos.t;
+          out.x = xpos(x);
+          out.y = ypos(y);
+          break;
+        case 1:
+        case 4:
+          out.tex_u = pos.p;
+          out.tex_v = pos.t;
+          out.x = xpos(x+1);
+          out.y = ypos(y);
+          break;
+        case 2:
+        case 3:
+          out.tex_u = pos.s;
+          out.tex_v = pos.q;
+          out.x = xpos(x);
+          out.y = ypos(y+1);
+          break;
+        case 5:
+          out.tex_u = pos.p;
+          out.tex_v = pos.q;
+          out.x = xpos(x+1);
+          out.y = ypos(y+1);
+          break;
+        }
+      } else {
+        out.tex_u = 0;
+        out.tex_v = 0;
+      }
+    }
   }
 };

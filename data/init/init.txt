@@ -52,10 +52,10 @@ Set GRAPHICS to YES to turn extra graphics on.  This will use the "raw/graphics"
 
 If you want max compatibility, use 2D.
 If you want max speed and graphics quality, use SHADER.
-If your GPU does not support SHADER, try STANDARD.
+If your GPU doesn't support SHADER, try VBO; if that doesn't work, STANDARD.
 Otherwise experiment, and read below. There is no absolute best mode.
 
-[PRINT_MODE:VBO]
+[PRINT_MODE:PARTIAL:3]
 	Mode examples:
          PRINT_MODE:SHADER
 	 PRINT_MODE:2D

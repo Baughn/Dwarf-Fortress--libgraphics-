@@ -460,7 +460,7 @@ int enablerst::loop(string cmdline) {
     renderer = new renderer_framebuffer();
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
     if (init.display.partial_print_count)
-      assert(false); //renderer = new renderer_partial();
+      renderer = new renderer_partial();
     else
       renderer = new renderer_once();
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO)) {
