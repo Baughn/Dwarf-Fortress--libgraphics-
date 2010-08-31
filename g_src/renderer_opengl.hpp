@@ -475,20 +475,18 @@ class renderer_framebuffer : public renderer_once {
   }
 };
 
-// class renderer_vbo : public renderer_opengl {
-//   GLuint vbo; // Vertexes only
+class renderer_vbo : public renderer_opengl {
+  GLuint vbo; // Vertexes only
 
-//   void init_opengl() {
-//     renderer_opengl::init_opengl();
-//     glGenBuffersARB(1, &vbo);
-//     glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
-//     glBufferDataARB(GL_ARRAY_BUFFER_ARB, gps.dimx*gps.dimy*6*2*sizeof(GLfloat), vertexes, GL_STATIC_DRAW_ARB);
-//     glVertexPointer(2, GL_FLOAT, 0, 0);
-//     glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-//   }
-  
-//   void uninit_opengl() {
-//     glDeleteBuffersARB(1, &vbo);
-//     renderer_opengl::uninit_opengl();
-//   }
-// };
+  void realloc_arrays(int w, int h) {
+    if (vbo)
+      glDeleteBuffersARB(1, &vbo);
+    renderer_opengl::realloc_arrays(w, h);
+    glGenBuffersARB(1, &vbo);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
+    glBufferDataARB(GL_ARRAY_BUFFER_ARB, vertices.size() * sizeof(GLfloat),
+                    &vertices[0], GL_STATIC_DRAW_ARB);
+    glVertexPointer(2, GL_FLOAT, 0, 0);
+    glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
+  }
+};

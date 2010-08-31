@@ -55,7 +55,7 @@ If you want max speed and graphics quality, use SHADER.
 If your GPU does not support SHADER, try STANDARD.
 Otherwise experiment, and read below. There is no absolute best mode.
 
-[PRINT_MODE:FRAME_BUFFER]
+[PRINT_MODE:VBO]
 	Mode examples:
          PRINT_MODE:SHADER
 	 PRINT_MODE:2D
