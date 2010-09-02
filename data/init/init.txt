@@ -8,7 +8,7 @@ circumstances, unpack a new DF on top of an older one.
 
 Change this to turn sound off.
 
-[SOUND:NO]
+[SOUND:YES]
 
 The sound volume runs from 0 (off) to 255 (full).  You can set the volume from the ESC options menu as well.
 
@@ -27,10 +27,7 @@ If set below 256x256 it specifies the grid size instead, with a minimum of 80x25
 
 [WINDOWEDX:80]
 [WINDOWEDY:25]
-[FONT:curses_800x600.png]
-
-You may turn off truetype rendering if you wish for DF to use its old look.
-[TRUETYPE:YES]
+[FONT:curses_640x300.png]
 
 You may disable window resizing if you wish.
 [RESIZABLE:YES]

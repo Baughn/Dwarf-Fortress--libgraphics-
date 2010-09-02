@@ -70,7 +70,7 @@ using namespace std;
 
 extern enablerst enabler;
 extern texture_handlerst texture;
-extern graphicst gps;
+graphicst gps;
 extern interfacest gview;
 
 extern string errorlog_prefix;

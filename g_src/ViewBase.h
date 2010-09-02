@@ -138,7 +138,7 @@ namespace widgets {
       typename dict::iterator it = lines.lower_bound(first);
       for (; it != lines.end() && it->first - first < h; ++it) {
         gps.locate(it->first - first + y, x);
-        auto color = colors.find(it->first - first);
+        map<int,pair<int,int> >::iterator color = colors.find(it->first - first);
         int fg = 7, bg = 0;
         if (color != colors.end()) {
           fg = color->second.first;
