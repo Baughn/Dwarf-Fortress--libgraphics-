@@ -8,7 +8,7 @@ circumstances, unpack a new DF on top of an older one.
 
 Change this to turn sound off.
 
-[SOUND:YES]
+[SOUND:NO]
 
 The sound volume runs from 0 (off) to 255 (full).  You can set the volume from the ESC options menu as well.
 
@@ -16,7 +16,7 @@ The sound volume runs from 0 (off) to 255 (full).  You can set the volume from t
 
 Change this to skip the wonderful intro movies.
 
-[INTRO:YES]
+[INTRO:NO]
 
 This lets you set the starting windowed/fullscreen setting.  Can be YES, NO or PROMPT.
 
@@ -28,6 +28,8 @@ If set below 256x256 it specifies the grid size instead, with a minimum of 80x25
 [WINDOWEDX:80]
 [WINDOWEDY:25]
 [FONT:curses_640x300.png]
+
+[TRUETYPE:YES]
 
 You may disable window resizing if you wish.
 [RESIZABLE:YES]

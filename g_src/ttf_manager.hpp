@@ -14,6 +14,7 @@ class ttf_managerst {
   unordered_map<ttf_id, pair<int,int> > handles; // First is handle, second is width
   unordered_map<int, SDL_Surface*> textures;
   list<pair<int,ttf_id> > todo;
+  int size_ttf(const string &text, int);
 public:
   ttf_managerst() {
     font = NULL;

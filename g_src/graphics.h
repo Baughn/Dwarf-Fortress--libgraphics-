@@ -125,9 +125,6 @@ class graphicst
                   }
                 }
 		void addcoloredst(const char *str,const char *colorstr);
-                // With justify_left, the set location is treated as the left edge of the text.
-                // With justify_right, the right edge.
-                // With justify_center.. well, guess what? The center.
 		void addst(const string &str, justification just = justify_left);
 		void addst(const char *str, justification just = justify_left);
 		void erasescreen_clip();

@@ -104,7 +104,8 @@ enum Song
 
 enum justification : unsigned char {
   justify_left, justify_center, justify_right,
-  not_truetype
+    justify_cont,
+    not_truetype
 };
 
 extern int charmap[256];

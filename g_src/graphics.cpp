@@ -112,16 +112,24 @@ void graphicst::addcoloredst(const char *str,const char *colorstr)
 
 void graphicst::addst(const string &str, justification just)
 {
+  if (just == justify_cont) just = justify_left;
   if (just != not_truetype && ttf_manager.was_init()) {
     struct ttf_id id = {str, screenf, screenb, screenbright, just};
     pair<int,int> handleAndWidth = ttf_manager.get_handle(id);
     const int handle = handleAndWidth.first;
     const int width = handleAndWidth.second;
     int ourx;
+    // cout << str.size() << " " << width << endl;
     switch (just) {
-    case justify_left: ourx = screenx; break;
-    case justify_center: ourx = MAX(0, screenx - width / 2); break;
-    default: ourx = MAX(0, screenx - width); break;
+    case justify_center:
+      ourx = screenx + (str.size() - width) / 2;
+      break;
+    case justify_right:
+      ourx = screenx + (str.size() - width);
+      break;
+    default:
+      ourx = screenx;
+      break;
     }
     unsigned char * const s = screen + ourx*dimy*4 + screeny*4;
     s[0] = (handle >> 16) & 0xff;
@@ -135,22 +143,15 @@ void graphicst::addst(const string &str, justification just)
       *(s + x*dimy*4 + 2) = handle & 0xff;
       *(s + x*dimy*4 + 3) = GRAPHICSTYPE_TTFCONT;
     }
-    if (just == justify_left) screenx += width;
+    screenx = ourx + width;
   } else {
-    int ourx;
-    switch (just) {
-    case justify_left: ourx = screenx; break;
-    case justify_center: ourx = MAX(0, screenx - str.length() / 2); break;
-    default: ourx = MAX(0, screenx - str.length()); break;
-    }
-    gps.locate(screeny, ourx);
     int s;
     for(s=0;s<str.length()&&screenx<init.display.grid_x;s++)
       {
         if(screenx<0)
           {
-            s-=ourx;
-            ourx=0;
+            s-=screenx;
+            screenx=0;
             if(s>=str.length())break;
           }
         
