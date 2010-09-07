@@ -83,13 +83,16 @@
 #ifdef __glxext_h_
 #error glxext.h included before glxew.h
 #endif
-#ifdef GLX_H
+
+#if defined(GLX_H) || defined(__GLX_glx_h__) || defined(__glx_h__)
 #error glx.h included before glxew.h
 #endif
 
 #define __glxext_h_
-#define __GLX_glx_h__
+
 #define GLX_H
+#define __GLX_glx_h__
+#define __glx_h__
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -343,6 +346,26 @@ extern void ( * glXGetProcAddress (const GLubyte *procName)) (void);
 
 #endif /* GLX_3DFX_multisample */
 
+/* ------------------------ GLX_AMD_gpu_association ------------------------ */
+
+#ifndef GLX_AMD_gpu_association
+#define GLX_AMD_gpu_association 1
+
+#define GLX_GPU_VENDOR_AMD 0x1F00
+#define GLX_GPU_RENDERER_STRING_AMD 0x1F01
+#define GLX_GPU_OPENGL_VERSION_STRING_AMD 0x1F02
+#define GLX_GPU_FASTEST_TARGET_GPUS_AMD 0x21A2
+#define GLX_GPU_RAM_AMD 0x21A3
+#define GLX_GPU_CLOCK_AMD 0x21A4
+#define GLX_GPU_NUM_PIPES_AMD 0x21A5
+#define GLX_GPU_NUM_SIMD_AMD 0x21A6
+#define GLX_GPU_NUM_RB_AMD 0x21A7
+#define GLX_GPU_NUM_SPI_AMD 0x21A8
+
+#define GLXEW_AMD_gpu_association GLXEW_GET_VAR(__GLXEW_AMD_gpu_association)
+
+#endif /* GLX_AMD_gpu_association */
+
 /* ------------------------- GLX_ARB_create_context ------------------------ */
 
 #ifndef GLX_ARB_create_context
@@ -420,6 +443,17 @@ extern void ( * glXGetProcAddressARB (const GLubyte *procName)) (void);
 #define GLXEW_ARB_multisample GLXEW_GET_VAR(__GLXEW_ARB_multisample)
 
 #endif /* GLX_ARB_multisample */
+
+/* ---------------------- GLX_ARB_vertex_buffer_object --------------------- */
+
+#ifndef GLX_ARB_vertex_buffer_object
+#define GLX_ARB_vertex_buffer_object 1
+
+#define GLX_CONTEXT_ALLOW_BUFFER_BYTE_ORDER_MISMATCH_ARB 0x2095
+
+#define GLXEW_ARB_vertex_buffer_object GLXEW_GET_VAR(__GLXEW_ARB_vertex_buffer_object)
+
+#endif /* GLX_ARB_vertex_buffer_object */
 
 /* ----------------------- GLX_ATI_pixel_format_float ---------------------- */
 
@@ -644,6 +678,20 @@ typedef void ( * PFNGLXRELEASETEXIMAGEEXTPROC) (Display* display, GLXDrawable dr
 
 #endif /* GLX_EXT_visual_rating */
 
+/* -------------------------- GLX_INTEL_swap_event ------------------------- */
+
+#ifndef GLX_INTEL_swap_event
+#define GLX_INTEL_swap_event 1
+
+#define GLX_EXCHANGE_COMPLETE_INTEL 0x8180
+#define GLX_COPY_COMPLETE_INTEL 0x8181
+#define GLX_FLIP_COMPLETE_INTEL 0x8182
+#define GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK 0x04000000
+
+#define GLXEW_INTEL_swap_event GLXEW_GET_VAR(__GLXEW_INTEL_swap_event)
+
+#endif /* GLX_INTEL_swap_event */
+
 /* -------------------------- GLX_MESA_agp_offset -------------------------- */
 
 #ifndef GLX_MESA_agp_offset
@@ -735,6 +783,18 @@ typedef void ( * PFNGLXCOPYIMAGESUBDATANVPROC) (Display *dpy, GLXContext srcCtx,
 #define GLXEW_NV_float_buffer GLXEW_GET_VAR(__GLXEW_NV_float_buffer)
 
 #endif /* GLX_NV_float_buffer */
+
+/* ---------------------- GLX_NV_multisample_coverage ---------------------- */
+
+#ifndef GLX_NV_multisample_coverage
+#define GLX_NV_multisample_coverage 1
+
+#define GLX_COLOR_SAMPLES_NV 0x20B3
+#define GLX_COVERAGE_SAMPLES_NV 100001
+
+#define GLXEW_NV_multisample_coverage GLXEW_GET_VAR(__GLXEW_NV_multisample_coverage)
+
+#endif /* GLX_NV_multisample_coverage */
 
 /* -------------------------- GLX_NV_present_video ------------------------- */
 
@@ -1179,7 +1239,7 @@ typedef int ( * PFNGLXSWAPINTERVALSGIPROC) (int interval);
 #ifndef GLX_SGI_video_sync
 #define GLX_SGI_video_sync 1
 
-typedef int ( * PFNGLXGETVIDEOSYNCSGIPROC) (uint* count);
+typedef int ( * PFNGLXGETVIDEOSYNCSGIPROC) (unsigned int* count);
 typedef int ( * PFNGLXWAITVIDEOSYNCSGIPROC) (int divisor, int remainder, unsigned int* count);
 
 #define glXGetVideoSyncSGI GLXEW_GET_FUN(__glewXGetVideoSyncSGI)
@@ -1363,12 +1423,14 @@ GLXEW_EXPORT GLboolean __GLXEW_VERSION_1_2;
 GLXEW_EXPORT GLboolean __GLXEW_VERSION_1_3;
 GLXEW_EXPORT GLboolean __GLXEW_VERSION_1_4;
 GLXEW_EXPORT GLboolean __GLXEW_3DFX_multisample;
+GLXEW_EXPORT GLboolean __GLXEW_AMD_gpu_association;
 GLXEW_EXPORT GLboolean __GLXEW_ARB_create_context;
 GLXEW_EXPORT GLboolean __GLXEW_ARB_create_context_profile;
 GLXEW_EXPORT GLboolean __GLXEW_ARB_fbconfig_float;
 GLXEW_EXPORT GLboolean __GLXEW_ARB_framebuffer_sRGB;
 GLXEW_EXPORT GLboolean __GLXEW_ARB_get_proc_address;
 GLXEW_EXPORT GLboolean __GLXEW_ARB_multisample;
+GLXEW_EXPORT GLboolean __GLXEW_ARB_vertex_buffer_object;
 GLXEW_EXPORT GLboolean __GLXEW_ATI_pixel_format_float;
 GLXEW_EXPORT GLboolean __GLXEW_ATI_render_texture;
 GLXEW_EXPORT GLboolean __GLXEW_EXT_fbconfig_packed_float;
@@ -1379,6 +1441,7 @@ GLXEW_EXPORT GLboolean __GLXEW_EXT_swap_control;
 GLXEW_EXPORT GLboolean __GLXEW_EXT_texture_from_pixmap;
 GLXEW_EXPORT GLboolean __GLXEW_EXT_visual_info;
 GLXEW_EXPORT GLboolean __GLXEW_EXT_visual_rating;
+GLXEW_EXPORT GLboolean __GLXEW_INTEL_swap_event;
 GLXEW_EXPORT GLboolean __GLXEW_MESA_agp_offset;
 GLXEW_EXPORT GLboolean __GLXEW_MESA_copy_sub_buffer;
 GLXEW_EXPORT GLboolean __GLXEW_MESA_pixmap_colormap;
@@ -1386,6 +1449,7 @@ GLXEW_EXPORT GLboolean __GLXEW_MESA_release_buffers;
 GLXEW_EXPORT GLboolean __GLXEW_MESA_set_3dfx_mode;
 GLXEW_EXPORT GLboolean __GLXEW_NV_copy_image;
 GLXEW_EXPORT GLboolean __GLXEW_NV_float_buffer;
+GLXEW_EXPORT GLboolean __GLXEW_NV_multisample_coverage;
 GLXEW_EXPORT GLboolean __GLXEW_NV_present_video;
 GLXEW_EXPORT GLboolean __GLXEW_NV_swap_group;
 GLXEW_EXPORT GLboolean __GLXEW_NV_vertex_array_range;

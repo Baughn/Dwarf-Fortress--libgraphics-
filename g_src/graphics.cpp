@@ -114,6 +114,7 @@ void graphicst::addst(const string &str, justification just)
 {
   if (just == justify_cont) just = justify_left;
   if (just != not_truetype && ttf_manager.was_init()) {
+    abort();
     struct ttf_id id = {str, screenf, screenb, screenbright, just};
     pair<int,int> handleAndWidth = ttf_manager.get_handle(id);
     const int handle = handleAndWidth.first;
@@ -193,9 +194,7 @@ void graphicst::erasescreen_rect(int x1, int x2, int y1, int y2)
 
 void graphicst::erasescreen()
 {
-	memset(screen, 0, dimx*dimy*4);
-
-	memset(screentexpos, 0, dimx*dimy*sizeof(long));
+  memset(screen, 0, dimx*dimy*4);
 }
 
 void graphicst::setclipping(long x1,long x2,long y1,long y2)
@@ -213,101 +212,106 @@ void graphicst::setclipping(long x1,long x2,long y1,long y2)
 
 void graphicst::dim_colors(long x,long y,char dim)
 {
-	if(x>=clipx[0]&&x<=clipx[1]&&
-		y>=clipy[0]&&y<=clipy[1])
-		{
-		switch(dim)
-			{
-			case 4:
-				switch(screen[x*dimy*4 + y*4 + 2])
-					{
-					case 4:
-					case 5:
-					case 6:
-						screen[x*dimy*4 + y*4 + 2]=1;
-						break;
-					case 2:
-					case 7:
-						screen[x*dimy*4 + y*4 + 2]=3;
-						break;
-					}
-				switch(screen[x*dimy*4 + y*4 + 1])
-					{
-					case 4:
-					case 5:
-					case 6:
-						screen[x*dimy*4 + y*4 + 1]=1;
-						break;
-					case 2:
-					case 7:
-						screen[x*dimy*4 + y*4 + 1]=3;
-						break;
-					}
-				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2])screen[x*dimy*4 + y*4 + 1]=0;
-				screen[x*dimy*4 + y*4 + 3]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
-				break;
-			case 3:
-				switch(screen[x*dimy*4 + y*4 + 2])
-					{
-					case 4:
-					case 5:
-						screen[x*dimy*4 + y*4 + 2]=6;
-						break;
-					case 2:
-					case 7:
-						screen[x*dimy*4 + y*4 + 2]=3;
-						break;
-					}
-				switch(screen[x*dimy*4 + y*4 + 1])
-					{
-					case 1:
-						screen[x*dimy*4 + y*4 + 3]=0;
-						break;
-					case 4:
-					case 5:
-						screen[x*dimy*4 + y*4 + 1]=6;
-						break;
-					case 2:
-						screen[x*dimy*4 + y*4 + 1]=3;
-						break;
-					case 7:
-						screen[x*dimy*4 + y*4 + 1]=3;
-						break;
-					}
-				if(screen[x*dimy*4 + y*4 + 1]!=7)screen[x*dimy*4 + y*4 + 3]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2]&&
-					screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 1]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
-				break;
-			case 2:
-				switch(screen[x*dimy*4 + y*4 + 2])
-					{
-					case 4:
-					case 5:
-						screen[x*dimy*4 + y*4 + 2]=6;
-						break;
-					}
-				switch(screen[x*dimy*4 + y*4 + 1])
-					{
-					case 4:
-					case 5:
-						screen[x*dimy*4 + y*4 + 1]=6;
-						break;
-					}
-				if(screen[x*dimy*4 + y*4 + 1]!=7)screen[x*dimy*4 + y*4 + 3]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2]&&
-					screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 1]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
-				break;
-			case 1:
-				if(screen[x*dimy*4 + y*4 + 1]!=7)screen[x*dimy*4 + y*4 + 3]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2]&&
-					screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 1]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
-				break;
-			}
-		}
+  if (x >= clipx[0] && x <= clipx[1] &&
+      y >= clipy[0] && y <= clipy[1])
+    {
+      const int tile = screen[x*dimy + y];
+      int fg = (tile >> 24) & 0x7;
+      int bg = (tile >> 28) & 0xf;
+      int bold = (tile >> 27) & 0x1;
+      switch(dim)
+        {
+        case 4:
+          switch(bg)
+            {
+            case 4:
+            case 5:
+            case 6:
+              bg=1;
+              break;
+            case 2:
+            case 7:
+              bg=3;
+              break;
+            }
+          switch(fg)
+            {
+            case 4:
+            case 5:
+            case 6:
+              fg=1;
+              break;
+            case 2:
+            case 7:
+              fg=3;
+              break;
+            }
+          if(fg==bg)fg=0;
+          bold=0;
+          if(fg==0&&bg==0&&bold==0)bold=1;
+          break;
+        case 3:
+          switch(bg)
+            {
+            case 4:
+            case 5:
+              bg=6;
+              break;
+            case 2:
+            case 7:
+              bg=3;
+              break;
+            }
+          switch(fg)
+            {
+            case 1:
+              bold=0;
+              break;
+            case 4:
+            case 5:
+              fg=6;
+              break;
+            case 2:
+              fg=3;
+              break;
+            case 7:
+              fg=3;
+              break;
+            }
+          if(fg!=7)bold=0;
+          if(fg==bg&&
+             bold==0)fg=0;
+          if(fg==0&&bg==0&&bold==0)bold=1;
+          break;
+        case 2:
+          switch(bg)
+            {
+            case 4:
+            case 5:
+              bg=6;
+              break;
+            }
+          switch(fg)
+            {
+            case 4:
+            case 5:
+              fg=6;
+              break;
+            }
+          if(fg!=7)bold=0;
+          if(fg==bg&&
+             bold==0)fg=0;
+          if(fg==0&&bg==0&&bold==0)bold=1;
+          break;
+        case 1:
+          if(fg!=7)bold=0;
+          if(fg==bg&&
+             bold==0)fg=0;
+          if(fg==0&&bg==0&&bold==0)bold=1;
+          break;
+        }
+      screen[x*dimy+y] = (tile & 0x00ffffff) | ((fg + bold * 8) << 24) | (bg << 28);
+    }
 }
 
 void graphicst::rain_color_square(long x,long y)
@@ -388,26 +392,22 @@ void graphicst::prepare_graphics(string &src_dir)
 
 void graphicst::add_tile(long texp,char addcolor)
 {
-	if(screenx>=clipx[0]&&screenx<=clipx[1]&&
-		screeny>=clipy[0]&&screeny<=clipy[1])
-		{
-		screentexpos[screenx*dimy + screeny]=texp;
-		screentexpos_addcolor[screenx*dimy + screeny]=addcolor;
-		screentexpos_grayscale[screenx*dimy + screeny]=0;
-		}
+  if(screenx>=clipx[0]&&screenx<=clipx[1]&&
+     screeny>=clipy[0]&&screeny<=clipy[1])
+    {
+      const unsigned int old = screen[screenx*dimy + screeny];
+      screen[screenx*dimy + screeny] = texp | (addcolor ? old & 0xff000000 : 0x0f);
+    }
 }
 
 void graphicst::add_tile_grayscale(long texp,char cf,char cbr)
 {
-	if(screenx>=clipx[0]&&screenx<=clipx[1]&&
-		screeny>=clipy[0]&&screeny<=clipy[1])
-		{
-		screentexpos[screenx*dimy + screeny]=texp;
-		screentexpos_addcolor[screenx*dimy + screeny]=0;
-		screentexpos_grayscale[screenx*dimy + screeny]=1;
-		screentexpos_cf[screenx*dimy + screeny]=cf;
-		screentexpos_cbr[screenx*dimy + screeny]=cbr;
-		}
+  if (screenx>=clipx[0]&&screenx<=clipx[1]&&
+      screeny>=clipy[0]&&screeny<=clipy[1])
+    {
+      // How on earth is this "grayscale"?
+      screen[screenx*dimy + screeny] = texp | (cf << 24) | (cbr << 28);
+    }
 }
 
 void graphicst::draw_border(int x1, int x2, int y1, int y2) {

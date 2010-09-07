@@ -60,10 +60,10 @@ public:
     frame = 0;
   }
   virtual void feed(set<InterfaceKey> &events) {
-    breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
+    if (events.count(INTERFACEKEY_D_PAUSE))
+      breakdownlevel = INTERFACE_BREAKDOWN_STOPSCREEN;
   }
   virtual void render() {
-    gps.erasescreen();
     drawborder("Matrix", 1, 0);
     for (lit i = lines.begin(); i != lines.end(); ++i) {
       for (int j = 0; j < i->s.size(); ++j) {
@@ -114,9 +114,9 @@ public:
 
 char beginroutine() {
   mt_init();
-  // viewscreen_movieplayerst *m = viewscreen_movieplayerst::create(INTERFACE_PUSH_AT_BACK);
-  // m->force_play("data/initial_movies/dwarf_fortress.cmv");
   gview.addscreen(new Matrix, INTERFACE_PUSH_AT_BACK, NULL);
+  // viewscreen_movieplayerst *m = viewscreen_movieplayerst::create(INTERFACE_PUSH_AT_BACK);
+  // m->force_play("data/initial_movies/test.cmv");
   return 1;
 }
 
