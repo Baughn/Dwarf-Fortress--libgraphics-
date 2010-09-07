@@ -18,8 +18,8 @@ profile = False
 
 clang = False
 
-libgraphics = True
-tetris = False
+libgraphics = False
+tetris = True
 
 M64 = True
 

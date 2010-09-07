@@ -10,7 +10,6 @@
 
 using namespace std;
 
-graphicst gps;
 initst init;
 interfacest gview;
 texture_handlerst texture;

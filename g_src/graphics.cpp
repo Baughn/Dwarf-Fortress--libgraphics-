@@ -115,36 +115,36 @@ void graphicst::addst(const string &str, justification just)
   if (just == justify_cont) just = justify_left;
   if (just != not_truetype && ttf_manager.was_init()) {
     abort();
-    struct ttf_id id = {str, screenf, screenb, screenbright, just};
-    pair<int,int> handleAndWidth = ttf_manager.get_handle(id);
-    const int handle = handleAndWidth.first;
-    const int width = handleAndWidth.second;
-    int ourx;
-    // cout << str.size() << " " << width << endl;
-    switch (just) {
-    case justify_center:
-      ourx = screenx + (str.size() - width) / 2;
-      break;
-    case justify_right:
-      ourx = screenx + (str.size() - width);
-      break;
-    default:
-      ourx = screenx;
-      break;
-    }
-    unsigned char * const s = screen + ourx*dimy*4 + screeny*4;
-    s[0] = (handle >> 16) & 0xff;
-    s[1] = (handle >> 8) & 0xff;
-    s[2] = handle & 0xff;
-    s[3] = GRAPHICSTYPE_TTF;
-    // Also set the other tiles this text covers
-    for (int x = 1; x < width; ++x) {
-      *(s + x*dimy*4 + 0) = (handle >> 16) & 0xff;
-      *(s + x*dimy*4 + 1) = (handle >> 8) & 0xff;
-      *(s + x*dimy*4 + 2) = handle & 0xff;
-      *(s + x*dimy*4 + 3) = GRAPHICSTYPE_TTFCONT;
-    }
-    screenx = ourx + width;
+    // struct ttf_id id = {str, screenf, screenb, just};
+    // pair<int,int> handleAndWidth = ttf_manager.get_handle(id);
+    // const int handle = handleAndWidth.first;
+    // const int width = handleAndWidth.second;
+    // int ourx;
+    // // cout << str.size() << " " << width << endl;
+    // switch (just) {
+    // case justify_center:
+    //   ourx = screenx + (str.size() - width) / 2;
+    //   break;
+    // case justify_right:
+    //   ourx = screenx + (str.size() - width);
+    //   break;
+    // default:
+    //   ourx = screenx;
+    //   break;
+    // }
+    // unsigned int * const s = screen + ourx*dimy + screeny;
+    // s[0] = (handle >> 16) & 0xff;
+    // s[1] = (handle >> 8) & 0xff;
+    // s[2] = handle & 0xff;
+    // s[3] = GRAPHICSTYPE_TTF;
+    // // Also set the other tiles this text covers
+    // for (int x = 1; x < width; ++x) {
+    //   *(s + x*dimy*4 + 0) = (handle >> 16) & 0xff;
+    //   *(s + x*dimy*4 + 1) = (handle >> 8) & 0xff;
+    //   *(s + x*dimy*4 + 2) = handle & 0xff;
+    //   *(s + x*dimy*4 + 3) = GRAPHICSTYPE_TTFCONT;
+    // }
+    // screenx = ourx + width;
   } else {
     int s;
     for(s=0;s<str.length()&&screenx<init.display.grid_x;s++)
