@@ -7,7 +7,7 @@ static void endwin_void() {
   }
 }
 
-class renderer_curses : public renderer_cpu {
+class renderer_curses : public renderer {
   std::map<std::pair<int,int>,int> color_pairs; // For curses. MOVEME.
 
   // Map from DF color to ncurses color
@@ -119,7 +119,7 @@ static int getch_utf8() {
 
 void enablerst::eventLoop_ncurses() {
   int x, y, oldx = 0, oldy = 0;
-  renderer_curses *renderer = dynamic_cast<renderer_curses*>(this->renderer);
+  renderer_curses *renderer = static_cast<renderer_curses*>(this->renderer);
   
   while (loopvar) {
     // Check for terminal resize

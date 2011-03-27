@@ -93,7 +93,7 @@ class interfacest
 			return supermovie_on;
 			}
 
-		void print_interface_token(InterfaceKey key);
+		void print_interface_token(InterfaceKey key,justification just=justify_left);
 
 		interfacest();
 		~interfacest();

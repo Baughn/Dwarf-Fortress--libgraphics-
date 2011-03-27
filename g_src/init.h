@@ -2,12 +2,28 @@
 #define INIT_H
 
 #include "enabler.h"
+#ifdef __APPLE__
+#include <SDL_ttf/SDL_ttf.h>
+#else
 #include <SDL/SDL_ttf.h>
+#endif
 
 class init_fontst
 {
- public:
-  bool use_ttf;
+	public:
+		long small_font_texpos[256];
+		long large_font_texpos[256];
+		long small_font_datapos[256];
+		long large_font_datapos[256];
+		float small_font_adjx;
+		float small_font_adjy;
+		float large_font_adjx;
+		float large_font_adjy;
+		long small_font_dispx;
+		long small_font_dispy;
+		long large_font_dispx;
+		long large_font_dispy;
+                bool use_ttf;
 };
 
 enum InitDisplayFlag

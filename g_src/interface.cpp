@@ -217,28 +217,34 @@ void viewscreen_movieplayerst::render()
 	//LOAD A MOVIE BUFFER BY BUFFER
 	if(is_playing)
 		{
-		int half_frame_size=init.display.grid_x*init.display.grid_y;
-
-		//PRINT THE NEXT FRAME AND ADVANCE POSITION
-		drawborder(NULL,-1);
-		
-		short x2,y2;
-		for(x2=0;x2<init.display.grid_x;x2++)
+		if(gview.currentblocksize>0)
 			{
-			for(y2=0;y2<init.display.grid_y;y2++)
+			int32_t half_frame_size=init.display.grid_x*init.display.grid_y;
+
+			//PRINT THE NEXT FRAME AND ADVANCE POSITION
+			drawborder(NULL,-1);
+		
+			int32_t curp=gview.supermovie_pos;
+				//HANG ON THE LAST FRAME TO AVOID POSSIBLE OVERRUNS
+			if(gview.supermovie_pos>=MOVIEBUFFSIZE-half_frame_size*2)
 				{
-				gps.locate(y2,x2);
+				curp=MOVIEBUFFSIZE-half_frame_size*4;
+				}
+			short x2,y2;
+			for(x2=0;x2<init.display.grid_x;x2++)
+				{
+				for(y2=0;y2<init.display.grid_y;y2++,++curp)
+					{
+					gps.locate(y2,x2);
 
-				gps.changecolor((gview.supermoviebuffer[gview.supermovie_pos+half_frame_size] & 7),
-					(gview.supermoviebuffer[gview.supermovie_pos+half_frame_size] & 56)>>3,
-					(gview.supermoviebuffer[gview.supermovie_pos+half_frame_size] & 64));
+					gps.changecolor((gview.supermoviebuffer[curp+half_frame_size] & 7),
+						(gview.supermoviebuffer[curp+half_frame_size] & 56)>>3,
+						(gview.supermoviebuffer[curp+half_frame_size] & 64));
 
-				gps.addchar(gview.supermoviebuffer[gview.supermovie_pos]);
-
-				gview.supermovie_pos++;
+					gps.addchar(gview.supermoviebuffer[curp]);
+					}
 				}
 			}
-		gview.supermovie_pos-=half_frame_size;//RETURN TO LAST FRAME
 		}
 	else if(loading)
 		{
@@ -855,6 +861,12 @@ char interfacest::loop() {
     
     currentscreen->logic();
 
+	if(currentscreen->movies_okay())
+		{
+		//HANDLE MOVIES
+		handlemovie(0);
+		}
+
     const Time now = SDL_GetTicks();
     // Process as much input as possible. Some screens can't handle multiple input events
     // per logic call (retain_nonzero_input, and any alteration to the window setup
@@ -1122,7 +1134,7 @@ void interfacest::read_movie_chunk(int &maxmoviepos,char &is_playing)
 {
 	//OPEN UP THE MOVIE FILE AND MOVE TO CORRECT POSITION
 	std::fstream f;
-	f.open(movie_file.c_str(), fstream::in | fstream::out | fstream::binary);
+	f.open(movie_file.c_str(), fstream::in | fstream::binary);
 
 	if(f.is_open())
 		{
@@ -1301,7 +1313,6 @@ void interfacest::handlemovie(char flushall)
 					{
 					for(y2=0;y2<init.display.grid_y;y2++)
 						{
-						//Core50Core50Core50Core50Core50Core50
 						supermoviebuffer[supermovie_pos]=gps.screen[x2*gps.dimy*4 + y2*4 + 0];
 
 						supermovie_pos++;
@@ -1312,7 +1323,6 @@ void interfacest::handlemovie(char flushall)
 					{
 					for(y2=0;y2<init.display.grid_y;y2++)
 						{
-						//Core50Core50Core50Core50Core50Core50
 						frame_col=gps.screen[x2*gps.dimy*4 + y2*4 + 1];
 						frame_col|=(gps.screen[x2*gps.dimy*4 + y2*4 + 2]<<3);
 						if(gps.screen[x2*gps.dimy*4 + y2*4 + 3])frame_col|=64;
@@ -1338,13 +1348,13 @@ void interfacest::handlemovie(char flushall)
 		}
 }
 
-void interfacest::print_interface_token(InterfaceKey key)
+void interfacest::print_interface_token(InterfaceKey key,justification just)
 {
-  short o_screenf=gps.screenf,o_screenb=gps.screenb;
-  gps.changecolor(2,0,1);
-  string tok = enabler.GetKeyDisplay(key);
-  gps.addst(tok);
-  gps.changecolor(o_screenf,o_screenb);
+	short o_screenf=gps.screenf,o_screenb=gps.screenb,o_screenbright=gps.screenbright;
+	gps.changecolor(2,0,1);
+        string tok = enabler.GetKeyDisplay(key);
+	gps.addst(tok,just);
+	gps.changecolor(o_screenf,o_screenb,o_screenbright);
 }
 
 char standardstringentry(char *str,int maxlen,unsigned int flag,std::set<InterfaceKey> &events)

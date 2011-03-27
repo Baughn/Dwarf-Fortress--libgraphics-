@@ -225,8 +225,8 @@ SDL_Surface* SDL_Resize(SDL_Surface *src, int new_w, int new_h, bool free, int f
         //No change in size. Return an optimized image.
         if (is_alpha)
         {
-            SDL_SetAlpha(src, SDL_SRCALPHA, 0);
             dst = SDL_DisplayFormatAlpha(src);
+            SDL_SetAlpha(src, SDL_SRCALPHA, 0);
         }
         else        
             dst = SDL_DisplayFormat(src);            

@@ -7,8 +7,8 @@ src_dll = ["basics.cpp","command_line.cpp","enabler.cpp","files.cpp",
            "keybindings.cpp","music_and_sound_openal.cpp", "random.cpp",
            "textlines.cpp","glew.c","enabler_input.cpp","ViewBase.cpp",
            "KeybindingScreen.cpp", "win32_compat.cpp", "textures.cpp",
-           "resize++.cpp", # "renderer_offscreen.cpp",
-           "ttf_manager.cpp", "renderer.cpp", "renderer_2d.cpp"]
+           "resize++.cpp", "renderer_offscreen.cpp",
+           "ttf_manager.cpp"]
 
 dll  = '#libs/libgraphics.so'
 

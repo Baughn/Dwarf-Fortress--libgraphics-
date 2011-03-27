@@ -51,7 +51,8 @@ void initst::begin()
   if (called) return;
   called = true;
   
-	string tileset_filename = "data/art/curses_640x300.png";
+	string small_font="data/art/curses_640x300.png";
+	string large_font="data/art/curses_640x300.png";
 	std::ifstream fseed("data/init/init.txt");
 	if(fseed.is_open())
 		{
@@ -77,8 +78,13 @@ void initst::begin()
 
 				if(!token.compare("FONT"))
 					{
-					tileset_filename="data/art/";
-					tileset_filename+=token2;
+					small_font="data/art/";
+					small_font+=token2;
+					}
+				if(!token.compare("FULLFONT"))
+					{
+					large_font="data/art/";
+					large_font+=token2;
 					}
 				if(!token.compare("WINDOWEDX"))
 					{
@@ -188,6 +194,43 @@ void initst::begin()
 						}
 					}
 
+				if(display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS))
+					{
+					if(!token.compare("GRAPHICS_FONT"))
+						{
+						small_font="data/art/";
+						small_font+=token2;
+						}
+					if(!token.compare("GRAPHICS_FULLFONT"))
+						{
+						large_font="data/art/";
+						large_font+=token2;
+						}
+					if(!token.compare("GRAPHICS_WINDOWEDX"))
+						{
+						display.desired_windowed_width=convert_string_to_long(token2);
+						}
+					if(!token.compare("GRAPHICS_WINDOWEDY"))
+						{
+						display.desired_windowed_height=convert_string_to_long(token2);
+						}
+					if(!token.compare("GRAPHICS_FULLSCREENX"))
+						{
+						display.desired_fullscreen_width=convert_string_to_long(token2);
+						}
+					if(!token.compare("GRAPHICS_FULLSCREENY"))
+						{
+						display.desired_fullscreen_height=convert_string_to_long(token2);
+						}
+					if(!token.compare("GRAPHICS_BLACK_SPACE"))
+						{
+						if(token2=="YES")
+							{
+							display.flag.add_flag(INIT_DISPLAY_FLAG_BLACK_SPACE);
+							}
+						else display.flag.remove_flag(INIT_DISPLAY_FLAG_BLACK_SPACE);
+						}
+					}
 
 				if(!token.compare("GRAPHICS"))
 					{
@@ -619,21 +662,15 @@ void initst::begin()
         }
 #endif
         
-        string error = enabler.tileset.load_tileset(tileset_filename);
-        if (error.size()) {
-          report_error("Tileset failed, trying fallback", error.c_str());
-          error = enabler.tileset.load_tileset("data/art/curses_640x300.png");
-          if (error.size()) {
-            report_error("Fallback tileset failed!", error.c_str());
-            exit(EXIT_FAILURE);
-          }
-        }
+
+	enabler.textures.load_multi_pdim(small_font,font.small_font_texpos,16,16,true,&font.small_font_dispx,&font.small_font_dispy);
+	enabler.textures.load_multi_pdim(large_font,font.large_font_texpos,16,16,true,&font.large_font_dispx,&font.large_font_dispy);
 
         // compute the desired window size, if set to auto
         if (display.desired_windowed_width < MAX_GRID_X && display.desired_windowed_height < MAX_GRID_Y) {
           int dimx = MAX(display.desired_windowed_width,80);
           int dimy = MAX(display.desired_windowed_height,25);
-          display.desired_windowed_width = enabler.tileset.dispx * dimx;
-          display.desired_windowed_height = enabler.tileset.dispy * dimy;
+          display.desired_windowed_width = font.small_font_dispx * dimx;
+          display.desired_windowed_height = font.small_font_dispy * dimy;
         }
 }
