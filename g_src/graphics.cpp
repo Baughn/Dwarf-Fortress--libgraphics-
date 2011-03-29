@@ -113,10 +113,10 @@ void graphicst::addcoloredst(const char *str,const char *colorstr)
 }
 
 list<ttf_id> ttfstr;
-int ttflen = 0;
 
-void graphicst::addst(const string &str, justification just)
+void graphicst::addst(const string &str_orig, justification just)
 {
+  string str = str_orig;
   if (just == not_truetype || !ttf_manager.was_init() // || (SDL_GetTicks() % 2000 > 1000)
       ) {
     int s;
@@ -133,9 +133,10 @@ void graphicst::addst(const string &str, justification just)
       }
   } else {
     // Truetype
+    if (str.size() > 2 && str[0] == ':' && str[1] == ' ')
+      str[1] = '\t'; // EVIL HACK
     struct ttf_id id = {str, screenf, screenb, screenbright};
     ttfstr.push_back(id);
-    ttflen += str.size();
     if (just == justify_cont)
       return; // More later
     // This string is done. Time to render.
@@ -160,7 +161,6 @@ void graphicst::addst(const string &str, justification just)
     screenx = ourx + width;
     // Clean up, prepare for next string.
     ttfstr.clear();
-    ttflen = 0;
   }
 }
 

@@ -28,22 +28,25 @@ bool ttf_managerst::init(int ceiling, int tile_width) {
     if (TTF_FontHeight(font) <= ceiling) {
       cout << "Picked font at " << sz << " points for ceiling " << ceiling << endl;
 #ifdef DEBUG
-      // get the glyph metric for the letter 'g' in a loaded font
+      // get the glyph metric for the letter 'M' in a loaded font
       cout << "TTF_FontHeight " << TTF_FontHeight(font) << endl;
       cout << "TTF_FontAscent " << TTF_FontAscent(font) << endl;
       cout << "TTF_FontDescent " << TTF_FontDescent(font) << endl;
       cout << "TTF_FontLineSkip " << TTF_FontLineSkip(font) << endl;
+#endif
       int minx,maxx,miny,maxy,advance;
-      if(TTF_GlyphMetrics(font,'g',&minx,&maxx,&miny,&maxy,&advance)==-1)
+      if(TTF_GlyphMetrics(font,'M',&minx,&maxx,&miny,&maxy,&advance)==-1)
         printf("%s\n",TTF_GetError());
       else {
+        em_width = maxx;
+#ifdef DEBUG
         printf("minx    : %d\n",minx);
         printf("maxx    : %d\n",maxx);
         printf("miny    : %d\n",miny);
         printf("maxy    : %d\n",maxy);
         printf("advance : %d\n",advance);
-      }
 #endif
+      }
       return true;
     }
     TTF_CloseFont(font);
@@ -71,15 +74,43 @@ ttf_details ttf_managerst::get_handle(const list<ttf_id> &text, justification ju
   if (it != handles.end()) return it->second;
   // Right. Make a new one.
   int handle = ++max_handle;
+  // Split out any tabs
+  list<ttf_id> split_text;
+  for (auto it = text.cbegin(); it != text.cend(); ++it) {
+    int pos = 0;
+    int tabpos;
+    while ((tabpos = it->text.find("\t", pos)) != string::npos) {
+      ttf_id left;
+      left.fg = it->fg; left.bg = it->bg; left.bold = it->bold;
+      left.text = it->text.substr(pos, tabpos - pos);
+      split_text.push_back(left);
+      ttf_id tabber;
+      tabber.fg = tabber.bg = tabber.bold = 255;
+      split_text.push_back(tabber);
+      pos = tabpos + 1;
+    }
+    ttf_id right;
+    right.fg = it->fg; right.bg = it->bg; right.bold = it->bold;
+    right.text = it->text.substr(pos);
+    split_text.push_back(right);
+  }
   // Find the total width of the text
   vector<Uint16> text_unicode;
   int ttf_width = 0, ttf_height = 0, text_width = 0;
-  for (auto it = text.cbegin(); it != text.cend(); ++it) {
-    cp437_to_unicode(it->text, text_unicode);
-    int slice_width, slice_height;
-    TTF_SizeUNICODE(font, &text_unicode[0], &slice_width, &slice_height);
-    ttf_width += slice_width;
-    text_width += it->text.size();
+  for (auto it = split_text.cbegin(); it != split_text.cend(); ++it) {
+    if (it->fg == 255 && it->bg == 255 && it->bold == 255) {
+      // Tab stop
+      int tabstop = tab_width * em_width;
+      int tab_width = tabstop - ((ttf_width - 1) % tabstop) + 1;
+      ttf_width += tab_width;
+      text_width += 1;
+    } else {
+      cp437_to_unicode(it->text, text_unicode);
+      int slice_width, slice_height;
+      TTF_SizeUNICODE(font, &text_unicode[0], &slice_width, &slice_height);
+      ttf_width += slice_width;
+      text_width += it->text.size();
+    }
   }
   ttf_height = ceiling;
   // Compute geometry
@@ -101,7 +132,7 @@ ttf_details ttf_managerst::get_handle(const list<ttf_id> &text, justification ju
   ttf_details ret; ret.handle = handle; ret.offset = grid_offset; ret.width = full_grid_width;
   handles[id] = ret;
   // We do the actual rendering in the render thread, later on.
-  todo.push_back(todum(handle, text, ttf_height, pixel_offset, pixel_width));
+  todo.push_back(todum(handle, split_text, ttf_height, pixel_offset, pixel_width));
   return ret;
 }
 
@@ -122,6 +153,13 @@ SDL_Surface *ttf_managerst::get_texture(int handle) {
         const ttf_id &text = *seg;
         ++seg;
         ++idx;
+        if (text.fg == 255 && text.bg == 255 && text.bold == 255) {
+          // Skip to tab stop
+          int tabstop = tab_width * em_width;
+          int tab_width = tabstop - ((xpos - 1) % tabstop) + 1;
+          xpos += tab_width;
+          continue;
+        }
         if (text.text.size() <= 0)
           continue;
         cp437_to_unicode(text.text, text_unicode);
@@ -161,8 +199,8 @@ SDL_Surface *ttf_managerst::get_texture(int handle) {
                                 Uint8(enabler.ccolor[bg][1]*255),
                                 Uint8(enabler.ccolor[bg][2]*255)));
         // And copy the TTF segment over.
-        dest = {Sint16(xpos), 0, 0, 0};
-        SDL_BlitSurface(textimg_seg, NULL, textimg, &dest);
+        SDL_Rect dest2 = {Sint16(xpos), 0, 0, 0};
+        SDL_BlitSurface(textimg_seg, NULL, textimg, &dest2);
         // Ready for next segment.
         xpos += textimg_seg->w;
         SDL_FreeSurface(textimg_seg);

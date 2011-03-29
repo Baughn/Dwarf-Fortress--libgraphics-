@@ -50,6 +50,8 @@ class ttf_managerst {
   TTF_Font *font;
   int max_handle;
   int tile_width, ceiling;
+  double tab_width;
+  int em_width;
   unordered_map<handleid, ttf_details> handles;
   unordered_map<int, SDL_Surface*> textures;
   struct todum {
@@ -65,6 +67,8 @@ public:
   ttf_managerst() {
     font = NULL;
     max_handle = 1;
+    tab_width = 2;
+    em_width = 8;
   }
   bool init(int ceiling, int tile_width);
   bool was_init() { return font != NULL; }
@@ -74,6 +78,8 @@ public:
   SDL_Surface *get_texture(int handle);
   // Garbage-collect ttf surfaces
   void gc();
+  // Set tab-stop width (in ems, i.e. tile widths)
+  void set_tab_width(double width) { tab_width = width; }
 };
 
 extern ttf_managerst ttf_manager;
