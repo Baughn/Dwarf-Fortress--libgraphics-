@@ -18,10 +18,10 @@ profile = False
 
 clang = False
 
-libgraphics = False
-tetris = True
+libgraphics = True
+tetris = False
 
-M64 = True
+M64 = False if libgraphics else True
 
 # Propagate PATH. We'll just take our chances with non-repeatable builds.
 env = Environment(ENV = {'PATH' : os.environ['PATH']})
@@ -56,6 +56,8 @@ env['CXXFLAGS'].append("-std=gnu++0x")
 env['LIBS']=["SDL_image","z","SDL_ttf"]
 # If there's a library in the libs folder it will get linked over a system one.
 env['LIBPATH']=["#libs"]
+if not M64:
+   env['LIBPATH'].append("/usr/lib32")
 env['LINKFLAGS']=["-Wl,--as-needed",'-Wl,-rpath=\$$ORIGIN/libs']
 
 # GLEW

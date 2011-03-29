@@ -8,17 +8,59 @@
 #include <SDL/SDL_ttf.h>
 #endif
 #include <unordered_map>
+#include <list>
 
 using std::unordered_map;
+using std::list;
+
+struct handleid {
+  list<ttf_id> text;
+  justification just;
+
+  bool operator< (const handleid &other) const {
+    if (text != other.text) return text < other.text;
+    return just < other.just;
+  }
+
+  bool operator== (const handleid &other) const {
+    return just == other.just && text == other.text;
+  }
+};
+
+namespace std {
+  template<> struct hash<struct handleid> {
+    size_t operator()(handleid val) const {
+      size_t h = 0;
+      auto end = val.text.cend();
+      for (auto it = val.text.cbegin(); it != end; ++it) {
+        h += hash<ttf_id>()(*it);
+      }
+      return h + val.just;
+    }
+  };
+};
+
+struct ttf_details {
+  int handle;
+  int offset;
+  int width;
+};
 
 class ttf_managerst {
   TTF_Font *font;
   int max_handle;
   int tile_width, ceiling;
-  unordered_map<ttf_id, pair<int,int> > handles; // First is handle, second is width
+  unordered_map<handleid, ttf_details> handles;
   unordered_map<int, SDL_Surface*> textures;
-  list<pair<int,ttf_id> > todo;
-  int size_ttf(const string &text, int);
+  struct todum {
+    int handle;
+    list<ttf_id> text;
+    int height;
+    int pixel_offset, pixel_width;
+    todum(int handle, const list<ttf_id> &t, int h, int po, int pw) :
+      handle(handle), text(t), height(h), pixel_offset(po), pixel_width(pw) {}
+  };
+  list<todum> todo;
 public:
   ttf_managerst() {
     font = NULL;
@@ -26,11 +68,12 @@ public:
   }
   bool init(int ceiling, int tile_width);
   bool was_init() { return font != NULL; }
-  // Returns a handle for some TTF text (first), plus its onscreen width (second)
-  pair<int,int> get_handle(const ttf_id &id);
+  ttf_details get_handle(const list<ttf_id> &text, justification just);
   // Returns rendered text. Renders too, if necessary.
   // The returned SDL_Surface is owned by the ttf_managerst.
   SDL_Surface *get_texture(int handle);
+  // Garbage-collect ttf surfaces
+  void gc();
 };
 
 extern ttf_managerst ttf_manager;
