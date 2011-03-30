@@ -7,8 +7,6 @@ using namespace std;
 ttf_managerst ttf_manager;
 
 bool ttf_managerst::init(int ceiling, int tile_width) {
-  if (!::init.font.use_ttf) return false;
-  
   // Reset to a known state, clear everything
   if ((!TTF_WasInit()) && (TTF_Init() == -1)) {
     MessageBox(NULL, TTF_GetError(), "TTF error", MB_OK);

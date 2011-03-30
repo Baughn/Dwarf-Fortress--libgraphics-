@@ -117,8 +117,7 @@ list<ttf_id> ttfstr;
 void graphicst::addst(const string &str_orig, justification just)
 {
   string str = str_orig;
-  if (just == not_truetype || !ttf_manager.was_init() // || (SDL_GetTicks() % 2000 > 1000)
-      ) {
+  if (just == not_truetype || !init.font.use_ttf || !ttf_manager.was_init()) {
     int s;
     for(s=0;s<str.length()&&screenx<init.display.grid_x;s++)
       {

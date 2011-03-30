@@ -915,6 +915,9 @@ char interfacest::loop() {
           if(currentscreen->movies_okay()) use_movie_input();
         if (era.count(INTERFACEKEY_HELP)&&!currentscreen->key_conflict(INTERFACEKEY_HELP))
           currentscreen->help();
+        // TTF toggle
+        if (era.count(INTERFACEKEY_TOGGLE_TTF))
+          init.font.use_ttf = !init.font.use_ttf;
         // Zoom commands
         if (era.count(INTERFACEKEY_ZOOM_IN))
           enabler.zoom_display(zoom_in);

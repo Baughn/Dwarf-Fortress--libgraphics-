@@ -1421,6 +1421,7 @@ enum InterfaceKeyType
 	INTERFACEKEY_STRING_A255,
 	INTERFACEKEY_KEYBINDING_COMPLETE,
 	INTERFACEKEYNUM,
+        INTERFACEKEY_TOGGLE_TTF,
 };
 
 extern bimap<InterfaceKey,std::string> bindingNames;
