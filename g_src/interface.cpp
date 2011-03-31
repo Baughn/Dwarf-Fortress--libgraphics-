@@ -916,8 +916,10 @@ char interfacest::loop() {
         if (era.count(INTERFACEKEY_HELP)&&!currentscreen->key_conflict(INTERFACEKEY_HELP))
           currentscreen->help();
         // TTF toggle
-        if (era.count(INTERFACEKEY_TOGGLE_TTF))
+        if (era.count(INTERFACEKEY_TOGGLE_TTF)) {
           init.font.use_ttf = !init.font.use_ttf;
+          gps.force_full_display_count++;
+        }
         // Zoom commands
         if (era.count(INTERFACEKEY_ZOOM_IN))
           enabler.zoom_display(zoom_in);
