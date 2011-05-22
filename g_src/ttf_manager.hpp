@@ -72,6 +72,8 @@ public:
   }
   bool init(int ceiling, int tile_width);
   bool was_init() { return font != NULL; }
+  // Return the expected size of a bit of text, in tiles.
+  int size_text(const string &text);
   ttf_details get_handle(const list<ttf_id> &text, justification just);
   // Returns rendered text. Renders too, if necessary.
   // The returned SDL_Surface is owned by the ttf_managerst.

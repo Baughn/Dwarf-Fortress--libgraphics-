@@ -65,6 +65,16 @@ static void cp437_to_unicode(const string &text, vector<Uint16> &unicode) {
   unicode[i] = 0;
 }
 
+
+int ttf_managerst::size_text(const string &text) {
+  vector<Uint16> text_unicode;
+  cp437_to_unicode(text, text_unicode);
+  int width, height;
+  TTF_SizeUNICODE(font, &text_unicode[0], &width, &height);
+  return (width + tile_width - 1) / tile_width;
+}
+
+
 ttf_details ttf_managerst::get_handle(const list<ttf_id> &text, justification just) {
   // Check for an existing handle
   handleid id = {text, just};
