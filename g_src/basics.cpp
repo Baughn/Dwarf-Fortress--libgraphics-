@@ -20,6 +20,7 @@ using std::ofstream;
 
 #include "endian.h"
 #include "ttf_manager.hpp"
+#include "init.h"
 
 #ifdef WIN32
 
@@ -543,7 +544,7 @@ static void abbreviate_string_helper(string &str, int len) {
 
 void abbreviate_string(string &str, int32_t len)
 {
-  if (ttf_manager.was_init()) {
+  if (init.font.use_ttf && ttf_manager.was_init()) {
     // We'll need to use TTF-aware text shrinking.
     while (ttf_manager.size_text(str) > len)
       abbreviate_string_helper(str, str.length() - 1);
