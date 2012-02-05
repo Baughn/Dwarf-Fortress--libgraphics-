@@ -1,6 +1,7 @@
 #ifndef TTF_MANAGER_HPP
 #define TTF_MANAGER_HPP
 
+#include "init.h"
 #include "enabler.h"
 #ifdef __APPLE__
 #include <SDL_ttf/SDL_ttf.h>
@@ -71,7 +72,7 @@ public:
     em_width = 8;
   }
   bool init(int ceiling, int tile_width);
-  bool was_init() { return font != NULL; }
+  bool was_init() const { return font != NULL; }
   // Return the expected size of a bit of text, in tiles.
   int size_text(const string &text);
   ttf_details get_handle(const list<ttf_id> &text, justification just);
@@ -82,6 +83,12 @@ public:
   void gc();
   // Set tab-stop width (in ems, i.e. tile widths)
   void set_tab_width(double width) { tab_width = width; }
+  // Check if TTF is currently active
+  bool ttf_active() const {
+    return was_init() &&
+      (::init.font.use_ttf == ttf_on ||
+       (::init.font.use_ttf == ttf_auto && ::init.font.ttf_limit <= ceiling));
+  }
 };
 
 extern ttf_managerst ttf_manager;

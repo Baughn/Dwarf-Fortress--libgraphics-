@@ -39,6 +39,7 @@ using std::string;
 #include "keybindings.h"
 #include "interface.h"
 #include "KeybindingScreen.h"
+#include "ttf_manager.hpp"
 
 #include <list>
 #include <set>
@@ -917,7 +918,17 @@ char interfacest::loop() {
           currentscreen->help();
         // TTF toggle
         if (era.count(INTERFACEKEY_TOGGLE_TTF)) {
-          init.font.use_ttf = !init.font.use_ttf;
+          if (init.font.use_ttf == ttf_auto) {
+            // Do whatever produces a visible result.
+            if (ttf_manager.ttf_active())
+              init.font.use_ttf = ttf_off;
+            else
+              init.font.use_ttf = ttf_on;
+          } else if (init.font.use_ttf == ttf_on) {
+            init.font.use_ttf = ttf_off;
+          } else {
+            init.font.use_ttf = ttf_on;
+          }
           gps.force_full_display_count++;
         }
         // Zoom commands
