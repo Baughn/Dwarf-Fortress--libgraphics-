@@ -1400,6 +1400,7 @@ void keybinding_init() {
 	bindingNames.insert(INTERFACEKEY_FPS_UP, "FPS_UP");
 	bindingNames.insert(INTERFACEKEY_FPS_DOWN, "FPS_DOWN");
         bindingNames.insert(INTERFACEKEY_TOGGLE_TTF, "TOGGLE_TTF");
+        bindingNames.insert(INTERFACEKEY_PREFIX, "PREFIX");
         
 
 	displayNames.insert(INTERFACEKEY_NONE, "None");
@@ -2793,6 +2794,7 @@ void keybinding_init() {
 	displayNames.insert(INTERFACEKEY_FPS_UP, "Increase FPS limit");
 	displayNames.insert(INTERFACEKEY_FPS_DOWN, "Decrease FPS limit");
         displayNames.insert(INTERFACEKEY_TOGGLE_TTF, "Toggle truetype rendering");
+        displayNames.insert(INTERFACEKEY_PREFIX, "Command repeat prefix-key");
         
 
   sdlNames.insert(SDLK_BACKSPACE, "Backspace");
