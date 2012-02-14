@@ -19,8 +19,6 @@ using std::endl;
 using std::ofstream;
 
 #include "endian.h"
-#include "ttf_manager.hpp"
-#include "init.h"
 
 #ifdef WIN32
 
@@ -39,6 +37,8 @@ typedef int32_t Ordinal;
 
 #endif
 
+#include "ttf_manager.hpp"
+#include "init.h"
 #include "basics.h"
 
 extern string errorlog_prefix;
@@ -548,7 +548,7 @@ void abbreviate_string(string &str, int32_t len)
     // We'll need to use TTF-aware text shrinking.
     while (ttf_manager.size_text(str) > len)
       abbreviate_string_helper(str, str.length() - 1);
-  } else {
+  } else if(str.length()>len){
     // 1 letter = 1 tile.
     abbreviate_string_helper(str, len);
   }
