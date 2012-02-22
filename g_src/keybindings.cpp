@@ -1394,8 +1394,8 @@ void keybinding_init() {
 	bindingNames.insert(INTERFACEKEY_CUSTOM_ALT_Z, "CUSTOM_ALT_Z");
 	bindingNames.insert(INTERFACEKEY_FPS_UP, "FPS_UP");
 	bindingNames.insert(INTERFACEKEY_FPS_DOWN, "FPS_DOWN");
-        bindingNames.insert(INTERFACEKEY_TOGGLE_TTF, "TOGGLE_TTF");
-        bindingNames.insert(INTERFACEKEY_PREFIX, "PREFIX");
+	bindingNames.insert(INTERFACEKEY_TOGGLE_TTF, "TOGGLE_TTF");
+	bindingNames.insert(INTERFACEKEY_PREFIX, "PREFIX");
         
 
 	displayNames.insert(INTERFACEKEY_NONE, "None");
@@ -2783,8 +2783,8 @@ void keybinding_init() {
 	displayNames.insert(INTERFACEKEY_CUSTOM_ALT_Z, "Custom: Alt + Z");
 	displayNames.insert(INTERFACEKEY_FPS_UP, "Increase FPS limit");
 	displayNames.insert(INTERFACEKEY_FPS_DOWN, "Decrease FPS limit");
-        displayNames.insert(INTERFACEKEY_TOGGLE_TTF, "Toggle truetype rendering");
-        displayNames.insert(INTERFACEKEY_PREFIX, "Command repeat prefix-key");
+	displayNames.insert(INTERFACEKEY_TOGGLE_TTF, "Toggle Truetype rendering");
+	displayNames.insert(INTERFACEKEY_PREFIX, "Command repeat prefix-key");
         
 
   sdlNames.insert(SDLK_BACKSPACE, "Backspace");
