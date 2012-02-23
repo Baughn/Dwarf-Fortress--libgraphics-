@@ -133,7 +133,8 @@ ttf_details ttf_managerst::get_handle(const list<ttf_id> &text, justification ju
   // Outputs:
   const int grid_offset = int(integral + 0.001); // Tiles to move to the right in addst
   const int pixel_offset = int(fraction * tile_width); // Black columns to add to the left of the image
-  const int full_grid_width = int(ceil(double(ttf_width) / double(tile_width) + fraction) + 0.1); // Total width of the image in grid units
+  // const int full_grid_width = int(ceil(double(ttf_width) / double(tile_width) + fraction) + 0.1); // Total width of the image in grid units
+  const int full_grid_width = text_width;
   const int pixel_width = full_grid_width * tile_width; // And pixels
   assert(pixel_width >= ttf_width);
   // Store for later
