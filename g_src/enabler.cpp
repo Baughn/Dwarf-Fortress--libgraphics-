@@ -43,19 +43,28 @@ Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int x, int y) {
   const int tile = x * gps.dimy + y;
   const unsigned char *s = screen + tile*4;
 
+  struct texture_fullid ret;
+  int ch;
+  int bold;
+  int fg;
+  int bg;
+
   // TTF text does not get the full treatment.
   if (s[3] == GRAPHICSTYPE_TTF) {
     texture_ttfid texpos = (s[0] << 16) | (s[1] << 8) | s[2];
     return Either<texture_fullid,texture_ttfid>(texpos);
-  } else if (s[3] == GRAPHICSTYPE_TTFCONT)
-    return Either<texture_fullid,texture_ttfid>(0);
-
-  // Otherwise, it's a normal (graphical?) tile.
-  struct texture_fullid ret;
-  const int ch   = s[0];
-  const int bold = (s[3] != 0) * 8;
-  const int fg   = (s[1] + bold) % 16;
-  const int bg   = s[2] % 16;
+  } else if (s[3] == GRAPHICSTYPE_TTFCONT) {
+    // TTFCONT means this is a tile that does not have TTF anchored on it, but is covered by TTF.
+    // Since this may actually be stale information, we'll draw it as a blank space,
+    ch = 32;
+    fg = bg = bold = 0;
+  } else {
+    // Otherwise, it's a normal (graphical?) tile.
+    ch   = s[0];
+    bold = (s[3] != 0) * 8;
+    fg   = (s[1] + bold) % 16;
+    bg   = s[2] % 16;
+  }
   
   static bool use_graphics = init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS);
   
