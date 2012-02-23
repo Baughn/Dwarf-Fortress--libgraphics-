@@ -112,7 +112,7 @@ void graphicst::addcoloredst(const char *str,const char *colorstr)
     }
 }
 
-list<ttf_id> ttfstr;
+static list<ttf_id> ttfstr;
 
 void graphicst::addst(const string &str_orig, justification just)
 {
@@ -136,6 +136,14 @@ void graphicst::addst(const string &str_orig, justification just)
       str[1] = '\t'; // EVIL HACK
     struct ttf_id id = {str, screenf, screenb, screenbright};
     ttfstr.push_back(id);
+    // if (str.size() == 80) {
+    //   cout << "(" << int(str[0]) << ") ";
+    // }
+    // cout << screeny << "," << str.size() << ":" << str;
+    // if (just == justify_cont)
+    //   cout << "|";
+    // else
+    //   cout << endl;
     if (just == justify_cont)
       return; // More later
     // This string is done. Time to render.
