@@ -180,10 +180,12 @@ SDL_Surface *ttf_managerst::get_texture(int handle) {
                                 Uint8(enabler.ccolor[bg][0]*255),
                                 Uint8(enabler.ccolor[bg][1]*255),
                                 Uint8(enabler.ccolor[bg][2]*255));
+#ifdef DEBUG
         // SDL_Color white = {255,255,255};
-        // Uint32 black = SDL_MapRGB(textimg->format, 0,0,0);
-        // fgc = white; bgc = black;
-// #ifndef DEBUG
+        // Uint32 red = SDL_MapRGB(textimg->format, 255,0,0);
+        // fgc = white;
+        // bgc = red;
+#endif
         if (idx == 0) {
           // Fill in the left side
           SDL_Rect left = {0, 0, Sint16(xpos), Sint16(height)};
@@ -193,7 +195,6 @@ SDL_Surface *ttf_managerst::get_texture(int handle) {
           SDL_Rect right = {Sint16(xpos), 0, Sint16(it->pixel_width), Sint16(height)};
           SDL_FillRect(textimg, &right, bgc);
         }
-// #endif
         // Render the TTF segment
         SDL_Surface *textimg_seg = TTF_RenderUNICODE_Blended(font, &text_unicode[0], fgc);
         // Fill the background color of this part of the textimg

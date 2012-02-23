@@ -106,7 +106,7 @@ public:
       tex = tile_cache_lookup(id.left);
       // And blit.
       SDL_BlitSurface(tex, NULL, screen, &dst);
-    } else { // TTF, cached in ttf_manager so no point in also caching here
+    } else {  // TTF, cached in ttf_manager so no point in also caching here
       if (id.right) {
         tex = ttf_manager.get_texture(id.right);
         // Blit later

@@ -144,7 +144,6 @@ void graphicst::addst(const string &str_orig, justification just)
     const int offset = details.offset;
     const int width = details.width;
     const int ourx = screenx + offset;
-    // addchar('x');
     unsigned char * const s = screen + ourx*dimy*4 + screeny*4;
     s[0] = (handle >> 16) & 0xff;
     s[1] = (handle >> 8) & 0xff;
@@ -157,8 +156,8 @@ void graphicst::addst(const string &str_orig, justification just)
       *(s + x*dimy*4 + 2) = handle & 0xff;
       *(s + x*dimy*4 + 3) = GRAPHICSTYPE_TTFCONT;
     }
-    screenx = ourx + width;
     // Clean up, prepare for next string.
+    screenx = ourx + width;
     ttfstr.clear();
   }
 }
