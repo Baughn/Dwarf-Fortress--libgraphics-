@@ -1,0 +1,46 @@
+{
+   GTK
+   Memcheck:Leak
+   ...
+   obj:/usr/lib32/libgtk-x11-2.0.so*
+}
+{
+   GTK
+   Memcheck:Leak
+   ...
+   obj:/usr/lib32/libgdk-x11-2.0.so*
+}
+{
+   SDL
+   Memcheck:Leak
+   ...
+   fun:SDL_InitSubSystem
+}
+{
+  SDL
+  Memcheck:Leak
+  ...
+  fun:SDL_SetVideoMode
+}
+{
+   gobject
+   Memcheck:Leak
+   ...
+   fun:g_type_init
+}
+{
+   ld-linux
+   Memcheck:Leak
+   ...
+   fun:allocate_dtv
+}
+{
+   i915
+   Memcheck:Leak
+   ...
+   fun:drm_intel_bo_alloc
+   ...
+   obj:/usr/lib32/mesa/i965_dri.so
+   ...
+   fun:glDrawArrays
+}
