@@ -24,8 +24,8 @@ bool ttf_managerst::init(int ceiling, int tile_width) {
     font = TTF_OpenFont("data/art/font.ttf", sz);
     if (!font) continue;
     if (TTF_FontHeight(font) <= ceiling) {
-      cout << "Picked font at " << sz << " points for ceiling " << ceiling << endl;
 #ifdef DEBUG
+      cout << "Picked font at " << sz << " points for ceiling " << ceiling << endl;
       // get the glyph metric for the letter 'M' in a loaded font
       cout << "TTF_FontHeight " << TTF_FontHeight(font) << endl;
       cout << "TTF_FontAscent " << TTF_FontAscent(font) << endl;
@@ -33,8 +33,8 @@ bool ttf_managerst::init(int ceiling, int tile_width) {
       cout << "TTF_FontLineSkip " << TTF_FontLineSkip(font) << endl;
 #endif
       int minx,maxx,miny,maxy,advance;
-      if(TTF_GlyphMetrics(font,'M',&minx,&maxx,&miny,&maxy,&advance)==-1)
-        printf("%s\n",TTF_GetError());
+      if (TTF_GlyphMetrics(font, 'M', &minx, &maxx, &miny, &maxy, &advance) == -1)
+        puts(TTF_GetError());
       else {
         em_width = maxx;
 #ifdef DEBUG
@@ -228,7 +228,11 @@ SDL_Surface *ttf_managerst::get_texture(int handle) {
     todo.clear();
   }
   // Find the li'l texture
-  return textures[handle];
+  SDL_Surface *tex = textures[handle];
+  if (!tex) {
+    cout << "Missing/broken TTF handle: " << handle << endl;
+  }
+  return tex;
 }
 
 void ttf_managerst::gc() {

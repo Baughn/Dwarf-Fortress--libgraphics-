@@ -172,7 +172,7 @@ void renderer::display()
   if (gps.force_full_display_count > 0) gps.force_full_display_count--;
 }
 
-void renderer::gps_allocate(int x, int y) {
+void renderer::cleanup_arrays() {
   if (screen) delete[] screen;
   if (screentexpos) delete[] screentexpos;
   if (screentexpos_addcolor) delete[] screentexpos_addcolor;
@@ -185,6 +185,10 @@ void renderer::gps_allocate(int x, int y) {
   if (screentexpos_grayscale_old) delete[] screentexpos_grayscale_old;
   if (screentexpos_cf_old) delete[] screentexpos_cf_old;
   if (screentexpos_cbr_old) delete[] screentexpos_cbr_old;
+}
+
+void renderer::gps_allocate(int x, int y) {
+  cleanup_arrays();
   
   gps.screen = screen = new unsigned char[x*y*4];
   memset(screen, 0, x*y*4);
@@ -551,7 +555,7 @@ int enablerst::loop(string cmdline) {
 #ifdef CURSES
     renderer = new renderer_curses();
 #else
-    report_error("PRINT_MODE","TEXT not supported on windows");
+    report_error("PRINT_MODE", "TEXT not supported on windows");
     exit(EXIT_FAILURE);
 #endif
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_2D)) {
