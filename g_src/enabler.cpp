@@ -51,7 +51,7 @@ Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int x, int y) {
 
   // TTF text does not get the full treatment.
   if (s[3] == GRAPHICSTYPE_TTF) {
-    texture_ttfid texpos = (s[0] << 16) | (s[1] << 8) | s[2];
+    texture_ttfid texpos = *((unsigned int *)s) & 0xffffff;
     return Either<texture_fullid,texture_ttfid>(texpos);
   } else if (s[3] == GRAPHICSTYPE_TTFCONT) {
     // TTFCONT means this is a tile that does not have TTF anchored on it, but is covered by TTF.
