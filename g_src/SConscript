@@ -58,7 +58,8 @@ env['LIBS']=["SDL_image","z","SDL_ttf"]
 env['LIBPATH']=["#libs"]
 if not M64:
    env['LIBPATH'].append("/usr/lib32")
-env['LINKFLAGS']=["-Wl,--as-needed",'-Wl,-rpath=\$$ORIGIN/libs']
+env['LINKFLAGS']=["-Wl,--as-needed"]
+#env['LINKFLAGS'].append('-Wl,-rpath=\$$ORIGIN/libs')
 
 # GLEW
 env["CPPPATH"].append('#g_src/glext')
@@ -69,7 +70,12 @@ if not clang and not M64:
    env['ASFLAGS']="--32"
    env['LINKFLAGS'].append("-m32")
    env["CCFLAGS"].append("-m32")
-env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
+try:
+   env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
+   env.Append(CPPFLAGS = '-DHAVE_GTK2')
+except OSError,e:
+   print 'gtk+-2.0 not found!'
+
 env.ParseConfig('pkg-config openal --cflags')
 env.ParseConfig('pkg-config sndfile --cflags')
 env.ParseConfig('pkg-config sdl --cflags --libs')

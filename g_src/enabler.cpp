@@ -1,9 +1,10 @@
 #ifdef __APPLE__
 # include "osx_messagebox.h"
-#elif defined(unix)
+#elif defined(unix) && defined(HAVE_GTK2)
 # include <gtk/gtk.h>
 #endif
 
+#include <unistd.h>
 #include <cassert>
 
 #include "platform.h"
@@ -712,7 +713,7 @@ int main (int argc, char* argv[]) {
 #ifdef unix
   setlocale(LC_ALL, "");
 #endif
-#if !defined(__APPLE__) && defined(unix)
+#if !defined(__APPLE__) && defined(unix) && defined(HAVE_GTK2)
   bool gtk_ok = false;
   if (getenv("DISPLAY"))
     gtk_ok = gtk_init_check(&argc, &argv);
@@ -732,7 +733,7 @@ int main (int argc, char* argv[]) {
 
   init.begin(); // Load init.txt settings
   
-#if !defined(__APPLE__) && defined(unix)
+#if !defined(__APPLE__) && defined(unix) && defined(HAVE_GTK2)
   if (!gtk_ok && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
     puts("Display not found and PRINT_MODE not set to TEXT, aborting.");
     exit(EXIT_FAILURE);

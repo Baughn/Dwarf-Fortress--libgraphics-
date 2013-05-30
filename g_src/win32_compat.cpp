@@ -10,9 +10,10 @@
 # include <errno.h>
 # include <stdio.h>
 # include <string.h>
+# include <unistd.h>
 # ifdef __APPLE__
 #  include "osx_messagebox.h"
-# elif defined(unix)
+# elif defined(unix) && defined(HAVE_GTK2)
 #  include <gtk/gtk.h>
 # endif
 #endif
@@ -111,6 +112,7 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
     CocoaAlertPanel(caption, text, "OK", NULL, NULL);
   }
 # else // GTK code
+#  ifdef HAVE_GTK2
   if (getenv("DISPLAY")) {
     // Have X, will dialog
     GtkWidget *dialog = gtk_message_dialog_new(NULL,
@@ -142,6 +144,7 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
       }
     }
   } else {
+#  endif //end ifdef HAVE_GTK2
     // Use curses
     init_curses();
     erase();
@@ -172,7 +175,9 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
       wgetch(*stdscr_p);
     }
     nodelay(*stdscr_p, -1);
+#  ifdef HAVE_GTK2
   }
+#  endif
 # endif
   
   if (toggle_screen) {
