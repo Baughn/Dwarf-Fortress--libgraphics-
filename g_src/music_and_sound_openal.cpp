@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <dlfcn.h>
 
 #include "music_and_sound_openal.h"
 #include "music_and_sound_v.h"
