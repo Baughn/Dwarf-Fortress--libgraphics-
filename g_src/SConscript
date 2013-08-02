@@ -72,7 +72,7 @@ if not clang and not M64:
    env["CCFLAGS"].append("-m32")
 try:
    env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
-   env.Append(CPPFLAGS = '-DHAVE_GTK2')
+   env["CCFLAGS"].append('-DHAVE_GTK2')
 except OSError,e:
    print 'gtk+-2.0 not found!'
 
@@ -81,7 +81,7 @@ env.ParseConfig('pkg-config sndfile --cflags')
 env.ParseConfig('pkg-config sdl --cflags --libs')
 try:
    env.ParseConfig('pkg-config glu --cflags --libs')
-   env.Append(CPPFLAGS = '-DWANT_GL')
+   env["CCFLAGS"].append('-DWANT_GL')
 except OSError,e:
    print 'glu not found, disabling GL'
 
