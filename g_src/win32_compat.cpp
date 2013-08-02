@@ -175,6 +175,17 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
       wgetch(*stdscr_p);
     }
     nodelay(*stdscr_p, -1);
+#  else /* not APPLE, not GTK, not curses - use stdio */
+  dprintf(2, "Alert %s:\n%s\n", caption ? caption : "", text ? text : "");
+  if (type & MB_YESNO) {
+    while(ret == IDOK) {
+      dprintf(2, "please answer with 'yes' or 'no'\n");
+      char buf[16];
+      fgets(buf, sizeof buf, stdin);
+      if(!strncmp(buf, "yes", 3)) ret = IDYES;
+      else if(!strncmp(buf, "no", 2)) ret = IDNO;
+    }
+  }
 #  endif //end ifdef HAVE_GTK2 / CURSES
 #  ifdef HAVE_GTK2
   }
