@@ -70,11 +70,13 @@ if not clang and not M64:
    env['ASFLAGS']="--32"
    env['LINKFLAGS'].append("-m32")
    env["CCFLAGS"].append("-m32")
-try:
-   env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
-   env["CCFLAGS"].append('-DHAVE_GTK2')
-except OSError,e:
-   print 'gtk+-2.0 not found!'
+disablegtk = ARGUMENTS.get('disable-gtk', 0)
+if not int(disablegtk):
+   try:
+      env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
+      env["CCFLAGS"].append('-DHAVE_GTK2')
+   except OSError,e:
+      print 'gtk+-2.0 not found!'
 
 disablecurses = ARGUMENTS.get('disable-curses', 0)
 if not int(disablecurses):
