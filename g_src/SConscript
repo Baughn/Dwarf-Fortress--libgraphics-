@@ -98,6 +98,9 @@ if profile:
    env["CCFLAGS"].append("-pg")
    env['LINKFLAGS'].append("-pg")
 
+ldflags=Split(os.environ.get("LDFLAGS"))
+env['LINKFLAGS'].append(ldflags)
+
 if optimize:
    if not clang:
       if not debug:
