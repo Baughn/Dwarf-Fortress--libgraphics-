@@ -1,3 +1,4 @@
+#ifdef CURSES
 static bool curses_initialized = false;
 
 static void endwin_void() {
@@ -359,3 +360,4 @@ extern "C" {
   }
 };
 
+#endif

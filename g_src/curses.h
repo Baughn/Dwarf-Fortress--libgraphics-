@@ -1,6 +1,8 @@
 #ifndef DF_CURSES_H
 #define DF_CURSES_H
 
+#ifdef CURSES
+
 extern "C" {
 #ifndef __APPLE__
 #ifdef unix
@@ -27,5 +29,6 @@ extern "C" {
 #endif
 #endif
 
+#endif
 
 #endif
