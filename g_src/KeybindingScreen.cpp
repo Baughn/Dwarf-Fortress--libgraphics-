@@ -4,8 +4,6 @@
 # include <gtk/gtk.h>
 #endif
 
-#include "GL/glew.h"
-
 #ifdef WIN32
 
 #ifndef INTEGER_TYPES
