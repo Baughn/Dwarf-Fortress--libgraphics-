@@ -79,7 +79,11 @@ except OSError,e:
 env.ParseConfig('pkg-config openal --cflags')
 env.ParseConfig('pkg-config sndfile --cflags')
 env.ParseConfig('pkg-config sdl --cflags --libs')
-env.ParseConfig('pkg-config glu --cflags --libs')
+try:
+   env.ParseConfig('pkg-config glu --cflags --libs')
+   env.Append(CPPFLAGS = '-DWANT_GL')
+except OSError,e:
+   print 'glu not found, disabling GL'
 
 
 if profile:
