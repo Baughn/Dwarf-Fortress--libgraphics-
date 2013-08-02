@@ -2,7 +2,6 @@
 #define DF_CURSES_H
 
 extern "C" {
-#include "GL/glew.h"
 #ifndef __APPLE__
 #ifdef unix
 # include <ncursesw/curses.h>
