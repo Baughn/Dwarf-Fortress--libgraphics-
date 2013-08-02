@@ -76,6 +76,10 @@ try:
 except OSError,e:
    print 'gtk+-2.0 not found!'
 
+disablecurses = ARGUMENTS.get('disable-curses', 0)
+if not int(disablecurses):
+   env["CCFLAGS"].append('-DCURSES')
+
 env.ParseConfig('pkg-config openal --cflags')
 env.ParseConfig('pkg-config sndfile --cflags')
 env.ParseConfig('pkg-config sdl --cflags --libs')
