@@ -144,7 +144,7 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
       }
     }
   } else {
-#  endif //end ifdef HAVE_GTK2
+#elif CURSES
     // Use curses
     init_curses();
     erase();
@@ -175,6 +175,7 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
       wgetch(*stdscr_p);
     }
     nodelay(*stdscr_p, -1);
+#  endif //end ifdef HAVE_GTK2 / CURSES
 #  ifdef HAVE_GTK2
   }
 #  endif
