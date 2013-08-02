@@ -406,7 +406,7 @@ enum render_phase {
   complete,
   phase_count
 };
-
+#ifdef WANT_GL
 class texture_bo {
   GLuint bo, tbo;
  public:
@@ -489,7 +489,7 @@ class shader {
     return shader;
   }
 };
-
+#endif
 
 class text_info_elementst
 {
@@ -724,10 +724,12 @@ class curses_text_boxst
 #define ENABLERFLAG_RENDER BIT1
 #define ENABLERFLAG_MAXFPS BIT2
 
+#ifdef WANT_GL
 // GL texture positions
 struct gl_texpos {
   GLfloat left, right, top, bottom;
 };
+#endif
 
 // Covers every allowed permutation of text
 struct ttf_id {
@@ -754,7 +756,6 @@ namespace std {
     }
   };
 };
-
 // Being a texture catalog interface, with opengl, sdl and truetype capability
 class textures
 {
@@ -765,13 +766,17 @@ class textures
   bool uploaded;
   long add_texture(SDL_Surface*);
  protected:
+#ifdef WANT_GL
   GLuint gl_catalog; // texture catalog gennum
   struct gl_texpos *gl_texpos; // Texture positions in the GL catalog, if any
+#endif
  public:
   // Initialize state variables
   textures() {
     uploaded = false;
+#ifdef WANT_GL
     gl_texpos = NULL;
+#endif
   }
   ~textures() {
   	for (auto it = raws.cbegin(); it != raws.cend(); ++it)
@@ -814,6 +819,7 @@ struct tile {
   long tex;
 };
 
+#ifdef WANT_GL
 typedef struct {									// Window Creation Info
   char*				title;						// Window Title
   int					width;						// Width
@@ -826,6 +832,8 @@ typedef struct {									// Contains Information Vital To A Window
   GL_WindowInit		init;						// Window Init
   BOOL				isVisible;				// Window Visible?
 } GL_Window;								// GL_Window
+
+#endif
 
 enum zoom_commands { zoom_in, zoom_out, zoom_reset, zoom_fullscreen, zoom_resetgrid };
 
@@ -997,9 +1005,11 @@ class enablerst : public enabler_inputst
   char mouse_lbut,mouse_rbut,mouse_lbut_down,mouse_rbut_down,mouse_lbut_lift,mouse_rbut_lift;
   char tracking_on;   // Whether we're tracking the mouse or not
 
-  // OpenGL state (wrappers)
+// OpenGL state (wrappers)
   class textures textures; // Font/graphics texture catalog
+#ifdef WANT_GL
   GLsync sync; // Rendering barrier
+#endif
   void reset_textures() {
     async_frombox.write(async_msg(async_msg::reset_textures));
   }

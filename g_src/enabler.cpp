@@ -121,7 +121,9 @@ Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int x, int y) {
 
 enablerst::enablerst() {
   fullscreen = false;
+#ifdef WANT_GL
   sync = NULL;
+#endif
   renderer = NULL;
   calculated_fps = calculated_gfps = frame_sum = gframe_sum = frame_last = gframe_last = 0;
   fps = 100; gfps = 20;
@@ -378,8 +380,13 @@ void enablerst::do_frame() {
   enabler.clock = SDL_GetTicks();
 
   // If it's time to render..
-  if (outstanding_gframes >= 1 &&
-      (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
+  if (outstanding_gframes >= 1 
+#ifdef WANT_GL
+	  &&
+      (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)
+#endif
+	  
+) {
     // Get the async-loop to render_things
     async_cmd cmd(async_cmd::render);
     async_tobox.write(cmd);
@@ -561,6 +568,7 @@ int enablerst::loop(string cmdline) {
 #endif
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_2D)) {
     renderer = new renderer_2d();
+#ifdef WANT_GL
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER)) {
     renderer = new renderer_accum_buffer();
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER)) {
@@ -574,6 +582,9 @@ int enablerst::loop(string cmdline) {
     renderer = new renderer_vbo();
   } else {
     renderer = new renderer_opengl();
+#else
+    renderer = new renderer_2d();
+#endif
   }
 
   // At this point we should have a window that is setup to render DF.

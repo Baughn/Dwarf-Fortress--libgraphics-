@@ -1,3 +1,4 @@
+#ifdef WANT_GL
 #include <cassert>
 
 #include "enabler.h"
@@ -396,3 +397,4 @@ void textures::delete_texture(long pos) {
     raws[pos] = NULL;
   }
 }
+#endif
