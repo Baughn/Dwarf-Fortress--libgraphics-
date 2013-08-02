@@ -4,7 +4,11 @@
 extern "C" {
 #ifndef __APPLE__
 #ifdef unix
+#ifdef HAVE_NCURSESW
 # include <ncursesw/curses.h>
+#else
+# include <ncurses.h>
+#endif
 # undef COLOR_BLUE
 # undef COLOR_CYAN
 # undef COLOR_RED
