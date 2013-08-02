@@ -1,4 +1,3 @@
-#ifdef WANT_GL
 #include <cassert>
 
 #include "enabler.h"
@@ -19,7 +18,7 @@ struct vsize_pos {
   }
 };
 
-
+#ifdef WANT_GL
 // Check whether a particular texture can be sized to some size,
 // assuming in RGBA 32-bit format
 bool testTextureSize(GLuint texnum, int w, int h) {
@@ -34,11 +33,13 @@ bool testTextureSize(GLuint texnum, int w, int h) {
   if (gpu_width == w) return true;
   return false;
 }
+#endif
 
 // Texture catalog implementation
 void textures::upload_textures() {
   if (uploaded) return; // Don't bother
   if (!enabler.uses_opengl()) return; // No uploading
+#ifdef WANT_GL
   glEnable(GL_TEXTURE_2D);
   printGLError();
   glGenTextures(1, &gl_catalog);
@@ -219,12 +220,15 @@ void textures::upload_textures() {
   // And that's that. Locked, loaded and ready for texturing.
   printGLError();
   uploaded=true;
+#endif
 }
 
 void textures::remove_uploaded_textures() {
   if (!uploaded) return; // Nothing to do
+#ifdef WANT_GL
   glDeleteTextures(1, &gl_catalog);
   uploaded=false;
+#endif
 }
 
 SDL_Surface *textures::get_texture_data(long pos) {
@@ -397,4 +401,3 @@ void textures::delete_texture(long pos) {
     raws[pos] = NULL;
   }
 }
-#endif
