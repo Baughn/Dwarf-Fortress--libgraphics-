@@ -16,7 +16,9 @@
 # include <SDL/SDL_image.h>
 #endif
 
+#ifdef WANT_GL
 #include "GL/glew.h"
+#endif
 
 #include <map>
 #include <vector>
