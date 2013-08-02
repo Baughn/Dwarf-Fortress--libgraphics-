@@ -6,7 +6,6 @@
 #include <cassert>
 using std::string;
 
-#include "GL/glew.h"
 #include "g_basics.h"
 #include "platform.h"
 #include "basics.h"
