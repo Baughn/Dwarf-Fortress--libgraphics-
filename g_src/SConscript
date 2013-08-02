@@ -44,7 +44,8 @@ if clang:
    else:
       env["SHLINKCOM"]="llvm-link $SOURCES | llc | g++ -shared -xassembler -fPIC -o $TARGET - $SHLINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS"
       env["LINKCOM"]="llvm-link $SOURCES | llc | g++ -xassembler -o $TARGET - $LINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS"
-
+else:
+   env.Replace(CXX = os.environ.get("CXX") or "g++")
 
 # Init variables, and make sure they're around for appending to
 # These variables are the ones used by the actual compilation. We construct
