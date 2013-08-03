@@ -98,8 +98,12 @@ public:
       mvwaddstr(*stdscr_p, y, x, " ");
     } else {
       wattrset(*stdscr_p, COLOR_PAIR(pair) | (bold ? A_BOLD : 0));
+#ifdef HAVE_NCURSESW
       wchar_t chs[2] = {charmap[ch],0};
       mvwaddwstr(*stdscr_p, y, x, chs);
+#else
+      mvwaddch(*stdscr_p, y, x, ch);
+#endif
     }
   }
 
