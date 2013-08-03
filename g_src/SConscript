@@ -87,7 +87,18 @@ if not int(disablegtk):
 
 disablecurses = ARGUMENTS.get('disable-curses', 0)
 if not int(disablecurses):
-   env["CCFLAGS"].append('-DCURSES')
+   # ncurses has a plethora of different configs, but does not offer pkg-config support
+   conf = Configure(Environment())
+   have_ncursesw = conf.CheckCHeader('ncursesw/curses.h') and conf.CheckLib('ncursesw')
+   have_ncurses = conf.CheckCHeader('ncurses.h') and conf.CheckLib('ncurses')
+   if have_ncurses or have_ncursesw:
+      env["CCFLAGS"].append('-DCURSES')
+   if have_ncurses:
+      env["LINKFLAGS"].append('-lncurses')
+   if have_ncursesw:
+      env["LINKFLAGS"].append('-lncursesw')
+      env["CCFLAGS"].append('-DHAVE_NCURSESW')
+   conf.Finish()
 
 env.ParseConfig('pkg-config openal --cflags')
 env.ParseConfig('pkg-config sndfile --cflags')
