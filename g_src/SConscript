@@ -47,6 +47,12 @@ if clang:
 else:
    env.Replace(CXX = os.environ.get("CXX") or "g++")
 
+conf = Configure(env)
+if not conf.CheckCXX():
+	print('error: no working C++ compiler detected.')
+	Exit(1)
+env = conf.Finish()
+
 # Init variables, and make sure they're around for appending to
 # These variables are the ones used by the actual compilation. We construct
 # them from ccflags/libs in varying ways depending on which compiler is used,
