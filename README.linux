@@ -5,16 +5,39 @@ System Requirements
 In addition to the hardware requirements (which will be the same as the other
 platforms) your system will need these libraries installed:
 
-* GTK+ 2+
 * SDL 1.2+
 * SDL_image
 
-And some kind of OpenGL implementation, so:
+optional
+* GTK+ 2+
+
+And (optional) some kind of OpenGL implementation, so:
 
 * libgl
 * libglu
 
+you need "scons" to build the source.
 
+-------------------
+Compiling
+-------------------
+it's not possible to compile the source with g++ 4.7.x due to
+libstdc++ version incompatibilities with the one used by the
+DF binary.
+
+tested and known to work is g++ 4.4
+on debian and ubuntu, you can install it via 
+apt-get install g++-4.4
+
+to compile the source, use: 
+CXX=g++-4.4 scons [disable-gtk=1 disable-curses=1 disable-gl=1]
+
+the options inside [] are optional.
+if neither gtk nor curses are enabled, messageboxes displaying
+information or asking questions such as "should the game run
+fullscreen" ? are asked on the terminal window you started
+df from, so be sure to keep an eye on it the first time
+you start it.
 
 -------------------
 Commandline Options
