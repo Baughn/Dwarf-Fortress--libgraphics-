@@ -6,6 +6,7 @@
 #define ENABLER_H
 
 #include "platform.h"
+#include <stdint.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_thread.h>
 #ifdef __APPLE__
@@ -771,6 +772,9 @@ class textures
 #ifdef WANT_GL
   GLuint gl_catalog; // texture catalog gennum
   struct gl_texpos *gl_texpos; // Texture positions in the GL catalog, if any
+#else
+  uint32_t gl_catalog_abi_dummy;
+  void* gl_texpos_abi_dummy;
 #endif
  public:
   // Initialize state variables
@@ -1011,6 +1015,8 @@ class enablerst : public enabler_inputst
   class textures textures; // Font/graphics texture catalog
 #ifdef WANT_GL
   GLsync sync; // Rendering barrier
+#else
+  uint32_t sync_abi_dummy;
 #endif
   void reset_textures() {
     async_frombox.write(async_msg(async_msg::reset_textures));
