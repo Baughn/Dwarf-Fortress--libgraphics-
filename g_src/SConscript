@@ -132,6 +132,9 @@ env.ParseConfig('pkg-config sdl --cflags --libs')
 ldflags=Split(os.environ.get("LDFLAGS"))
 env['LINKFLAGS'].append(ldflags)
 
+cxxflags=Split(os.environ.get("CXXFLAGS"))
+env['CXXFLAGS'].append(cxxflags)
+
 if profile:
    env["CCFLAGS"].append("-pg")
    env['LINKFLAGS'].append("-pg")
