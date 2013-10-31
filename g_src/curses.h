@@ -6,6 +6,10 @@
 extern "C" {
 #ifndef __APPLE__
 #ifdef unix
+#ifdef HAVE_NCURSESW
+/* defining _XOPEN_SOURCE_EXTENDED activates NCURSES_WIDECHAR support */
+#define _XOPEN_SOURCE_EXTENDED
+#endif
 #ifdef HAVE_NCURSESW_CURSES_H
 # include <ncursesw/curses.h>
 #else
