@@ -6,7 +6,7 @@
 extern "C" {
 #ifndef __APPLE__
 #ifdef unix
-#ifdef HAVE_NCURSESW
+#ifdef HAVE_NCURSESW_CURSES_H
 # include <ncursesw/curses.h>
 #else
 # include <ncurses.h>
