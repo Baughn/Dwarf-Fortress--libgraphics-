@@ -13,7 +13,6 @@ src_dll = ["basics.cpp","command_line.cpp","enabler.cpp","files.cpp",
 dll  = '#libs/libgraphics.so'
 
 optimize = False
-debug = True
 profile = False
 
 clang = False
@@ -56,6 +55,13 @@ conf = Configure(env)
 if not conf.CheckCXX():
 	print('error: no working C++ compiler detected.')
 	Exit(1)
+
+disabledebug = ARGUMENTS.get('disable-debug', 0)
+if int(disabledebug):
+    debug = False
+else:
+    debug = True
+
 
 disablegtk = ARGUMENTS.get('disable-gtk', 0)
 if not int(disablegtk):

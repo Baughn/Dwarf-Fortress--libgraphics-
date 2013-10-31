@@ -30,7 +30,7 @@ on debian and ubuntu, you can install it via
 apt-get install g++-4.4
 
 to compile the source, use: 
-CXX=g++-4.4 scons [disable-gtk=1 disable-curses=1 disable-gl=1]
+CXX=g++-4.4 scons [disable-gtk=1 disable-curses=1 disable-gl=1 disable-debug=1]
 
 the options inside [] are optional.
 if neither gtk nor curses are enabled, messageboxes displaying
