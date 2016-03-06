@@ -51,6 +51,10 @@ if clang:
 else:
    env.Replace(CXX = os.environ.get("CXX") or "g++")
 
+for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH PKG_CONFIG_SYSROOT_DIR'):
+    if os.environ.has_key(key):
+        env['ENV'][key] = os.environ[key]
+
 conf = Configure(env)
 if not conf.CheckCXX():
 	print('error: no working C++ compiler detected.')
