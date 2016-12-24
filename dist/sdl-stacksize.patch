@@ -1,0 +1,29 @@
+--- SDL-1.2.15.org/src/thread/pthread/SDL_systhread.c	2013-08-06 23:08:47.255000002 +0000
++++ SDL-1.2.15/src/thread/pthread/SDL_systhread.c	2013-08-06 23:25:06.662000002 +0000
+@@ -22,6 +22,7 @@
+ #include "SDL_config.h"
+ 
+ #include <pthread.h>
++#include <limits.h>
+ #include <signal.h>
+ 
+ #include "SDL_thread.h"
+@@ -49,6 +50,9 @@
+ 	return((void *)0);		/* Prevent compiler warning */
+ }
+ 
++static size_t getminstacksize(size_t minimum) {
++	return (minimum < PTHREAD_STACK_MIN) ? PTHREAD_STACK_MIN : minimum;
++}
+ int SDL_SYS_CreateThread(SDL_Thread *thread, void *args)
+ {
+ 	pthread_attr_t type;
+@@ -58,6 +62,8 @@
+ 		SDL_SetError("Couldn't initialize pthread attributes");
+ 		return(-1);
+ 	}
++
++	pthread_attr_setstacksize(&type, getminstacksize(256*1024));
+ 	pthread_attr_setdetachstate(&type, PTHREAD_CREATE_JOINABLE);
+ 
+ 	/* Create the thread and go! */
