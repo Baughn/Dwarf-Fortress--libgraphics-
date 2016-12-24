@@ -1,3 +1,31 @@
+---------------
+About this repo
+---------------
+
+A long time ago, the DWARF FORTRESS community, led by @Baughn, made an
+effort to get the part of DF that interfaces with the OS to be opensourced.
+the result of that was called `libgraphics` and originally maintained on
+Baughn's github repo, and each DF version released shipped a snapshot of that
+in its g_src directory.
+At some point Baughn stopped updating his repo (and also ToadyOne, the DF
+author, never merged changes back into his copy), so de-facto the community lib
+became a non-community lib, with people depending on what ToadyOne shipped
+together with DF.
+
+This repo here is a fork of the last community edition, and tracks the source
+released in every DF release in branches. the `nogl` branch contains several
+changes to the official source code. whenever a new DF release comes out,
+we need to create a new branch based on the latest upstream source branch,
+for example a new branch 0_43_05_official based on 0_43_04_official.
+then the new g_src source will be copied over that (optimally without upstream
+whitespace changes).
+the resulting whitespace-change-free diff is then applied to the last
+corresponding nogl branch (e.g. 4304_nogl) and a new branch created that has
+the changes. alternatively the new 0_43_05_official branch can be used as the
+base for 4305_nogl, but it needs the changes in nogl branch be merged into it.
+using this workflow makes merging the custom changes in nogl and the latest
+upstream source the most painless.
+
 -------------------
 System Requirements
 -------------------
@@ -21,16 +49,16 @@ you need "scons" to build the source.
 -------------------
 Compiling
 -------------------
-it's not possible to compile the source with g++ 4.7.x due to
-libstdc++ version incompatibilities with the one used by the
-DF binary.
+Dwarf Fortress binaries were compiled with GCC 4.6, so you need a similar or
+the same compiler. i.e. one that's not too old and one that's not too new.
+4.6 and 4.7 works, and IIRC 4.5 as well.
 
-tested and known to work is g++ 4.4 and g++ 4.5
-on debian and ubuntu, you can install it via 
-apt-get install g++-4.4
+much newer compilers probably use a much newer C++ ABI
+(it may be possible to force the compiler to use an older ABI though,
+for example with -D_GLIBCXX_USE_CXX11_ABI=0).
 
 to compile the source, use: 
-CXX=g++-4.4 CXXFLAGS="-O3 fomit-frame-pointer" LDFLAGS=-s \
+CXX=g++-4.6 CXXFLAGS="-O3 fomit-frame-pointer" LDFLAGS=-s \
   scons [disable-gtk=1 disable-curses=1 disable-gl=1 disable-debug=1]
 
 the options inside [] , as well as the environment variables
@@ -41,6 +69,26 @@ information or asking questions such as "should the game run
 fullscreen" ? are asked on the terminal window you started
 df from, so be sure to keep an eye on it the first time
 you start it.
+
+Note that all DF versions prior to 0.43.05 are 32bit only, so in order
+to use them you need to compile all dependencies with a 32bit compiler,
+and this here as well (unless you're using a 32bit sys anyway).
+I'm usually doing so in a sabotage linux 32bit chroot.
+
+--------------------
+Usage with musl libc
+--------------------
+
+If you're using musl libc, you need to compile libSDL with a patch to
+increase its thread stacksize, otherwise DF will crash.
+the patch is available here:
+https://bugzilla.libsdl.org/attachment.cgi?id=1274&action=diff
+
+you probably also will need to use the libstdc++.so that ships with
+the compiler you used to compile libgraphics.so, and replace the copy
+DF has in its libs directory with it.
+
+you may also want to use the things in dist/.
 
 -------------------
 Commandline Options
