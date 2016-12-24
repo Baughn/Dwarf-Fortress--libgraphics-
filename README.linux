@@ -81,14 +81,16 @@ Usage with musl libc
 
 If you're using musl libc, you need to compile libSDL with a patch to
 increase its thread stacksize, otherwise DF will crash.
-the patch is available here:
-https://bugzilla.libsdl.org/attachment.cgi?id=1274&action=diff
+it is in dist/sdl-stacksize.patch.
 
 you probably also will need to use the libstdc++.so that ships with
 the compiler you used to compile libgraphics.so, and replace the copy
 DF has in its libs directory with it.
 
-you may also want to use the things in dist/.
+you may also want to use the other things in dist/.
+the build of 0.43.05 uses some stack check functions that are not part of
+musl and need a compat wrapper (see comments in dist/df64).
+you also need the program in dist/ that disables heap randomization.
 
 -------------------
 Commandline Options
