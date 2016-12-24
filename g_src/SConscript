@@ -13,7 +13,6 @@ src_dll = ["basics.cpp","command_line.cpp","enabler.cpp","files.cpp",
 dll  = '#libs/libgraphics.so'
 
 optimize = False
-debug = True
 profile = False
 
 clang = False
@@ -25,6 +24,11 @@ M64 = False if libgraphics else True
 
 # Propagate PATH. We'll just take our chances with non-repeatable builds.
 env = Environment(ENV = {'PATH' : os.environ['PATH']})
+env['LINKFLAGS'] = []
+env['CCFLAGS'] = []
+env['CPPPATH'] = []
+env['LIBPATH'] = []
+env['LIBS'] = []
 
 if clang:
    env["STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME"]=True
@@ -44,21 +48,76 @@ if clang:
    else:
       env["SHLINKCOM"]="llvm-link $SOURCES | llc | g++ -shared -xassembler -fPIC -o $TARGET - $SHLINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS"
       env["LINKCOM"]="llvm-link $SOURCES | llc | g++ -xassembler -o $TARGET - $LINKFLAGS $_LIBDIRFLAGS $_LIBFLAGS"
+else:
+   env.Replace(CXX = os.environ.get("CXX") or "g++")
 
+for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH PKG_CONFIG_SYSROOT_DIR'):
+    if os.environ.has_key(key):
+        env['ENV'][key] = os.environ[key]
+
+conf = Configure(env)
+if not conf.CheckCXX():
+	print('error: no working C++ compiler detected.')
+	Exit(1)
+
+disabledebug = ARGUMENTS.get('disable-debug', 0)
+if int(disabledebug):
+    debug = False
+else:
+    debug = True
+
+
+disablegtk = ARGUMENTS.get('disable-gtk', 0)
+if not int(disablegtk):
+   try:
+      conf.env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
+      env['CCFLAGS'].append('-DHAVE_GTK2')
+   except OSError,e:
+      print 'gtk+-2.0 not found!'
+
+disablecurses = ARGUMENTS.get('disable-curses', 0)
+if not int(disablecurses):
+   # ncurses has a plethora of different configs, but does not offer pkg-config support
+   have_ncursesw =  conf.CheckLib('ncursesw')
+   have_ncursesw_curses_h = conf.CheckCHeader('ncursesw/curses.h')
+   have_ncurses = conf.CheckCHeader('ncurses.h') and conf.CheckLib('ncurses')
+   if have_ncurses or have_ncursesw:
+      conf.env['CCFLAGS'].append('-DCURSES')
+   else:
+      print('ncurses not found')
+   if have_ncursesw:
+      env['LINKFLAGS'].append('-lncursesw')
+      env['CCFLAGS'].append('-DHAVE_NCURSESW')
+   elif have_ncurses:
+      env['LINKFLAGS'].append('-lncurses')
+   if have_ncursesw_curses_h:
+      env['CCFLAGS'].append('-DHAVE_NCURSESW_CURSES_H')
+
+disablegl = ARGUMENTS.get('disable-gl', 0)
+if not int(disablegl):
+   try:
+      env.ParseConfig('pkg-config glu --cflags --libs')
+      env["CCFLAGS"].append('-DWANT_GL')
+   except OSError,e:
+      print 'glu not found, disabling GL'
+
+#env = conf.Finish()
+conf.Finish()
 
 # Init variables, and make sure they're around for appending to
 # These variables are the ones used by the actual compilation. We construct
 # them from ccflags/libs in varying ways depending on which compiler is used,
 # below.
-env['CPPPATH']=["#g_src/fmodexinclude"]
-env['CCFLAGS']=["-Dunix"]
+env['CPPPATH'].append(["#g_src/fmodexinclude"])
+env['CCFLAGS'].append("-Dunix")
 env['CXXFLAGS'].append("-std=gnu++0x")
-env['LIBS']=["SDL_image","z","SDL_ttf"]
+env['LIBS'].append(["SDL_image","z","SDL_ttf"])
 # If there's a library in the libs folder it will get linked over a system one.
-env['LIBPATH']=["#libs"]
+env['LIBPATH'].append(["#libs"])
 if not M64:
    env['LIBPATH'].append("/usr/lib32")
-env['LINKFLAGS']=["-Wl,--as-needed",'-Wl,-rpath=\$$ORIGIN/libs']
+env['LINKFLAGS'].append("-Wl,--as-needed")
+#env['LINKFLAGS'].append('-Wl,-rpath=\$$ORIGIN/libs')
 
 # GLEW
 env["CPPPATH"].append('#g_src/glext')
@@ -69,12 +128,16 @@ if not clang and not M64:
    env['ASFLAGS']="--32"
    env['LINKFLAGS'].append("-m32")
    env["CCFLAGS"].append("-m32")
-env.ParseConfig('pkg-config gtk+-2.0 --cflags --libs')
+
 env.ParseConfig('pkg-config openal --cflags')
 env.ParseConfig('pkg-config sndfile --cflags')
 env.ParseConfig('pkg-config sdl --cflags --libs')
-env.ParseConfig('pkg-config glu --cflags --libs')
 
+ldflags=Split(os.environ.get("LDFLAGS"))
+env['LINKFLAGS'].append(ldflags)
+
+cxxflags=Split(os.environ.get("CXXFLAGS"))
+env['CXXFLAGS'].append(cxxflags)
 
 if profile:
    env["CCFLAGS"].append("-pg")

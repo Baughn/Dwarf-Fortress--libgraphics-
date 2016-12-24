@@ -10,9 +10,10 @@
 # include <errno.h>
 # include <stdio.h>
 # include <string.h>
+# include <unistd.h>
 # ifdef __APPLE__
 #  include "osx_messagebox.h"
-# elif defined(unix)
+# elif defined(unix) && defined(HAVE_GTK2)
 #  include <gtk/gtk.h>
 # endif
 #endif
@@ -111,6 +112,7 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
     CocoaAlertPanel(caption, text, "OK", NULL, NULL);
   }
 # else // GTK code
+#  ifdef HAVE_GTK2
   if (getenv("DISPLAY")) {
     // Have X, will dialog
     GtkWidget *dialog = gtk_message_dialog_new(NULL,
@@ -142,6 +144,7 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
       }
     }
   } else {
+#elif CURSES
     // Use curses
     init_curses();
     erase();
@@ -172,7 +175,21 @@ int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type)
       wgetch(*stdscr_p);
     }
     nodelay(*stdscr_p, -1);
+#  else /* not APPLE, not GTK, not curses - use stdio */
+  dprintf(2, "Alert %s:\n%s\n", caption ? caption : "", text ? text : "");
+  if (type & MB_YESNO) {
+    while(ret == IDOK) {
+      dprintf(2, "please answer with 'yes' or 'no'\n");
+      char buf[16];
+      fgets(buf, sizeof buf, stdin);
+      if(!strncmp(buf, "yes", 3)) ret = IDYES;
+      else if(!strncmp(buf, "no", 2)) ret = IDNO;
+    }
   }
+#  endif //end ifdef HAVE_GTK2 / CURSES
+#  ifdef HAVE_GTK2
+  }
+#  endif
 # endif
   
   if (toggle_screen) {

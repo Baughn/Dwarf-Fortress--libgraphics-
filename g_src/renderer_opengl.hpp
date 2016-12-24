@@ -1,3 +1,4 @@
+#ifdef WANT_GL
 // STANDARD
 class renderer_opengl : public renderer {
 public:
@@ -607,3 +608,4 @@ class renderer_vbo : public renderer_opengl {
     renderer_opengl::uninit_opengl();
   }
 };
+#endif

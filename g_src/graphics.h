@@ -6,7 +6,6 @@
 #include <cassert>
 using std::string;
 
-#include "GL/glew.h"
 #include "g_basics.h"
 #include "platform.h"
 #include "basics.h"
@@ -104,11 +103,15 @@ class graphicst
                   /* assert (screen_limit == screen + dimy * dimx * 4); */
                   unsigned char *s = screen + screenx*dimy*4 + screeny*4;
                   if (s < screen_limit) {
+	if(screenx>=clipx[0]&&screenx<=clipx[1]&&
+		screeny>=clipy[0]&&screeny<=clipy[1])
+		{
                     *s++ = c;
                     *s++ = screenf;
                     *s++ = screenb;
                     *s++ = screenbright;
                     screentexpos[screenx*dimy + screeny]=0;
+                  }
                   }
                   screenx += advance;
                 }
@@ -117,15 +120,18 @@ class graphicst
                   /* assert (screen_limit == screen + dimy * dimx * 4); */
                   unsigned char *s = screen + x*dimy*4 + y*4;
                   if (s >= screen && s < screen_limit) {
+	if(x>=clipx[0]&&x<=clipx[1]&&
+		y>=clipy[0]&&y<=clipy[1])
+		{
                     *s++ = c;
                     *s++ = f;
                     *s++ = b;
                     *s++ = bright;
                   }
                 }
+                }
 		void addcoloredst(const char *str,const char *colorstr);
-		void addst(const string &str, justification just = justify_left);
-		void addst(const char *str, justification just = justify_left);
+		void addst(const string &str, justification just = justify_left, int space=0);
 		void erasescreen_clip();
 		void erasescreen();
                 void erasescreen_rect(int x1, int x2, int y1, int y2);

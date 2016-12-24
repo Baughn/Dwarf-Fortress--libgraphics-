@@ -1,3 +1,4 @@
+#ifdef CURSES
 static bool curses_initialized = false;
 
 static void endwin_void() {
@@ -97,8 +98,12 @@ public:
       mvwaddstr(*stdscr_p, y, x, " ");
     } else {
       wattrset(*stdscr_p, COLOR_PAIR(pair) | (bold ? A_BOLD : 0));
+#ifdef HAVE_NCURSESW
       wchar_t chs[2] = {charmap[ch],0};
       mvwaddwstr(*stdscr_p, y, x, chs);
+#else
+      mvwaddch(*stdscr_p, y, x, ch);
+#endif
     }
   }
 
@@ -281,8 +286,12 @@ extern "C" {
   int init_pair(short p, short fg, short bg) {
     return _init_pair(p, fg, bg);
   }
-  int getmouse(MEVENT *m) {
+  int (getmouse)(MEVENT *m) {
+#ifdef NCURSES_MOUSE_VERSION
     return _getmouse(m);
+#else
+    return ERR;
+#endif
   }
   int waddnwstr(WINDOW *w, const wchar_t *s, int n) {
     return _waddnwstr(w, s, n);
@@ -329,7 +338,9 @@ extern "C" {
       _curs_set = (int (*)(int s))dlsym_orexit("curs_set");
       _start_color = (int (*)(void))dlsym_orexit("start_color");
       _init_pair = (int (*)(short p, short fg, short bg))dlsym_orexit("init_pair");
+#ifdef NCURSES_MOUSE_VERSION
       _getmouse = (int (*)(MEVENT *m))dlsym_orexit("getmouse");
+#endif
       _waddnwstr = (int (*)(WINDOW *w, const wchar_t *s, int i))dlsym_orexit("waddnwstr");
     }
     
@@ -359,3 +370,4 @@ extern "C" {
   }
 };
 
+#endif

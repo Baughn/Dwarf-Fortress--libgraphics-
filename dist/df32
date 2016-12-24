@@ -1,0 +1,53 @@
+#!/bin/sh
+#
+# this is a DF launcher, replacing the one that ships with DF.
+# it's purpose is to launch DF through musl's libc.so, because the DF
+# binary has GLIBC's dynlinker hardcoded as interpreter.
+# additionally it launches DF through launch-without-heap-randomization.elf.
+# it turned out that the way musl's malloc work, DF will crash pretty rapidly
+# if heap randomization is enabled (linux default).
+# launch-without-heap-randomization.elf will turn that off.
+# you can compile it from launch-without-heap-randomization.c:
+# gcc launch-without-heap-randomization.c -o launch-without-heap-randomization.elf
+
+DF_DIR=$(dirname "$0")
+cd "${DF_DIR}"
+export SDL_DISABLE_LOCK_KEYS=1 # Work around for bug in Debian/Ubuntu SDL patch.
+#export SDL_VIDEO_CENTERED=1 # Centre the screen.  Messes up resizing.
+
+if [ $(uname -m) = "x86_64" ] ; then
+	[ -e "libs/libc.so" ] && [ -z "$LIB32DIR" ] && LIB32DIR=./libs
+	[ -z "$LIB32DIR" ] && LIB32DIR=/lib32
+	INTERPRETER="$LIB32DIR"/libc.so
+	if [ ! -e "$INTERPRETER" ] ; then
+		cat << EOF
+error: the interpreter $INTERPRETER was not found
+put the required 32bit libraries into $LIB32DIR or change
+the environment variable LIB32DIR to point there.
+
+required:
+libc.so (musl)
+libncursesw.so.5
+libSDL_image-1.2.so.0
+libz.so.1
+libSDL_ttf-2.0.so.0
+libSDL-1.2.so.0 (must be compiled with sabotage's pthread stacksize patch)
+libstdc++.so.6 (supplied)
+libgcc_s.so.1  (supplied)
+
+optional for sound support:
+libopenal.so
+libsndfile.so
+
+those 2 depend on other libs themselfes:
+libvorbis, libogg, alsa-lib and possibly more.
+
+EOF
+		exit 1
+	fi
+else
+	INTERPRETER=/lib/libc.so
+fi
+[ -n "$LIB32DIR" ] && export LD_LIBRARY_PATH="$LIB32DIR"
+./launch-without-heap-randomization.elf $INTERPRETER ./libs/Dwarf_Fortress $* # Go, go, go! :)
+

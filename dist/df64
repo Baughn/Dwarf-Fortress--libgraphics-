@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# this is a DF launcher (64bit), replacing the one that ships with DF.
+# it's purpose is to launch DF through musl's libc.so, because the DF
+# binary has GLIBC's dynlinker hardcoded as interpreter.
+# additionally it launches DF through launch-without-heap-randomization.elf.
+# it turned out that the way musl's malloc work, DF will crash pretty rapidly
+# if heap randomization is enabled (linux default).
+# launch-without-heap-randomization.elf will turn that off.
+# you can compile it from launch-without-heap-randomization.c:
+# gcc launch-without-heap-randomization.c -o launch-without-heap-randomization.elf
+# additionally we need compat.so, compiled from musl-glibc-compat-preload.c.
+# see the comments in that file for build instructions.
+# this wrapper and the 2 helpers go into the main DF directory, not into libs/.
+
+DF_DIR=$(dirname "$0")
+cd "${DF_DIR}"
+export SDL_DISABLE_LOCK_KEYS=1 # Work around for bug in Debian/Ubuntu SDL patch.
+#export SDL_VIDEO_CENTERED=1 # Centre the screen.  Messes up resizing.
+
+INTERPRETER=/lib/libc.so
+LD_PRELOAD=./compat.so ./launch-without-heap-randomization.elf $INTERPRETER ./libs/Dwarf_Fortress $* # Go, go, go! :)
+
