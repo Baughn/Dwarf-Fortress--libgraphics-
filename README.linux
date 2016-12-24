@@ -49,16 +49,16 @@ you need "scons" to build the source.
 -------------------
 Compiling
 -------------------
-Dwarf Fortress binaries were compiled with GCC 4.6, so you need a similar or
+Dwarf Fortress binaries were compiled with GCC 4.5, so you need a similar or
 the same compiler. i.e. one that's not too old and one that's not too new.
-4.6 and 4.7 works, and IIRC 4.5 as well.
+4.4, 4.5, 4.6 and 4.7 work.
 
 much newer compilers probably use a much newer C++ ABI
 (it may be possible to force the compiler to use an older ABI though,
 for example with -D_GLIBCXX_USE_CXX11_ABI=0).
 
 to compile the source, use: 
-CXX=g++-4.6 CXXFLAGS="-O3 fomit-frame-pointer" LDFLAGS=-s \
+CXX=g++-4.6 CXXFLAGS="-O3 -fomit-frame-pointer" LDFLAGS=-s \
   scons [disable-gtk=1 disable-curses=1 disable-gl=1 disable-debug=1]
 
 the options inside [] , as well as the environment variables
